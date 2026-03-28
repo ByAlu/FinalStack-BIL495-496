@@ -1,5 +1,6 @@
 package com.backend.auth;
 
+import com.backend.exception.auth.UserAlreadyExistsException;
 import com.backend.model.dto.LoginRequest;
 import com.backend.model.dto.RegisterRequest;
 import com.backend.model.entity.User;
@@ -27,7 +28,9 @@ public class SecurityService {
     private PasswordEncoder passwordEncoder;
 
     public String login(LoginRequest request) {
-        // Check user credentials
+        var user = userRepository.findByUserName(request.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found!"));
+
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getUsername(),
@@ -35,25 +38,21 @@ public class SecurityService {
                 )
         );
 
-        // 2. Adım: Kullanıcıyı bul
-        var user = userRepository.findByUserName(request.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found!"));
-
-        // 3. Adım: Token Üret ve Gönder
         return jwtService.generateToken(user);
     }
     public String register(RegisterRequest request) {
         if (userRepository.findByUserName(request.getUsername()).isPresent()) {
-            throw new RuntimeException("This username is already taken, please select new username!");
+            throw new UserAlreadyExistsException("This username is already taken, please select new username!");
         }
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("This email is already taken, please select new email!");
+            throw new UserAlreadyExistsException("This email is already taken, please select new email!");
         }
         var user = new User();
         user.setUserName(request.getUsername());
         user.setEmail(request.getEmail());
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
+        user.setRole(request.getRole());
 
         // Şifreyi asla açık metin kaydetmiyoruz!
         user.setHashedSaltedPassword(passwordEncoder.encode(request.getPassword()));
