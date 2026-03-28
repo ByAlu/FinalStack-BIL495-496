@@ -1,5 +1,6 @@
 package com.backend.model.dto;
 
+import com.backend.model.entity.Role;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,4 +12,5 @@ public class RegisterRequest {
     private String email;
     private String firstName;
     private String lastName;
+    private Role role;
 }
