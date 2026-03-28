@@ -1,5 +1,6 @@
 package com.backend.datamanagment.list.service;
 
+import com.backend.exception.datamanagment.PatientNotFoundException;
 import com.backend.model.dto.PatientDTO;
 import com.backend.model.entity.Patient;
 import com.backend.model.entity.PatientExamination;
@@ -42,7 +43,7 @@ public class PatientListServiceImpl implements PatientListService {
     public PatientDTO getPatientById(Long id) {
         // 1.Search for patient
         Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Bu ID ile kayıtlı bir hasta bulunamadı: " + id));
+                .orElseThrow(() -> new PatientNotFoundException("Bu ID ile kayıtlı bir hasta bulunamadı: " + id));
 
         // 2. Get examination ids for this patient
         List<Long> examIds = patientExaminationRepository.findByPatientId(id)
