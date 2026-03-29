@@ -23,7 +23,6 @@ public class PatientExamination {
     @Column(nullable = false)
     String examinationName;
 
-    @ManyToOne
-    @JoinColumn(name = "patient_id")
-    private Patient patient;
+    @Column(nullable = false)
+    private Long patientId;
 }

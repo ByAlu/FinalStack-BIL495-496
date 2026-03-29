@@ -14,8 +14,11 @@ public class ExaminationVideo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 1000)
     private String url; // Veya storageKey
+
+    @Column(nullable = false)
+    private String storageKey;
 
     private String thumbnailUrl;
 
