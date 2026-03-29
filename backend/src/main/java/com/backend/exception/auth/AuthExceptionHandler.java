@@ -1,6 +1,5 @@
 package com.backend.exception.auth;
 
-import com.backend.exception.datamanagment.PatientNotFoundException;
 import com.backend.model.dto.ErrorResponse;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
