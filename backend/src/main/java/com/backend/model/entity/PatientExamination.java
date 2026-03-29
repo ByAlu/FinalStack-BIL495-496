@@ -14,11 +14,14 @@ public class PatientExamination {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column()
     LocalDate examinationDate;
 
     @Column(nullable = false)
     ExaminationType examinationType;
+
+    @Column(nullable = false)
+    String examinationName;
 
     @ManyToOne
     @JoinColumn(name = "patient_id")

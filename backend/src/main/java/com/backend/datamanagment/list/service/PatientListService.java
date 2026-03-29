@@ -7,4 +7,5 @@ import org.springframework.data.domain.Pageable;
 public interface PatientListService {
     Page<PatientDTO> searchPatientByName(String name, Pageable pageable);
     PatientDTO getPatientById(Long id);
+    PatientDTO createPatient(PatientDTO patientDTO);
 }

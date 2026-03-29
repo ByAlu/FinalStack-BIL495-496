@@ -25,4 +25,9 @@ public class PatientListController {
     public ResponseEntity<PatientDTO> getPatientsById(@PathVariable Long id){
         return ResponseEntity.ok(service.getPatientById(id));
     }
+
+    @PostMapping()
+    public ResponseEntity<PatientDTO> createPatient(@RequestBody PatientDTO patientDTO){
+        return ResponseEntity.ok(service.createPatient(patientDTO));
+    }
 }

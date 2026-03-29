@@ -51,7 +51,12 @@ public class PatientListServiceImpl implements PatientListService {
                 .map(PatientExamination::getId)
                 .toList();
 
-
         return PatientMapper.toDTO(patient, examIds);
+    }
+
+    @Override
+    public PatientDTO createPatient(PatientDTO patientDTO) {
+        Patient patient = PatientMapper.toEntity(patientDTO);
+        return PatientMapper.toDTO(patientRepository.save(patient), List.of());
     }
 }
