@@ -42,7 +42,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 2. Token'ı ayıkla
         jwt = authHeader.substring(7);
         userName = jwtService.extractUsername(jwt); // sub kısmını (NeoRacer06) alıyoruz
-
         // 3. Kullanıcı varsa ve sistemde henüz login olmamışsa (SecurityContext boşsa)
         if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userName);
@@ -61,5 +60,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
+        return request.getServletPath().startsWith("/api/v1/auth");
     }
 }
