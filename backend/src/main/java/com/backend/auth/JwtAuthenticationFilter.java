@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
-        final String userEmail;
+        final String userName;
 
         // 1. Header'da "Bearer " ile başlayan bir token var mı?
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -41,11 +41,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 2. Token'ı ayıkla
         jwt = authHeader.substring(7);
-        userEmail = jwtService.extractUsername(jwt); // sub kısmını (NeoRacer06) alıyoruz
-
+        userName = jwtService.extractUsername(jwt); // sub kısmını (NeoRacer06) alıyoruz
         // 3. Kullanıcı varsa ve sistemde henüz login olmamışsa (SecurityContext boşsa)
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+        if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userName);
 
             // 4. Token hala geçerli mi? (exp süresi dolmadı mı?)
             if (jwtService.isTokenValid(jwt, userDetails)) {
@@ -61,5 +60,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
+        return request.getServletPath().startsWith("/api/v1/auth");
     }
 }
