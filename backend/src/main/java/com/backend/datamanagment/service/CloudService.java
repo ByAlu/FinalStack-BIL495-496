@@ -10,5 +10,5 @@ import java.util.List;
 
 public interface CloudService {
     Page<ExaminationVideoDTO> getExaminationVideoDTO(String url, Pageable pageable);
-    UploadUrlResponseDTO generateBulkUploadUrls(Long examId, List<ExaminationRegion> regions);
+    UploadUrlResponseDTO generateBulkUploadUrls(String examName, List<ExaminationRegion> regions);
 }

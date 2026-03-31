@@ -35,14 +35,14 @@ public class ExaminationVideoListingController {
 
     /**
      *
-     * @param examId Examination Id
+     * @param examName Examination Id
      * @param regions Regions of photos
      * @return returns an unique upload URL for each region to be uploaded,
-     * {cloudUrl}/ai/{patientId}/{examinationId}/{region}.png is the location of the uploaded file in the cloud storage.
+     * {cloudUrl}/ai/{patientId}/{examinationName}/{region}.png is the location of the uploaded file in the cloud storage.
      */
-    @PostMapping("/{examId}/upload-urls")
-    public ResponseEntity<UploadUrlResponseDTO> generateBulkUploadUrls(@PathVariable Long examId,
+    @PostMapping("/{examName}/upload-urls")
+    public ResponseEntity<UploadUrlResponseDTO> generateBulkUploadUrls(@PathVariable String examName,
                                                                        @RequestBody List<ExaminationRegion> regions) {
-        return ResponseEntity.ok(cloudService.generateBulkUploadUrls(examId, regions));
+        return ResponseEntity.ok(cloudService.generateBulkUploadUrls(examName, regions));
     }
 }

@@ -1,0 +1,34 @@
+package com.backend.ai.analysis.model.dto;
+
+import com.backend.model.entity.ExaminationRegion;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.List;
+
+@Getter
+@Setter
+public class DoctorSuggestionRequest {
+    @NotBlank(message = "Examination name cannot be blank")
+    private String examinationName;
+    @NotNull(message = "Patient ID cannot be blank")
+    private Long patientId;
+    private List<DoctorSuggestionOfRegion> doctorSuggestions;
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    public static class DoctorSuggestionOfRegion {
+        @NotNull(message = "Examination region is not set")
+        private ExaminationRegion region;
+
+        private Long bLines;
+        private Long rdScore;
+
+        @JsonIgnore
+        private String url; // this will be set by backend after doctor suggestion is generated
+    }
+}
