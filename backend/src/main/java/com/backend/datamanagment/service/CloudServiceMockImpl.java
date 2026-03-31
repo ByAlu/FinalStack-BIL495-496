@@ -18,8 +18,8 @@ public class CloudServiceMockImpl implements CloudService {
     }
 
     @Override
-    public UploadUrlResponseDTO generateBulkUploadUrls(Long examId, List<ExaminationRegion> regions) {
-        return new UploadUrlResponseDTO(examId, List.of());
+    public UploadUrlResponseDTO generateBulkUploadUrls(String examName, List<ExaminationRegion> regions) {
+        return new UploadUrlResponseDTO(examName, List.of());
     }
 
 }

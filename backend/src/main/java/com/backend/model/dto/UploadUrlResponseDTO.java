@@ -11,7 +11,7 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 public class UploadUrlResponseDTO {
-    private Long examinationId;
+    private String examinationName;
     private List<UploadTarget> targets;
 
     @Getter
