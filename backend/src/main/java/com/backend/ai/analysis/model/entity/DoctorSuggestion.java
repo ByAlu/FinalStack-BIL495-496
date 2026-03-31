@@ -18,7 +18,7 @@ public class DoctorSuggestion{
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated
+    @Enumerated(EnumType.STRING)
     private ExaminationRegion examinationRegion;
 
     private Long bLines;

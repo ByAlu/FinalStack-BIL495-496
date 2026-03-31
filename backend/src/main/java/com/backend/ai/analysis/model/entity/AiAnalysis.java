@@ -4,9 +4,12 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -26,4 +29,7 @@ public class AiAnalysis {
 
     @Enumerated(EnumType.STRING)
     private AnalysisStatus status;
+
+    @JdbcTypeCode(SqlTypes.JSON) // Hibernate 6+ ile gelen modern yöntem
+    private Map<String, Object> resultData;
 }
