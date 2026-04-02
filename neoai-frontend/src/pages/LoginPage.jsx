@@ -5,8 +5,8 @@ import { useAuth } from "../context/AuthContext";
 export function LoginPage() {
   const { isAuthenticated, login } = useAuth();
   const [credentials, setCredentials] = useState({
-    username: "",
-    password: ""
+    username: "doctor",
+    password: "doctor123"
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,6 +54,12 @@ export function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+
+        <div className="credential-hint">
+          <strong>Demo accounts</strong>
+          <span>Doctor: doctor / doctor123</span>
+          <span>Admin: admin / admin123</span>
+        </div>
       </section>
     </div>
   );

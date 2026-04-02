@@ -88,13 +88,3 @@ export async function registerUser(userData) {
     throw new Error("Could not connect to the registration server.");
   }
 }
-
-// Şimdilik hazır user çekiyor data folderından
-//TODO: connect to actual api
-export function getReportById(reportId) {
-  return reportTemplates.find((report) => report.id === reportId) || null;
-}
-//TODO: connect to actual api
-export function getAuditEntries() {
-  return auditEntries;
-}
