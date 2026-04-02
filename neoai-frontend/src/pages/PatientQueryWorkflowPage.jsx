@@ -4,6 +4,7 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Box,
   Button,
+  IconButton,
   FormControl,
   InputLabel,
   MenuItem,
@@ -17,11 +18,14 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography
+  Typography,
+  Collapse
 } from "@mui/material";
 import { WorkflowSteps } from "../components/WorkflowSteps";
 import { findPatientById } from "../services/mockApi";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 const QUERY_PAGE_STATE_KEY = "neoai-query-page-state";
 
@@ -274,7 +278,8 @@ export function PatientQueryWorkflowPage() {
             <TableContainer component={Box} sx={{ overflowX: "auto" }}>
               <Table>
                 <TableHead>
-                  <TableRow>
+                  <TableRow >
+                    <TableCell padding="none" size="small"></TableCell>
                     <TableCell>
                       <Button color="inherit" onClick={() => handleSort("id")} sx={{ px: 0, fontWeight: 700 }}>
                         Examination id
@@ -299,7 +304,6 @@ export function PatientQueryWorkflowPage() {
                         </Box>
                       </Button>
                     </TableCell>
-                    <TableCell>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -308,27 +312,38 @@ export function PatientQueryWorkflowPage() {
 
                     return (
                       <Fragment key={examination.id}>
-                        <TableRow hover>
+                        <TableRow 
+                          hover  
+                          sx={{ '& > *': { borderBottom: 'unset' } }}
+                        >
+                          <TableCell  padding="none" 
+                              sx={{ 
+                                width: "1%",          // shrink column width to fit content
+                                whiteSpace: "nowrap"  // prevent wrapping
+                              }}
+                          >
+                            <IconButton
+                              aria-label="expand row"
+                              size="small"
+                              onClick={() =>
+                                  setExpandedExaminationId((current) =>
+                                    current === examination.id ? "" : examination.id
+                                  )
+                                }
+                            >
+                              {isExpanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                            </IconButton>
+                          </TableCell>
                           <TableCell>{examination.id}</TableCell>
                           <TableCell>{examination.date}</TableCell>
-                          <TableCell>{examination.videos.length}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="text"
-                              onClick={() =>
-                                setExpandedExaminationId((current) => (current === examination.id ? "" : examination.id))
-                              }
-                              sx={{ px: 0 }}
-                            >
-                              {isExpanded ? "Hide details" : "Show details"}
-                            </Button>
+                          <TableCell>{examination.videos.length}
                           </TableCell>
                         </TableRow>
-                        {isExpanded ? (
-                          <TableRow>
-                            <TableCell colSpan={4} sx={{ borderBottom: "1px solid rgba(148, 197, 255, 0.08)" }}>
-                              <Stack spacing={2} sx={{ py: 2 }}>
-                                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center" }}>
+                        <TableRow>
+                          <TableCell colSpan={4} style={{ paddingBottom: 0, paddingTop: 0 }}>
+                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                              <Box sx={{ margin: 1 }}>
+                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
                                   <Typography fontWeight={700}>Videos</Typography>
                                   <Button
                                     component={Link}
@@ -340,7 +355,7 @@ export function PatientQueryWorkflowPage() {
                                   </Button>
                                 </Box>
 
-                                <TableContainer component={Box} sx={{ overflowX: "auto" }}>
+                                   <TableContainer component={Box} sx={{ overflowX: "auto" }}>
                                   <Table size="small">
                                     <TableHead>
                                       <TableRow>
@@ -377,10 +392,10 @@ export function PatientQueryWorkflowPage() {
                                     </TableBody>
                                   </Table>
                                 </TableContainer>
-                              </Stack>
-                            </TableCell>
-                          </TableRow>
-                        ) : null}
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
                       </Fragment>
                     );
                   })}
