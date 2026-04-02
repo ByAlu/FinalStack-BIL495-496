@@ -1,54 +1,48 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser } from "../services/mockApi";
+import { loginUser } from "../services/api";
 
 const STORAGE_KEY = "react-codex-auth";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const rawValue = window.localStorage.getItem(STORAGE_KEY);
+    const savedToken = window.localStorage.getItem(STORAGE_KEY);
 
-    if (!rawValue) {
-      return;
-    }
-
-    try {
-      setUser(JSON.parse(rawValue));
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
+    if (savedToken) {
+      setToken(savedToken);
     }
   }, []);
 
-  function persistUser(nextUser) {
-    setUser(nextUser);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+  function persistJwt(jwt) {
+    setToken(jwt);
+    window.localStorage.setItem(STORAGE_KEY, jwt);
   }
 
   async function login(credentials) {
-    const authenticatedUser = await loginUser(credentials);
-    persistUser(authenticatedUser);
+    const jwt = await loginUser(credentials);
+    persistJwt(jwt);
     navigate("/", { replace: true });
-    return authenticatedUser;
+    return jwt;
   }
 
   function logout() {
-    setUser(null);
+    setToken(null);
     window.localStorage.removeItem(STORAGE_KEY);
     navigate("/login", { replace: true });
   }
 
   const value = useMemo(
     () => ({
-      user,
-      isAuthenticated: Boolean(user),
+      token,
+      isAuthenticated: Boolean(token),
       login,
       logout
     }),
-    [user]
+    [token]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
