@@ -1,7 +1,8 @@
 import axios from "axios";
 
-const API_BASE_URL =
+  const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
 
 // Create Axios instance
 const api = axios.create({
@@ -10,6 +11,7 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
 
 // Attach token automatically when sending a request
 api.interceptors.request.use((config) => {

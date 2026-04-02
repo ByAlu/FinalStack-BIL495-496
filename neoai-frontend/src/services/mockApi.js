@@ -1,11 +1,21 @@
+import axios from "axios";
+//TODO:remove
 import { auditEntries, demoUsers, patients, reportTemplates } from "../data/mockData";
 
-function delay(ms = 250) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
+  
+//TODO:connect to patient db
+const API_HOSPITAL_BASE_URL =
+import.meta.env.VITE_API_BASE_URL || "http://localhost:9090";
 
+//TODO:connect to patient db
+const api_hospital = axios.create({
+  baseURL: API_HOSPITAL_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+//TODO: rewrite everything with axios
 export async function loginUser({ username, password }) {
   await delay();
   const user = demoUsers.find((candidate) => candidate.username === username && candidate.password === password);
