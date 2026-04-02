@@ -1,0 +1,49 @@
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-content {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 20px;
+}
+
+.login-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  text-align: center;
+}
+
+.login-content h1,
+.login-tagline {
+  margin: 0;
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.login-content .form-grid {
+  padding: 0;
+}
+
+.credential-hint {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(148, 197, 255, 0.08);
+}
+
+@media (max-width: 640px) {
+  .login-brand-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
