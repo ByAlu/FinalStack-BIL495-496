@@ -1,70 +1,72 @@
-# Getting Started with Create React App
+# NeoAi Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+NeoAi is a React frontend for an AI-assisted clinical workflow, currently focused on ultrasound review and frame selection for a Spring Boot backend.
 
-## Available Scripts
+## Current stack
 
-In the project directory, you can run:
+- React 18
+- Vite
+- React Router
+- MUI
+- Plain CSS split under `src/styles/`
 
-### `npm start`
+## Current workflow
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Login for doctor and admin users
+- Main menu with accessible AI assistants
+- Patient query by patient id
+- Examination list with filtering, sorting, pagination, and expandable video rows
+- Data Selection workspace for region-based ultrasound frame selection
+- Placeholder pages for:
+  - Data Preprocessing
+  - AI Module Selection
+  - AI Results
+  - Reporting
+- Admin panel
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Run locally
 
-### `npm test`
+Install dependencies:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+npm.cmd install
+```
 
-### `npm run build`
+Start the development server:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+npm.cmd run dev
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Create a production build:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+npm.cmd run build
+```
 
-### `npm run eject`
+## Demo accounts
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- Doctor: `doctor` / `doctor123`
+- Admin: `admin` / `admin123`
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Project structure
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- `src/components/AppLayout.jsx`: top app shell, brand link, profile menu
+- `src/components/ProtectedRoute.jsx`: route protection
+- `src/components/WorkflowSteps.jsx`: workflow navigation memory between steps
+- `src/context/AuthContext.jsx`: authentication/session state
+- `src/pages/DashboardPage.jsx`: main assistant selection page
+- `src/pages/PatientQueryWorkflowPage.jsx`: patient query and examination selection
+- `src/pages/DataSelectionPage.jsx`: ultrasound frame selection workspace
+- `src/pages/AdminPanelPage.jsx`: admin actions
+- `src/services/mockApi.js`: mock backend service layer
+- `src/data/mockData.js`: sample patient, examination, video, thumbnail, and video asset data
+- `src/utils/workflowState.js`: workflow context and visited-step persistence
+- `src/styles/`: active stylesheet directory
+- `src/theme.js`: MUI theme
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Notes
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- The frontend currently uses mock data and sample media for development.
+- The selection page is custom UI  full yet.
+- Styling now comes from the files in `src/styles/`. The old root `src/styles.css` has been removed.

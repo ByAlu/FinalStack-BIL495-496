@@ -1,0 +1,158 @@
+.table-toolbar {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) minmax(320px, 420px);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.toolbar-control {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.toolbar-search {
+  min-width: 0;
+}
+
+.table-shell {
+  overflow-x: auto;
+}
+
+.table-footer-info {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.table-footer {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.pagination-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 197, 255, 0.2);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.pagination-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-status {
+  color: var(--muted);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(148, 197, 255, 0.08);
+  text-align: left;
+}
+
+.data-table th {
+  color: #b7c7d8;
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.column-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.sort-indicator {
+  color: var(--accent);
+  font-size: 0.95em;
+  line-height: 1;
+}
+
+.date-filter-inline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.text-link {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.table-action {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.expanded-row td {
+  padding: 0;
+}
+
+.expanded-content {
+  padding: 18px 12px 10px;
+}
+
+.expanded-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.video-table-shell {
+  overflow-x: auto;
+}
+
+.video-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(20, 184, 166, 0.18));
+  color: var(--text);
+  font-weight: 800;
+}
+
+.video-thumb-image {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  object-fit: cover;
+  border: 1px solid rgba(148, 197, 255, 0.12);
+}
