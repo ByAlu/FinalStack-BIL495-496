@@ -314,9 +314,13 @@ export function PatientQueryWorkflowPage() {
                       <Fragment key={examination.id}>
                         <TableRow 
                           hover  
-                          sx={{ '& > *': { borderBottom: 'unset' }, borderBottom: 0}}
+                          sx={{ '& > *': { borderBottom: 'unset' } }}
                         >
                           <TableCell  padding="none" 
+                              sx={{ 
+                                width: "1%",          // shrink column width to fit content
+                                whiteSpace: "nowrap"  // prevent wrapping
+                              }}
                           >
                             <IconButton
                               aria-label="expand row"
