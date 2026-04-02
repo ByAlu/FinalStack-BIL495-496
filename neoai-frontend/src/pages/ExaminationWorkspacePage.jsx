@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { aiModels, preprocessingOptions } from "../data/mockData";
-import { getExaminationByIds } from "../services/mockApi";
+import { getExaminationByIds } from "../services/patient_api";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
 

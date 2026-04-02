@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { WorkflowSteps } from "../components/WorkflowSteps";
-import { getExaminationByIds } from "../services/mockApi";
+import { getExaminationByIds } from "../services/patient_api";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
