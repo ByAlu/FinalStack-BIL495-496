@@ -290,6 +290,12 @@ export function PatientQueryWorkflowPage() {
                   labelId="results-per-page-label"
                   label="Show results"
                   value={resultSize}
+                  sx={{
+                    color: "text.primary",
+                    "& .MuiSelect-icon": {
+                      color: "text.primary"
+                    }
+                  }}
                   onChange={(event) => {
                     setResultSize(Number(event.target.value));
                     setCurrentPage(1);
@@ -297,8 +303,22 @@ export function PatientQueryWorkflowPage() {
                   MenuProps={{
                     PaperProps: {
                       sx: {
+                        bgcolor: "background.paper",
+                        color: "text.primary",
+                        border: "1px solid rgba(47, 200, 216, 0.22)",
+                        boxShadow: "0 18px 40px rgba(0, 0, 0, 0.32)",
                         "& .MuiMenuItem-root": {
-                          color: "#04141f"
+                          color: "text.primary",
+                          "&:hover": {
+                            bgcolor: "rgba(88, 166, 255, 0.14)"
+                          },
+                          "&.Mui-selected": {
+                            bgcolor: "rgba(47, 200, 216, 0.18)",
+                            color: "text.primary"
+                          },
+                          "&.Mui-selected:hover": {
+                            bgcolor: "rgba(47, 200, 216, 0.26)"
+                          }
                         }
                       }
                     }
