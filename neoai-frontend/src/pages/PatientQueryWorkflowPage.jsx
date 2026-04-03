@@ -379,7 +379,7 @@ export function PatientQueryWorkflowPage() {
                                         <TableCell>Video Name</TableCell>
                                         <TableCell>Region</TableCell>
                                         <TableCell>Duration</TableCell>
-                                        <TableCell>Comment</TableCell>
+                                        <TableCell>Description</TableCell>
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
