@@ -33,6 +33,70 @@ function parseExamDate(value) {
   return new Date(value.replace(" ", "T"));
 }
 
+function padDatePart(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatDatePart(date) {
+  return `${padDatePart(date.getDate())}-${padDatePart(date.getMonth() + 1)}-${date.getFullYear()}`;
+}
+
+function formatExamDate(value) {
+  const parsedDate = parseExamDate(value);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  const [, timePart] = value.split(" ");
+
+  return timePart ? `${formatDatePart(parsedDate)} ${timePart}` : formatDatePart(parsedDate);
+}
+
+function parseDisplayDate(value) {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
+    const parsedDate = new Date(`${normalizedValue}T00:00:00`);
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+  }
+
+  const match = normalizedValue.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, day, month, year] = match;
+  const parsedDate = new Date(`${year}-${padDatePart(month)}-${padDatePart(day)}T00:00:00`);
+
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function normalizeDisplayDate(value) {
+  const parsedDate = parseDisplayDate(value);
+
+  return parsedDate ? formatDatePart(parsedDate) : value;
+}
+
+function getEndOfDay(date) {
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  return endOfDay;
+}
+
+function getDateFieldError(value) {
+  if (!value) {
+    return "";
+  }
+
+  return parseDisplayDate(value) ? "" : "Use DD-MM-YYYY";
+}
+
 function getInitialPageState() {
   const rawValue = window.sessionStorage.getItem(QUERY_PAGE_STATE_KEY);
 
@@ -57,7 +121,10 @@ export function PatientQueryWorkflowPage() {
   const [currentPage, setCurrentPage] = useState(savedPageState?.currentPage || 1);
   const [examinationSearch, setExaminationSearch] = useState(savedPageState?.examinationSearch || "");
   const [sortConfig, setSortConfig] = useState(savedPageState?.sortConfig || { key: "date", direction: "desc" });
-  const [dateRange, setDateRange] = useState(savedPageState?.dateRange || { start: "", end: "" });
+  const [dateRange, setDateRange] = useState(() => ({
+    start: normalizeDisplayDate(savedPageState?.dateRange?.start || ""),
+    end: normalizeDisplayDate(savedPageState?.dateRange?.end || "")
+  }));
 
   window.sessionStorage.setItem(
     QUERY_PAGE_STATE_KEY,
@@ -85,8 +152,9 @@ export function PatientQueryWorkflowPage() {
     }
 
     const normalizedSearch = examinationSearch.trim().toLowerCase();
-    const startDate = dateRange.start ? new Date(dateRange.start) : null;
-    const endDate = dateRange.end ? new Date(dateRange.end) : null;
+    const startDate = parseDisplayDate(dateRange.start);
+    const endDate = parseDisplayDate(dateRange.end);
+    const inclusiveEndDate = endDate ? getEndOfDay(endDate) : null;
 
     return [...patient.examinations]
       .filter((examination) => examination.id.toLowerCase().includes(normalizedSearch))
@@ -97,7 +165,7 @@ export function PatientQueryWorkflowPage() {
           return false;
         }
 
-        if (endDate && examDate > endDate) {
+        if (inclusiveEndDate && examDate > inclusiveEndDate) {
           return false;
         }
 
@@ -222,6 +290,12 @@ export function PatientQueryWorkflowPage() {
                   labelId="results-per-page-label"
                   label="Show results"
                   value={resultSize}
+                  sx={{
+                    color: "text.primary",
+                    "& .MuiSelect-icon": {
+                      color: "text.primary"
+                    }
+                  }}
                   onChange={(event) => {
                     setResultSize(Number(event.target.value));
                     setCurrentPage(1);
@@ -229,8 +303,22 @@ export function PatientQueryWorkflowPage() {
                   MenuProps={{
                     PaperProps: {
                       sx: {
+                        bgcolor: "background.paper",
+                        color: "text.primary",
+                        border: "1px solid rgba(47, 200, 216, 0.22)",
+                        boxShadow: "0 18px 40px rgba(0, 0, 0, 0.32)",
                         "& .MuiMenuItem-root": {
-                          color: "#04141f"
+                          color: "text.primary",
+                          "&:hover": {
+                            bgcolor: "rgba(88, 166, 255, 0.14)"
+                          },
+                          "&.Mui-selected": {
+                            bgcolor: "rgba(47, 200, 216, 0.18)",
+                            color: "text.primary"
+                          },
+                          "&.Mui-selected:hover": {
+                            bgcolor: "rgba(47, 200, 216, 0.26)"
+                          }
                         }
                       }
                     }
@@ -258,18 +346,22 @@ export function PatientQueryWorkflowPage() {
               <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1.5 }}>
                 <TextField
                   label="Start date"
-                  type="date"
                   value={dateRange.start}
                   onChange={(event) => handleDateRangeChange("start", event.target.value)}
-                  InputLabelProps={{ shrink: true }}
+                  onBlur={(event) => handleDateRangeChange("start", normalizeDisplayDate(event.target.value))}
+                  placeholder="DD-MM-YYYY"
+                  error={Boolean(getDateFieldError(dateRange.start))}
+                  helperText={getDateFieldError(dateRange.start) || "Format: DD-MM-YYYY"}
                   fullWidth
                 />
                 <TextField
                   label="End date"
-                  type="date"
                   value={dateRange.end}
                   onChange={(event) => handleDateRangeChange("end", event.target.value)}
-                  InputLabelProps={{ shrink: true }}
+                  onBlur={(event) => handleDateRangeChange("end", normalizeDisplayDate(event.target.value))}
+                  placeholder="DD-MM-YYYY"
+                  error={Boolean(getDateFieldError(dateRange.end))}
+                  helperText={getDateFieldError(dateRange.end) || "Format: DD-MM-YYYY"}
                   fullWidth
                 />
               </Box>
@@ -335,7 +427,7 @@ export function PatientQueryWorkflowPage() {
                             </IconButton>
                           </TableCell>
                           <TableCell>{examination.id}</TableCell>
-                          <TableCell>{examination.date}</TableCell>
+                          <TableCell>{formatExamDate(examination.date)}</TableCell>
                           <TableCell>{examination.videos.length}
                           </TableCell>
                         </TableRow>
@@ -363,7 +455,7 @@ export function PatientQueryWorkflowPage() {
                                         <TableCell>Video Name</TableCell>
                                         <TableCell>Region</TableCell>
                                         <TableCell>Duration</TableCell>
-                                        <TableCell>Comment</TableCell>
+                                        <TableCell>Description</TableCell>
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
