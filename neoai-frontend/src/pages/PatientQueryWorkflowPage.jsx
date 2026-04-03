@@ -33,6 +33,22 @@ function parseExamDate(value) {
   return new Date(value.replace(" ", "T"));
 }
 
+function formatExamDate(value) {
+  const [datePart, timePart] = value.split(" ");
+
+  if (!datePart) {
+    return value;
+  }
+
+  const [year, month, day] = datePart.split("-");
+
+  if (!year || !month || !day) {
+    return value;
+  }
+
+  return timePart ? `${day}-${month}-${year} ${timePart}` : `${day}-${month}-${year}`;
+}
+
 function getInitialPageState() {
   const rawValue = window.sessionStorage.getItem(QUERY_PAGE_STATE_KEY);
 
@@ -335,7 +351,7 @@ export function PatientQueryWorkflowPage() {
                             </IconButton>
                           </TableCell>
                           <TableCell>{examination.id}</TableCell>
-                          <TableCell>{examination.date}</TableCell>
+                          <TableCell>{formatExamDate(examination.date)}</TableCell>
                           <TableCell>{examination.videos.length}
                           </TableCell>
                         </TableRow>
