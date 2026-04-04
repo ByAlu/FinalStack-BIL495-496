@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS examinations (
     external_examination_id VARCHAR(128) NOT NULL UNIQUE,
     external_patient_id VARCHAR(64) NOT NULL,
     examination_date TIMESTAMP NOT NULL,
-    description VARCHAR(2048),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP
 );
@@ -31,6 +30,7 @@ CREATE TABLE IF NOT EXISTS examination_videos (
     id BIGSERIAL PRIMARY KEY,
     examination_id BIGINT NOT NULL REFERENCES examinations(id) ON DELETE CASCADE,
     region VARCHAR(8) NOT NULL,
+    description VARCHAR(2048),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

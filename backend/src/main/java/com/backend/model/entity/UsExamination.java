@@ -30,9 +30,6 @@ public class UsExamination implements Examination {
     @Column(nullable = false)
     private LocalDateTime examinationDate;
 
-    @Column(length = 2048)
-    private String description;
-
     @OneToMany(mappedBy = "examination", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UsExaminationVideo> videos = new ArrayList<>();
 
