@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Entity
-@Table(name = "analysis_module_runs")
+@Table(name = "us_analysis_module_runs")
 @Getter
 @Setter
 // One ultrasound module execution/result within a larger ultrasound analysis batch.

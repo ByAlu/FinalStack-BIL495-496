@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS user_allowed_data_types (
     PRIMARY KEY (user_id, data_type)
 );
 
-CREATE TABLE IF NOT EXISTS examinations (
+CREATE TABLE IF NOT EXISTS us_examinations (
     id BIGSERIAL PRIMARY KEY,
     external_examination_id VARCHAR(128) NOT NULL UNIQUE,
     external_patient_id VARCHAR(64) NOT NULL,
@@ -26,15 +26,15 @@ CREATE TABLE IF NOT EXISTS examinations (
     updated_at TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS examination_videos (
+CREATE TABLE IF NOT EXISTS us_examination_videos (
     id BIGSERIAL PRIMARY KEY,
-    examination_id BIGINT NOT NULL REFERENCES examinations(id) ON DELETE CASCADE,
+    examination_id BIGINT NOT NULL REFERENCES us_examinations(id) ON DELETE CASCADE,
     region VARCHAR(8) NOT NULL,
     description VARCHAR(2048),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS ai_modules (
+CREATE TABLE IF NOT EXISTS us_ai_modules (
     id BIGSERIAL PRIMARY KEY,
     module_code VARCHAR(64) NOT NULL UNIQUE,
     display_name VARCHAR(128) NOT NULL,
@@ -69,9 +69,9 @@ CREATE TABLE IF NOT EXISTS user_preprocessing_settings (
     CONSTRAINT uk_user_preprocessing_owner_type_operation UNIQUE (owner_user_id, data_type, operation_code)
 );
 
-CREATE TABLE IF NOT EXISTS ai_analyses (
+CREATE TABLE IF NOT EXISTS us_ai_analyses (
     analysis_uuid UUID PRIMARY KEY,
-    examination_id BIGINT REFERENCES examinations(id) ON DELETE SET NULL,
+    examination_id BIGINT REFERENCES us_examinations(id) ON DELETE SET NULL,
     patient_id BIGINT,
     status VARCHAR(32),
     result_data JSONB,
@@ -79,16 +79,16 @@ CREATE TABLE IF NOT EXISTS ai_analyses (
     updated_at TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS analysis_region_frame_indices (
-    analysis_uuid UUID NOT NULL REFERENCES ai_analyses(analysis_uuid) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS us_analysis_region_frame_indices (
+    analysis_uuid UUID NOT NULL REFERENCES us_ai_analyses(analysis_uuid) ON DELETE CASCADE,
     region VARCHAR(8) NOT NULL,
     frame_index INTEGER NOT NULL,
     PRIMARY KEY (analysis_uuid, region)
 );
 
-CREATE TABLE IF NOT EXISTS analysis_preprocessing_settings (
+CREATE TABLE IF NOT EXISTS us_analysis_preprocessing_settings (
     id BIGSERIAL PRIMARY KEY,
-    analysis_uuid UUID NOT NULL REFERENCES ai_analyses(analysis_uuid) ON DELETE CASCADE,
+    analysis_uuid UUID NOT NULL REFERENCES us_ai_analyses(analysis_uuid) ON DELETE CASCADE,
     operation_name VARCHAR(128) NOT NULL,
     operation_code VARCHAR(64) NOT NULL,
     display_order INTEGER NOT NULL,
@@ -96,10 +96,10 @@ CREATE TABLE IF NOT EXISTS analysis_preprocessing_settings (
     parameters JSONB
 );
 
-CREATE TABLE IF NOT EXISTS analysis_module_runs (
+CREATE TABLE IF NOT EXISTS us_analysis_module_runs (
     id BIGSERIAL PRIMARY KEY,
-    analysis_uuid UUID NOT NULL REFERENCES ai_analyses(analysis_uuid) ON DELETE CASCADE,
-    ai_module_id BIGINT NOT NULL REFERENCES ai_modules(id) ON DELETE RESTRICT,
+    analysis_uuid UUID NOT NULL REFERENCES us_ai_analyses(analysis_uuid) ON DELETE CASCADE,
+    ai_module_id BIGINT NOT NULL REFERENCES us_ai_modules(id) ON DELETE RESTRICT,
     module_version VARCHAR(32) NOT NULL,
     status VARCHAR(32) NOT NULL,
     requested_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -108,9 +108,9 @@ CREATE TABLE IF NOT EXISTS analysis_module_runs (
     response_payload JSONB
 );
 
-CREATE TABLE IF NOT EXISTS analysis_reports (
+CREATE TABLE IF NOT EXISTS us_analysis_reports (
     id BIGSERIAL PRIMARY KEY,
-    analysis_uuid UUID NOT NULL UNIQUE REFERENCES ai_analyses(analysis_uuid) ON DELETE CASCADE,
+    analysis_uuid UUID NOT NULL UNIQUE REFERENCES us_ai_analyses(analysis_uuid) ON DELETE CASCADE,
     exported_pdf_url VARCHAR(2048),
     exported_doc_url VARCHAR(2048),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS doctor_suggestion (
     final_diagnosis VARCHAR(4096),
     treatment_recommendation VARCHAR(4096),
     follow_up_recommendation VARCHAR(4096),
-    analysis_report_id BIGINT UNIQUE REFERENCES analysis_reports(id) ON DELETE CASCADE
+    analysis_report_id BIGINT UNIQUE REFERENCES us_analysis_reports(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -693,7 +693,7 @@ JOIN (
 WHERE u.user_name = 'admin'
 ON CONFLICT (user_id, data_type) DO NOTHING;
 
-INSERT INTO ai_modules (module_code, display_name, description, active)
+INSERT INTO us_ai_modules (module_code, display_name, description, active)
 VALUES
     (
         'RDS_SCORING',
@@ -709,7 +709,7 @@ VALUES
     )
 ON CONFLICT (module_code) DO NOTHING;
 
-INSERT INTO examinations (
+INSERT INTO us_examinations (
     external_examination_id,
     external_patient_id,
     examination_date,
@@ -725,7 +725,7 @@ SELECT
 FROM generate_series(1, 55) AS seq
 ON CONFLICT (external_examination_id) DO NOTHING;
 
-INSERT INTO examinations (
+INSERT INTO us_examinations (
     external_examination_id,
     external_patient_id,
     examination_date,
@@ -741,7 +741,7 @@ SELECT
 FROM generate_series(1, 15) AS seq
 ON CONFLICT (external_examination_id) DO NOTHING;
 
-INSERT INTO examination_videos (
+INSERT INTO us_examination_videos (
     examination_id,
     region,
     description,
@@ -752,7 +752,7 @@ SELECT
     regions.region,
     'Mock ultrasound video for ' || e.external_examination_id || ' / ' || regions.region,
     CURRENT_TIMESTAMP
-FROM examinations e
+FROM us_examinations e
 JOIN LATERAL (
     VALUES
         ('R1', 1),
@@ -770,7 +770,7 @@ WHERE e.external_patient_id IN ('PT_1001', 'PT_1002')
   END
   AND NOT EXISTS (
       SELECT 1
-      FROM examination_videos ev
+      FROM us_examination_videos ev
       WHERE ev.examination_id = e.id
         AND ev.region = regions.region
   );

@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "examinations")
+@Table(name = "us_examinations")
 @Getter
 @Setter
 // Concrete persisted examination for the currently implemented ultrasound workflow.

@@ -7,7 +7,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "examination_videos")
+@Table(name = "us_examination_videos")
 @Getter
 @Setter
 // Stores region-specific ultrasound video metadata attached to one ultrasound examination.

@@ -7,7 +7,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "analysis_reports")
+@Table(name = "us_analysis_reports")
 @Getter
 @Setter
 // Aggregates doctor-authored report content around a completed ultrasound analysis.

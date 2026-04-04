@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "ai_analyses")
+@Table(name = "us_ai_analyses")
 @Getter
 @Setter
 // One ultrasound analysis batch tied to a single examination and containing per-module run rows.
@@ -47,7 +47,7 @@ public class UsAiAnalysis implements AiAnalysis {
 
     @ElementCollection
     @CollectionTable(
-            name = "analysis_region_frame_indices",
+            name = "us_analysis_region_frame_indices",
             joinColumns = @JoinColumn(name = "analysis_uuid")
     )
     @MapKeyEnumerated(EnumType.STRING)

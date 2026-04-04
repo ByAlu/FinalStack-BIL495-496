@@ -10,7 +10,7 @@ import org.hibernate.type.SqlTypes;
 import java.util.Map;
 
 @Entity
-@Table(name = "analysis_preprocessing_settings")
+@Table(name = "us_analysis_preprocessing_settings")
 @Getter
 @Setter
 // One persisted ultrasound preprocessing snapshot stored under an ultrasound analysis batch.

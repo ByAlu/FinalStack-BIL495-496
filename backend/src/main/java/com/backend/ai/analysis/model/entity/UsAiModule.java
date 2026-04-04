@@ -8,7 +8,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ai_modules")
+@Table(name = "us_ai_modules")
 @Getter
 @Setter
 // Concrete ultrasound AI module definition shown to users as a selectable module.
