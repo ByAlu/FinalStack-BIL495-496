@@ -22,7 +22,7 @@ public class UsExaminationVideo {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 8)
-    private ExaminationRegion region;
+    private UsExaminationRegion region;
 
     @Column(length = 2048)
     private String description;

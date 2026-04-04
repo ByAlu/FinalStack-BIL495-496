@@ -1,6 +1,6 @@
 package com.backend.ai.analysis.model.entity;
 
-import com.backend.model.entity.ExaminationRegion;
+import com.backend.model.entity.UsExaminationRegion;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,7 +18,7 @@ public class DoctorSuggestion{
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    private ExaminationRegion examinationRegion;
+    private UsExaminationRegion examinationRegion;
 
     private Long bLines;
     private Long rdScore;

@@ -719,7 +719,10 @@ INSERT INTO us_examinations (
 SELECT
     'EX_' || LPAD((1000 + seq)::text, 4, '0'),
     'PT_1001',
-    CURRENT_TIMESTAMP - ((56 - seq) * INTERVAL '1 day'),
+    TIMESTAMP '2025-01-01 08:00:00'
+        + ((seq - 1) * INTERVAL '2 days')
+        + ((seq % 5) * INTERVAL '3 hours')
+        + ((seq % 4) * INTERVAL '17 minutes'),
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 FROM generate_series(1, 55) AS seq
@@ -735,7 +738,10 @@ INSERT INTO us_examinations (
 SELECT
     'EX_' || LPAD((1055 + seq)::text, 4, '0'),
     'PT_1002',
-    CURRENT_TIMESTAMP - ((16 - seq) * INTERVAL '1 day'),
+    TIMESTAMP '2025-04-10 09:30:00'
+        + ((seq - 1) * INTERVAL '3 days')
+        + ((seq % 4) * INTERVAL '2 hours')
+        + ((seq % 3) * INTERVAL '11 minutes'),
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 FROM generate_series(1, 15) AS seq

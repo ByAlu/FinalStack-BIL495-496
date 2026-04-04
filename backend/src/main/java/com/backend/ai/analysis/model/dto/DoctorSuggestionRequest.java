@@ -1,6 +1,6 @@
 package com.backend.ai.analysis.model.dto;
 
-import com.backend.model.entity.ExaminationRegion;
+import com.backend.model.entity.UsExaminationRegion;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -23,7 +23,7 @@ public class DoctorSuggestionRequest {
     @AllArgsConstructor
     public static class DoctorSuggestionOfRegion {
         @NotNull(message = "Examination region is not set")
-        private ExaminationRegion region;
+        private UsExaminationRegion region;
 
         private Long bLines;
         private Long rdScore;

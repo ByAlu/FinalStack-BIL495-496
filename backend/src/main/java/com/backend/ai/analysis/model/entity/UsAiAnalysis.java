@@ -1,8 +1,8 @@
 package com.backend.ai.analysis.model.entity;
 
-import com.backend.model.entity.ExaminationRegion;
 import com.backend.model.entity.HealthDataType;
 import com.backend.model.entity.UsExamination;
+import com.backend.model.entity.UsExaminationRegion;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -54,7 +54,7 @@ public class UsAiAnalysis implements AiAnalysis {
     @MapKeyColumn(name = "region", length = 8)
     @Column(name = "frame_index", nullable = false)
     // Stores the user-picked representative frame index for each selected examination region.
-    private Map<ExaminationRegion, Integer> selectedFrameIndices = new HashMap<>();
+    private Map<UsExaminationRegion, Integer> selectedFrameIndices = new HashMap<>();
 
     @JdbcTypeCode(SqlTypes.JSON) // Hibernate 6+ ile gelen modern yöntem
     private Map<String, Object> resultData;

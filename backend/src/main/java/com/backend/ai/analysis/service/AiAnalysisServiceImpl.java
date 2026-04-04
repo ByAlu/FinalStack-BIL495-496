@@ -6,8 +6,8 @@ import com.backend.ai.analysis.model.entity.AnalysisStatus;
 import com.backend.ai.analysis.model.entity.UsAiAnalysis;
 import com.backend.ai.analysis.repository.UsAiAnalysisRepository;
 import com.backend.model.dto.AnalysisInitiatedDTO;
-import com.backend.model.entity.ExaminationRegion;
 import com.backend.model.entity.UsExamination;
+import com.backend.model.entity.UsExaminationRegion;
 import com.backend.model.repository.UsExaminationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -59,7 +59,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
      */
     private String getImageUrl(Long patientId,
                                String examinationName,
-                               ExaminationRegion region) {
+                               UsExaminationRegion region) {
         return this.videoBaseUrl+"/ai/"+patientId+"/"+examinationName+"/"+region.name()+".png";
     }
 }

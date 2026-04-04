@@ -1,6 +1,6 @@
 package com.backend.model.dto;
 
-import com.backend.model.entity.ExaminationRegion;
+import com.backend.model.entity.UsExaminationRegion;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,7 +18,7 @@ public class UploadUrlResponseDTO {
     @Setter
     @AllArgsConstructor
     public static class UploadTarget {
-        private ExaminationRegion region;
+        private UsExaminationRegion region;
         private String uploadUrl;
     }
 }

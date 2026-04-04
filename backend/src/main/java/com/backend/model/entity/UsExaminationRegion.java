@@ -1,6 +1,6 @@
 package com.backend.model.entity;
 
-public enum ExaminationRegion {
+public enum UsExaminationRegion {
     R1,
     R2,
     R3,
