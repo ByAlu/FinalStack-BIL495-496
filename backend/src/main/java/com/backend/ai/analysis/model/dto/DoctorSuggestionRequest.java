@@ -29,6 +29,8 @@ public class DoctorSuggestionRequest {
         private Long rdScore;
 
         @JsonIgnore
-        private String url; // this will be set by backend after doctor suggestion is generated
+        private String imageUrl; // this will be set by backend after doctor suggestion is generated
+
+        private String videourl; //whole image video url for doctor suggestion
     }
 }
