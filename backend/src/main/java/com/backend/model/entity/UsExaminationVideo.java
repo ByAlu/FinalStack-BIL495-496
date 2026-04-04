@@ -24,6 +24,9 @@ public class UsExaminationVideo {
     @Column(nullable = false, length = 8)
     private ExaminationRegion region;
 
+    @Column(length = 2048)
+    private String description;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
