@@ -3,6 +3,8 @@ package com.backend.auth;
 import com.backend.exception.auth.UserAlreadyExistsException;
 import com.backend.model.dto.LoginRequest;
 import com.backend.model.dto.RegisterRequest;
+import com.backend.model.entity.HealthDataType;
+import com.backend.model.entity.Role;
 import com.backend.model.entity.User;
 import com.backend.model.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -53,11 +59,23 @@ public class SecurityService {
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setRole(request.getRole());
+        user.setAllowedDataTypes(resolveAllowedDataTypes(request));
 
         // Şifreyi asla açık metin kaydetmiyoruz!
         user.setHashedSaltedPassword(passwordEncoder.encode(request.getPassword()));
 
         userRepository.save(user);
         return jwtService.generateToken(user);
+    }
+
+    private Set<HealthDataType> resolveAllowedDataTypes(RegisterRequest request) {
+        List<HealthDataType> requestedDataTypes = request.getAllowedDataTypes();
+        if (requestedDataTypes != null && !requestedDataTypes.isEmpty()) {
+            return EnumSet.copyOf(requestedDataTypes);
+        }
+        if (request.getRole() == Role.ADMIN) {
+            return EnumSet.allOf(HealthDataType.class);
+        }
+        return EnumSet.of(HealthDataType.ULTRASOUND);
     }
 }

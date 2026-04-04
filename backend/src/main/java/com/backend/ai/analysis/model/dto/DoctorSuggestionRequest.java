@@ -13,8 +13,8 @@ import java.util.List;
 @Getter
 @Setter
 public class DoctorSuggestionRequest {
-    @NotBlank(message = "Examination name cannot be blank")
-    private String examinationName;
+    @NotBlank(message = "Examination id cannot be blank")
+    private String examinationId;
     @NotNull(message = "Patient ID cannot be blank")
     private Long patientId;
     private List<DoctorSuggestionOfRegion> doctorSuggestions;

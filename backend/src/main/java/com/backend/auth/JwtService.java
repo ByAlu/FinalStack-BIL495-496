@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +26,10 @@ public class JwtService {
     public String generateToken(User user) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("role", user.getRole().name());
+        extraClaims.put("allowedDataTypes", user.getAllowedDataTypes().stream()
+                .map(Enum::name)
+                .sorted(Comparator.naturalOrder())
+                .toList());
         extraClaims.put("jti", UUID.randomUUID().toString());
         return generateToken(extraClaims, user);
     }
