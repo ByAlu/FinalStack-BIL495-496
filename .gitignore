@@ -11,3 +11,7 @@ out/
 mvnw
 mvnw.cmd
 .mvn/
+
+#Python
+.venv
+__pycache__
