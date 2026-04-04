@@ -1,25 +1,57 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser } from "../services/mockApi";
+import { loginUser, TOKEN_STORAGE_KEY } from "../services/api";
 
-const STORAGE_KEY = "react-codex-auth";
 const AuthContext = createContext(null);
+
+function decodeJwtPayload(token) {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) {
+      return null;
+    }
+
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const decoded = window.atob(padded);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+function buildUserFromToken(token) {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.sub) {
+    return null;
+  }
+
+  return {
+    username: payload.sub,
+    fullName: payload.sub,
+    role: payload.role ?? null,
+    allowedDataTypes: Array.isArray(payload.allowedDataTypes) ? payload.allowedDataTypes : []
+  };
+}
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const savedToken = window.localStorage.getItem(STORAGE_KEY);
+    const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
 
     if (savedToken) {
       setToken(savedToken);
+      setUser(buildUserFromToken(savedToken));
     }
   }, []);
 
   function persistJwt(jwt) {
     setToken(jwt);
-    window.localStorage.setItem(STORAGE_KEY, jwt);
+    setUser(buildUserFromToken(jwt));
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, jwt);
   }
 
   async function login(credentials) {
@@ -31,18 +63,20 @@ export function AuthProvider({ children }) {
 
   function logout() {
     setToken(null);
-    window.localStorage.removeItem(STORAGE_KEY);
+    setUser(null);
+    window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     navigate("/login", { replace: true });
   }
 
   const value = useMemo(
     () => ({
       token,
+      user,
       isAuthenticated: Boolean(token),
       login,
       logout
     }),
-    [token]
+    [token, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,8 @@
 import axios from "axios";
 
-  const API_BASE_URL =
+export const TOKEN_STORAGE_KEY = "token";
+
+const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 
@@ -15,7 +17,7 @@ const api = axios.create({
 
 // Attach token automatically when sending a request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -57,7 +59,7 @@ export async function loginUser({ username, password }) {
     const jwt = response.data;
 
     if (jwt) {
-      localStorage.setItem("token", jwt);
+      localStorage.setItem(TOKEN_STORAGE_KEY, jwt);
     }
 
     return jwt;
