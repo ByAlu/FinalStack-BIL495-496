@@ -15,6 +15,12 @@ const api_hospital = axios.create({
   },
 });
 
+function delay(milliseconds = 300) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
 //TODO: rewrite everything with axios
 export async function loginUser({ username, password }) {
   await delay();

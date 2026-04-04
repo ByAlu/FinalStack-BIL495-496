@@ -15,3 +15,5 @@ mvnw.cmd
 #Python
 .venv
 __pycache__
+
+gcp-key.json
