@@ -17,8 +17,9 @@ import org.springframework.web.multipart.MultipartFile;
 public class ImageFilterController {
 
     //TODO: Burası değişicek direk file alınmıycak clouddan frame göre çekcek
+    //TODO: Aynı zamanda buradan gerçek ai apisine video apilerini de atabiliriz
     @PostMapping("apply")
-   public ResponseEntity<byte[]> applyFilter(@RequestParam("image") MultipartFile image) {
+    public ResponseEntity<byte[]> applyFilter(@RequestParam("image") MultipartFile image) {
         String externalApiUrl = "http://127.0.0.1:8000/filter";
         RestTemplate restTemplate = new RestTemplate();
 
@@ -51,6 +52,7 @@ public class ImageFilterController {
             return ResponseEntity.status(500).body(null);
         }
     }
+
     @GetMapping("test")
     public String getMethodName() {
         return "Test successful";

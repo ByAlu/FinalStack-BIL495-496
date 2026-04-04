@@ -1,7 +1,7 @@
 import axios from "axios";
 
   const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:9090";
 
 
 // Create Axios instance
@@ -88,5 +88,29 @@ export async function registerUser(userData) {
     }
 
     throw new Error("Could not connect to the registration server.");
+  }
+}
+
+//Send images for preprocessing
+export async function preprocessImages(images) {
+  try {
+    const processed_img = [];
+
+    for (const img of images) {
+      const response = await api.post("/api/v1/preprocess/apply", img);
+      processed_img.push(response.data);
+    }
+
+    return processed_img;
+  } catch (error) {
+    console.error("Preprocess Error:", error.message);
+
+    if (error.response) {
+      throw new Error(
+        error.response.data?.message || "Preprocessing failed. Please try again."
+      );
+    }
+
+    throw new Error("Could not connect to the server.");
   }
 }
