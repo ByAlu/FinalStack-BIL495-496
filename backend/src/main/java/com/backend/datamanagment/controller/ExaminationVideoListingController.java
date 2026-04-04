@@ -1,6 +1,6 @@
 package com.backend.datamanagment.controller;
 
-import com.backend.datamanagment.service.CloudService;
+import com.backend.cloud.service.CloudService;
 import com.backend.datamanagment.service.ExaminationVideoListingService;
 import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.UploadUrlResponseDTO;
@@ -40,9 +40,16 @@ public class ExaminationVideoListingController {
      * @return returns an unique upload URL for each region to be uploaded,
      * {cloudUrl}/ai/{patientId}/{examinationName}/{region}.png is the location of the uploaded file in the cloud storage.
      */
-    @PostMapping("/{examName}/upload-urls")
-    public ResponseEntity<UploadUrlResponseDTO> generateBulkUploadUrls(@PathVariable String examName,
+    @PostMapping("/{patientId}/{examName}/upload-urls")
+    public ResponseEntity<UploadUrlResponseDTO> generateBulkUploadUrls(@PathVariable Long patientId,
+                                                                       @PathVariable String examName,
                                                                        @RequestBody List<ExaminationRegion> regions) {
-        return ResponseEntity.ok(cloudService.generateBulkUploadUrls(examName, regions));
+        return ResponseEntity.ok(cloudService.generateBulkUploadUrls(patientId,examName, regions));
+    }
+
+    @GetMapping("/{patientId}/{examName}")
+    public ResponseEntity<List<ExaminationVideoDTO>> getVideos(@PathVariable Long patientId,
+                                                               @PathVariable String examName) {
+        return ResponseEntity.ok(cloudService.getExaminationVideoDTO(patientId, examName));
     }
 }
