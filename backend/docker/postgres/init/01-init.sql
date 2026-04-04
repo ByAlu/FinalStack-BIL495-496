@@ -170,21 +170,527 @@ VALUES
         'ADMIN',
         TRUE,
         CURRENT_TIMESTAMP
+    ),
+    (
+        'ahmet.yilmaz',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'ahmet.yilmaz@example.com',
+        'Ahmet',
+        'Yılmaz',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'mehmet.kaya',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'mehmet.kaya@example.com',
+        'Mehmet',
+        'Kaya',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'ayse.demir',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'ayse.demir@example.com',
+        'Ayşe',
+        'Demir',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'fatma.sahin',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'fatma.sahin@example.com',
+        'Fatma',
+        'Şahin',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'mustafa.celik',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'mustafa.celik@example.com',
+        'Mustafa',
+        'Çelik',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'emine.arslan',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'emine.arslan@example.com',
+        'Emine',
+        'Arslan',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'ali.koc',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'ali.koc@example.com',
+        'Ali',
+        'Koç',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'zeynep.kurt',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'zeynep.kurt@example.com',
+        'Zeynep',
+        'Kurt',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'hasan.ozdemir',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'hasan.ozdemir@example.com',
+        'Hasan',
+        'Özdemir',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'huseyin.acar',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'huseyin.acar@example.com',
+        'Hüseyin',
+        'Acar',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'murat.aslan',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'murat.aslan@example.com',
+        'Murat',
+        'Aslan',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'elif.yildiz',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'elif.yildiz@example.com',
+        'Elif',
+        'Yıldız',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'ibrahim.dogan',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'ibrahim.dogan@example.com',
+        'İbrahim',
+        'Doğan',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'esra.kilic',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'esra.kilic@example.com',
+        'Esra',
+        'Kılıç',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'omer.tekin',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'omer.tekin@example.com',
+        'Ömer',
+        'Tekin',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'selin.karaca',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'selin.karaca@example.com',
+        'Selin',
+        'Karaca',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'burak.turan',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'burak.turan@example.com',
+        'Burak',
+        'Turan',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'buse.kaplan',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'buse.kaplan@example.com',
+        'Buse',
+        'Kaplan',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'cem.aydin',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'cem.aydin@example.com',
+        'Cem',
+        'Aydın',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'deniz.erdem',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'deniz.erdem@example.com',
+        'Deniz',
+        'Erdem',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'ece.bulut',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'ece.bulut@example.com',
+        'Ece',
+        'Bulut',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'ferhat.ozkan',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'ferhat.ozkan@example.com',
+        'Ferhat',
+        'Özkan',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'gamze.polat',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'gamze.polat@example.com',
+        'Gamze',
+        'Polat',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'gokhan.sezer',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'gokhan.sezer@example.com',
+        'Gökhan',
+        'Sezer',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'hande.tas',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'hande.tas@example.com',
+        'Hande',
+        'Taş',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'ilker.yuce',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'ilker.yuce@example.com',
+        'İlker',
+        'Yüce',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'irem.altin',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'irem.altin@example.com',
+        'İrem',
+        'Altın',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'kaan.sari',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'kaan.sari@example.com',
+        'Kaan',
+        'Sarı',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'leyla.keser',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'leyla.keser@example.com',
+        'Leyla',
+        'Keser',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'melis.uyan',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'melis.uyan@example.com',
+        'Melis',
+        'Uyan',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'nazli.guler',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'nazli.guler@example.com',
+        'Nazlı',
+        'Güler',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'onur.cetin',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'onur.cetin@example.com',
+        'Onur',
+        'Çetin',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'ozge.akin',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'ozge.akin@example.com',
+        'Özge',
+        'Akın',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'pelin.korkmaz',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'pelin.korkmaz@example.com',
+        'Pelin',
+        'Korkmaz',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'recep.ustun',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'recep.ustun@example.com',
+        'Recep',
+        'Üstün',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'seda.yavuz',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'seda.yavuz@example.com',
+        'Seda',
+        'Yavuz',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'serkan.karaman',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'serkan.karaman@example.com',
+        'Serkan',
+        'Karaman',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'sevgi.durmaz',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'sevgi.durmaz@example.com',
+        'Sevgi',
+        'Durmaz',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'sinem.cakir',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'sinem.cakir@example.com',
+        'Sinem',
+        'Çakır',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'tugba.inan',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'tugba.inan@example.com',
+        'Tuğba',
+        'İnan',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'umut.erdogan',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'umut.erdogan@example.com',
+        'Umut',
+        'Erdoğan',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'yasemin.kandemir',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'yasemin.kandemir@example.com',
+        'Yasemin',
+        'Kandemir',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'yigit.kara',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'yigit.kara@example.com',
+        'Yiğit',
+        'Kara',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'selcuk.gunduz',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'selcuk.gunduz@example.com',
+        'Selçuk',
+        'Gündüz',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'merve.ayaz',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'merve.ayaz@example.com',
+        'Merve',
+        'Ayaz',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'baris.tunc',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'baris.tunc@example.com',
+        'Barış',
+        'Tunç',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'sule.ozer',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'sule.ozer@example.com',
+        'Şule',
+        'Özer',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'kerem.ay',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'kerem.ay@example.com',
+        'Kerem',
+        'Ay',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'derya.ipek',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'derya.ipek@example.com',
+        'Derya',
+        'İpek',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'tolga.coskun',
+        '$2a$10$wExwxpJaavv0G2Vr/Hsm/O3JKQxFAhGx2A6RlTKgqAGmyGC9HFN..',
+        'tolga.coskun@example.com',
+        'Tolga',
+        'Coşkun',
+        'DOCTOR',
+        TRUE,
+        CURRENT_TIMESTAMP
     )
 ON CONFLICT (user_name) DO NOTHING;
+
+INSERT INTO user_allowed_data_types (user_id, data_type)
+SELECT u.id, 'ULTRASOUND'
+FROM users u
+WHERE u.role = 'DOCTOR'
+ON CONFLICT (user_id, data_type) DO NOTHING;
 
 INSERT INTO user_allowed_data_types (user_id, data_type)
 SELECT u.id, v.data_type
 FROM users u
 JOIN (
     VALUES
-        ('doctor', 'ULTRASOUND'),
-        ('admin', 'ULTRASOUND'),
-        ('admin', 'PULSE_OXIMETER'),
-        ('admin', 'MRI'),
-        ('admin', 'ECG'),
-        ('admin', 'CT')
-) AS v(user_name, data_type) ON u.user_name = v.user_name
+        ('ULTRASOUND'),
+        ('PULSE_OXIMETER'),
+        ('MRI'),
+        ('ECG'),
+        ('CT')
+) AS v(data_type) ON TRUE
+WHERE u.user_name = 'admin'
 ON CONFLICT (user_id, data_type) DO NOTHING;
 
 INSERT INTO ai_modules (module_code, display_name, description, active)
@@ -202,6 +708,38 @@ VALUES
         TRUE
     )
 ON CONFLICT (module_code) DO NOTHING;
+
+INSERT INTO examinations (
+    external_examination_id,
+    external_patient_id,
+    examination_date,
+    created_at,
+    updated_at
+)
+SELECT
+    'EX_' || LPAD((1000 + seq)::text, 4, '0'),
+    'PT_1001',
+    CURRENT_TIMESTAMP - ((56 - seq) * INTERVAL '1 day'),
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+FROM generate_series(1, 55) AS seq
+ON CONFLICT (external_examination_id) DO NOTHING;
+
+INSERT INTO examinations (
+    external_examination_id,
+    external_patient_id,
+    examination_date,
+    created_at,
+    updated_at
+)
+SELECT
+    'EX_' || LPAD((1055 + seq)::text, 4, '0'),
+    'PT_1002',
+    CURRENT_TIMESTAMP - ((16 - seq) * INTERVAL '1 day'),
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+FROM generate_series(1, 15) AS seq
+ON CONFLICT (external_examination_id) DO NOTHING;
 
 INSERT INTO preprocessing_operations (
     data_type,
@@ -263,5 +801,5 @@ SELECT
 FROM users u
 JOIN preprocessing_operations p
     ON p.data_type = 'ULTRASOUND'
-WHERE u.user_name IN ('doctor', 'admin')
+WHERE u.role = 'DOCTOR' OR u.user_name = 'admin'
 ON CONFLICT (owner_user_id, data_type, operation_code) DO NOTHING;

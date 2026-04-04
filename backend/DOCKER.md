@@ -16,6 +16,7 @@ Seeded example users:
 
 - doctor / doctor123
 - admin / admin123
+- 45 additional Turkish-named doctor users / doctor123
 
 Seeded baseline catalog data:
 
@@ -26,7 +27,7 @@ Seeded baseline catalog data:
   - `MEDIAN_BLUR`
   - `CLAHE`
   - `GAUSSIAN_BLUR`
-- default per-user ultrasound preprocessing settings for both seeded users
+- default per-user ultrasound preprocessing settings for all seeded users
 
 The seed SQL only runs when the Postgres volume is created for the first time. If you already have an older local volume and want to seed these users again:
 
