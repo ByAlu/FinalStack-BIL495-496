@@ -741,6 +741,40 @@ SELECT
 FROM generate_series(1, 15) AS seq
 ON CONFLICT (external_examination_id) DO NOTHING;
 
+INSERT INTO examination_videos (
+    examination_id,
+    region,
+    description,
+    created_at
+)
+SELECT
+    e.id,
+    regions.region,
+    'Mock ultrasound video for ' || e.external_examination_id || ' / ' || regions.region,
+    CURRENT_TIMESTAMP
+FROM examinations e
+JOIN LATERAL (
+    VALUES
+        ('R1', 1),
+        ('R2', 2),
+        ('R3', 3),
+        ('R4', 4),
+        ('R5', 5),
+        ('R6', 6)
+) AS regions(region, region_order) ON TRUE
+WHERE e.external_patient_id IN ('PT_1001', 'PT_1002')
+  AND regions.region_order <= CASE
+      WHEN CAST(RIGHT(e.external_examination_id, 4) AS INTEGER) % 5 = 0 THEN 4
+      WHEN CAST(RIGHT(e.external_examination_id, 4) AS INTEGER) % 3 = 0 THEN 5
+      ELSE 6
+  END
+  AND NOT EXISTS (
+      SELECT 1
+      FROM examination_videos ev
+      WHERE ev.examination_id = e.id
+        AND ev.region = regions.region
+  );
+
 INSERT INTO preprocessing_operations (
     data_type,
     operation_name,
