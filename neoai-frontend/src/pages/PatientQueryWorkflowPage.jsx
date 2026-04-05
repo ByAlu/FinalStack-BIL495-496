@@ -83,18 +83,20 @@ function normalizeDisplayDate(value) {
   return parsedDate ? formatDatePart(parsedDate) : value;
 }
 
+function formatInputDateValue(date) {
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function normalizeInputDateValue(value) {
+  const parsedDate = parseDisplayDate(value);
+
+  return parsedDate ? formatInputDateValue(parsedDate) : "";
+}
+
 function getEndOfDay(date) {
   const endOfDay = new Date(date);
   endOfDay.setHours(23, 59, 59, 999);
   return endOfDay;
-}
-
-function getDateFieldError(value) {
-  if (!value) {
-    return "";
-  }
-
-  return parseDisplayDate(value) ? "" : "Use DD-MM-YYYY";
 }
 
 function getInitialPageState() {
@@ -122,8 +124,8 @@ export function PatientQueryWorkflowPage() {
   const [examinationSearch, setExaminationSearch] = useState(savedPageState?.examinationSearch || "");
   const [sortConfig, setSortConfig] = useState(savedPageState?.sortConfig || { key: "date", direction: "desc" });
   const [dateRange, setDateRange] = useState(() => ({
-    start: normalizeDisplayDate(savedPageState?.dateRange?.start || ""),
-    end: normalizeDisplayDate(savedPageState?.dateRange?.end || "")
+    start: normalizeInputDateValue(savedPageState?.dateRange?.start || ""),
+    end: normalizeInputDateValue(savedPageState?.dateRange?.end || "")
   }));
 
   window.sessionStorage.setItem(
@@ -348,20 +350,20 @@ export function PatientQueryWorkflowPage() {
                   label="Start date"
                   value={dateRange.start}
                   onChange={(event) => handleDateRangeChange("start", event.target.value)}
-                  onBlur={(event) => handleDateRangeChange("start", normalizeDisplayDate(event.target.value))}
-                  placeholder="DD-MM-YYYY"
-                  error={Boolean(getDateFieldError(dateRange.start))}
-                  helperText={getDateFieldError(dateRange.start) || "Format: DD-MM-YYYY"}
+                  type="date"
+                  helperText="Select from calendar"
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ max: dateRange.end || undefined }}
                   fullWidth
                 />
                 <TextField
                   label="End date"
                   value={dateRange.end}
                   onChange={(event) => handleDateRangeChange("end", event.target.value)}
-                  onBlur={(event) => handleDateRangeChange("end", normalizeDisplayDate(event.target.value))}
-                  placeholder="DD-MM-YYYY"
-                  error={Boolean(getDateFieldError(dateRange.end))}
-                  helperText={getDateFieldError(dateRange.end) || "Format: DD-MM-YYYY"}
+                  type="date"
+                  helperText="Select from calendar"
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ min: dateRange.start || undefined }}
                   fullWidth
                 />
               </Box>
