@@ -10,7 +10,10 @@ export function ViewerStage({
   handleViewerPointerDown,
   handleViewerPointerMove,
   handleViewerWheel,
+  isMagnifierActive,
   isActiveVideoReady,
+  magnifierConfig,
+  magnifierState,
   onStopViewerInteraction,
   panOffset,
   previewImageRef,
@@ -31,6 +34,8 @@ export function ViewerStage({
     isActiveVideoReady && activeVideoFrames[Math.min(currentFrame, Math.max(activeVideoFrames.length - 1, 0))]
       ? activeVideoFrames[Math.min(currentFrame, Math.max(activeVideoFrames.length - 1, 0))]
       : "";
+  const displayedFrameSrc =
+    viewerMode === "frame" && activeSelectedFrame ? activeSelectedFrame.thumbnail : activeFrameSrc;
 
   return (
     <div className="viewer-shell">
@@ -48,6 +53,7 @@ export function ViewerStage({
           <img
             alt={`${selectedFrameRegion} selected frame`}
             className="selection-frame-preview"
+            draggable={false}
             ref={previewImageRef}
             src={activeSelectedFrame.thumbnail}
             style={{
@@ -61,6 +67,7 @@ export function ViewerStage({
               <img
                 alt={`${activeRegion} frame ${currentFrame + 1}`}
                 className="selection-frame-preview"
+                draggable={false}
                 ref={previewImageRef}
                 src={activeFrameSrc}
                 style={{
@@ -96,6 +103,21 @@ export function ViewerStage({
                 {Math.max(activeVideoFrames.length, 0)}
               </span>
             </div>
+            {isMagnifierActive && displayedFrameSrc ? (
+              <div
+                aria-hidden="true"
+                className="viewer-magnifier"
+                style={{
+                  left: `${magnifierState.x}px`,
+                  top: `${magnifierState.y}px`,
+                  width: `${magnifierConfig.size}px`,
+                  height: `${magnifierConfig.size}px`,
+                  backgroundImage: `url("${displayedFrameSrc}")`,
+                  backgroundPosition: `${magnifierState.backgroundOffsetX}px ${magnifierState.backgroundOffsetY}px`,
+                  backgroundSize: `${magnifierState.backgroundWidth}px ${magnifierState.backgroundHeight}px`
+                }}
+              />
+            ) : null}
             {disabledActionMessage ? <div className="viewer-disabled-action-message">{disabledActionMessage}</div> : null}
           </>
         ) : (

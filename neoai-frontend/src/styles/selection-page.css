@@ -268,6 +268,78 @@
   justify-content: flex-start;
 }
 
+.selection-toolbar-expander {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  position: relative;
+}
+
+.selection-toolbar-expander-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(148, 197, 255, 0.24);
+  margin: 0 3px 0 1px;
+}
+
+.selection-toolbar-expander-button {
+  width: 24px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.selection-toolbar-expander-button svg {
+  font-size: 1.25rem;
+}
+
+.selection-toolbar-expander-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.viewer-tool-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: -22px;
+  width: 200px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 197, 255, 0.18);
+  background: rgba(19, 41, 78, 0.98);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
+  transform: translateX(-50%);
+  z-index: 20;
+  display: grid;
+  gap: 12px;
+}
+
+.viewer-tool-popover-label {
+  display: grid;
+  gap: 8px;
+  color: #d8e4f0;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.viewer-tool-popover-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.viewer-tool-popover-label-row strong {
+  color: #7dd3fc;
+  font-size: 0.82rem;
+}
+
 .selection-toolbar-icon-button,
 .selection-toolbar-placeholder {
   width: 44px;
@@ -391,6 +463,14 @@
   cursor: grabbing;
 }
 
+.viewer-stage.magnifier-ready {
+  cursor: crosshair;
+}
+
+.viewer-stage.magnifier-active {
+  cursor: none;
+}
+
 .selection-hidden-video {
   display: none;
 }
@@ -408,6 +488,8 @@
   max-height: 100%;
   background: black;
   user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
 }
 
 .viewer-stage-status {
@@ -422,6 +504,20 @@
   justify-content: center;
   z-index: 3;
   pointer-events: none;
+}
+
+.viewer-magnifier {
+  position: absolute;
+  width: 156px;
+  height: 156px;
+  border-radius: 18px;
+  border: 2px solid rgba(125, 211, 252, 0.7);
+  background-color: rgba(0, 0, 0, 0.92);
+  background-repeat: no-repeat;
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+  z-index: 4;
+  transform: translate(-50%, -50%);
 }
 
 .viewer-disabled-action-message {

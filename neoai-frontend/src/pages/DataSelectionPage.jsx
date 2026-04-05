@@ -14,6 +14,9 @@ import { getExaminationByIds } from "../services/mockApi";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
+const DEFAULT_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
+const MAX_MAGNIFIER_CONFIG = { size: 500, zoomFactor: 8 };
+const MIN_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
 
 function getExaminationCacheKey(patientId, examinationId) {
   return `neoai-cache:${patientId}:${examinationId}`;
@@ -24,6 +27,24 @@ function normalizeRotation(nextRotation) {
   return normalized < 0 ? normalized + 360 : normalized;
 }
 
+function getMagnifierState(stageRect, imageRect, clientX, clientY, magnifierConfig) {
+  const lensSize = magnifierConfig.size;
+  const zoomFactor = magnifierConfig.zoomFactor;
+  const clampedX = Math.min(Math.max(clientX, imageRect.left), imageRect.right);
+  const clampedY = Math.min(Math.max(clientY, imageRect.top), imageRect.bottom);
+  const localX = clampedX - imageRect.left;
+  const localY = clampedY - imageRect.top;
+
+  return {
+    x: clampedX - stageRect.left,
+    y: clampedY - stageRect.top,
+    backgroundWidth: imageRect.width * zoomFactor,
+    backgroundHeight: imageRect.height * zoomFactor,
+    backgroundOffsetX: -(localX * zoomFactor) + lensSize / 2,
+    backgroundOffsetY: -(localY * zoomFactor) + lensSize / 2
+  };
+}
+
 export function DataSelectionPage() {
   const { patientId, examinationId } = useParams();
   const navigate = useNavigate();
@@ -31,6 +52,7 @@ export function DataSelectionPage() {
   const initialRegion = examination?.videos[0]?.region || "r1";
   const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
   const fpsPopoverRef = useRef(null);
+  const magnifierPopoverRef = useRef(null);
   const pendingFrameJumpRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
@@ -40,6 +62,18 @@ export function DataSelectionPage() {
   const [disabledActionMessage, setDisabledActionMessage] = useState("");
   const [showVideoMenu, setShowVideoMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
+  const [isMagnifierMode, setIsMagnifierMode] = useState(false);
+  const [showMagnifierPopover, setShowMagnifierPopover] = useState(false);
+  const [magnifierConfig, setMagnifierConfig] = useState(DEFAULT_MAGNIFIER_CONFIG);
+  const [magnifierState, setMagnifierState] = useState({
+    x: 0,
+    y: 0,
+    backgroundWidth: 0,
+    backgroundHeight: 0,
+    backgroundOffsetX: 0,
+    backgroundOffsetY: 0
+  });
+  const [isMagnifierActive, setIsMagnifierActive] = useState(false);
   const [viewRotation, setViewRotation] = useState(0);
   const { activeRegion, setActiveRegion, lastViewedFrames, setLastViewedFrames, selectedFrames, setSelectedFrames } = useSelectionSession({
     patientId,
@@ -156,6 +190,10 @@ export function DataSelectionPage() {
       if (!fpsPopoverRef.current?.contains(event.target)) {
         setShowFpsPopover(false);
       }
+
+      if (!magnifierPopoverRef.current?.contains(event.target)) {
+        setShowMagnifierPopover(false);
+      }
     }
 
     window.addEventListener("mousedown", handlePointerDown);
@@ -230,6 +268,12 @@ export function DataSelectionPage() {
       toggleZoomMode();
     }
 
+    if (!isHoldMode && isMagnifierMode) {
+      setIsMagnifierMode(false);
+      setIsMagnifierActive(false);
+      setShowMagnifierPopover(false);
+    }
+
     toggleHoldMode();
   }
 
@@ -238,7 +282,41 @@ export function DataSelectionPage() {
       toggleHoldMode();
     }
 
+    if (!isZoomMode && isMagnifierMode) {
+      setIsMagnifierMode(false);
+      setIsMagnifierActive(false);
+      setShowMagnifierPopover(false);
+    }
+
     toggleZoomMode();
+  }
+
+  function handleToggleMagnifierMode() {
+    if (!isMagnifierMode && isHoldMode) {
+      toggleHoldMode();
+    }
+
+    if (!isMagnifierMode && isZoomMode) {
+      toggleZoomMode();
+    }
+
+    setIsMagnifierMode((current) => !current);
+    setIsMagnifierActive(false);
+    setShowMagnifierPopover(false);
+  }
+
+  function handleMagnifierSizeChange(nextSize) {
+    setMagnifierConfig((current) => ({
+      ...current,
+      size: Math.max(MIN_MAGNIFIER_CONFIG.size, Math.min(MAX_MAGNIFIER_CONFIG.size, nextSize))
+    }));
+  }
+
+  function handleMagnifierZoomChange(nextZoomFactor) {
+    setMagnifierConfig((current) => ({
+      ...current,
+      zoomFactor: Math.max(MIN_MAGNIFIER_CONFIG.zoomFactor, Math.min(MAX_MAGNIFIER_CONFIG.zoomFactor, nextZoomFactor))
+    }));
   }
 
   function handleRotateLeft() {
@@ -252,6 +330,7 @@ export function DataSelectionPage() {
   function resetView() {
     resetHold();
     resetZoom();
+    setMagnifierConfig(DEFAULT_MAGNIFIER_CONFIG);
     setViewRotation(0);
   }
 
@@ -347,6 +426,33 @@ export function DataSelectionPage() {
   const isViewChanged = zoomScale !== 1 || panOffset.x !== 0 || panOffset.y !== 0 || viewRotation !== 0;
 
   function handleViewerPointerDown(event) {
+    if (isMagnifierMode) {
+      const stageElement = viewerStageRef.current;
+      const imageElement = previewImageRef.current;
+
+      if (!stageElement || !imageElement) {
+        return;
+      }
+
+      const stageRect = stageElement.getBoundingClientRect();
+      const imageRect = imageElement.getBoundingClientRect();
+      const insideImage =
+        event.clientX >= imageRect.left &&
+        event.clientX <= imageRect.right &&
+        event.clientY >= imageRect.top &&
+        event.clientY <= imageRect.bottom;
+
+      if (!insideImage) {
+        setIsMagnifierActive(false);
+        return;
+      }
+
+      setMagnifierState(getMagnifierState(stageRect, imageRect, event.clientX, event.clientY, magnifierConfig));
+      setIsMagnifierActive(true);
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      return;
+    }
+
     if (isHoldMode) {
       handleHoldPointerDown(event);
       return;
@@ -358,6 +464,25 @@ export function DataSelectionPage() {
   }
 
   function handleViewerPointerMove(event) {
+    if (isMagnifierMode) {
+      if ((event.buttons & 1) !== 1) {
+        return;
+      }
+
+      const stageElement = viewerStageRef.current;
+      const imageElement = previewImageRef.current;
+
+      if (!stageElement || !imageElement) {
+        return;
+      }
+
+      const stageRect = stageElement.getBoundingClientRect();
+      const imageRect = imageElement.getBoundingClientRect();
+      setMagnifierState(getMagnifierState(stageRect, imageRect, event.clientX, event.clientY, magnifierConfig));
+      setIsMagnifierActive(true);
+      return;
+    }
+
     if (isHoldMode) {
       handleHoldPointerMove(event);
       return;
@@ -369,6 +494,10 @@ export function DataSelectionPage() {
   }
 
   function stopViewerInteraction(event) {
+    if (isMagnifierActive) {
+      setIsMagnifierActive(false);
+    }
+
     stopHold(event);
     stopZoom(event);
   }
@@ -401,6 +530,9 @@ export function DataSelectionPage() {
             fps={fps}
             fpsPopoverRef={fpsPopoverRef}
             handleApprove={handleApprove}
+            handleMagnifierSizeChange={handleMagnifierSizeChange}
+            handleMagnifierZoomChange={handleMagnifierZoomChange}
+            handleToggleMagnifierMode={handleToggleMagnifierMode}
             handleRotateLeft={handleRotateLeft}
             handleRotateRight={handleRotateRight}
             handleSelectFrame={handleSelectFrame}
@@ -411,13 +543,18 @@ export function DataSelectionPage() {
             isApprovedReady={isApprovedReady}
             isCurrentFrameAlreadySelected={isCurrentFrameAlreadySelected}
             isHoldMode={isHoldMode}
+            isMagnifierMode={isMagnifierMode}
             isPlaying={isPlaying}
             isViewChanged={isViewChanged}
             isZoomMode={isZoomMode}
+            magnifierConfig={magnifierConfig}
+            magnifierPopoverRef={magnifierPopoverRef}
             resetView={resetView}
             setFps={setFps}
+            setShowMagnifierPopover={setShowMagnifierPopover}
             setShowFpsPopover={setShowFpsPopover}
             showDisabledActionMessage={showDisabledActionMessage}
+            showMagnifierPopover={showMagnifierPopover}
             showFpsPopover={showFpsPopover}
             viewerMode={viewerMode}
           />
@@ -427,7 +564,7 @@ export function DataSelectionPage() {
             activeSelectedFrame={activeSelectedFrame}
             activeVideo={activeVideo}
             activeVideoFrames={activeVideoFrames}
-            className={`viewer-stage${isHoldMode ? " hold-ready" : ""}${isHoldGestureActive ? " hold-active" : ""}${isZoomMode ? " zoom-ready" : ""}${isZoomGestureActive ? " zoom-active" : ""}`}
+            className={`viewer-stage${isHoldMode ? " hold-ready" : ""}${isHoldGestureActive ? " hold-active" : ""}${isZoomMode ? " zoom-ready" : ""}${isZoomGestureActive ? " zoom-active" : ""}${isMagnifierMode ? " magnifier-ready" : ""}${isMagnifierActive ? " magnifier-active" : ""}`}
             currentFrame={currentFrame}
             disabledActionMessage={disabledActionMessage}
             handleRailMouseDown={handleRailMouseDown}
@@ -436,6 +573,9 @@ export function DataSelectionPage() {
             handleViewerPointerMove={handleViewerPointerMove}
             handleViewerWheel={handleViewerWheel}
             isActiveVideoReady={isActiveVideoReady}
+            isMagnifierActive={isMagnifierActive}
+            magnifierConfig={magnifierConfig}
+            magnifierState={magnifierState}
             onStopViewerInteraction={stopViewerInteraction}
             panOffset={panOffset}
             previewImageRef={previewImageRef}

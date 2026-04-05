@@ -1,18 +1,25 @@
 import OpenWithRoundedIcon from "@mui/icons-material/OpenWithRounded";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import RotateLeftRoundedIcon from "@mui/icons-material/RotateLeftRounded";
 import RotateRightRoundedIcon from "@mui/icons-material/RotateRightRounded";
-import ZoomInRoundedIcon from "@mui/icons-material/ZoomInRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import ZoomOutMapRoundedIcon from "@mui/icons-material/ZoomOutMapRounded";
 import { SelectionToolbar } from "./SelectionToolbar";
 
 export function ViewerHeader({
   isHoldMode,
+  isMagnifierMode,
+  magnifierConfig,
   isZoomMode,
   activeVideo,
   activeSelectedFrame,
   viewerMode,
   isViewChanged,
   handleToggleHoldMode,
+  handleMagnifierSizeChange,
+  handleMagnifierZoomChange,
+  handleToggleMagnifierMode,
   handleToggleZoomMode,
   handleRotateLeft,
   handleRotateRight,
@@ -25,6 +32,9 @@ export function ViewerHeader({
   showFpsPopover,
   setShowFpsPopover,
   fpsPopoverRef,
+  magnifierPopoverRef,
+  showMagnifierPopover,
+  setShowMagnifierPopover,
   isCurrentFrameAlreadySelected,
   showDisabledActionMessage,
   clearDisabledActionMessage,
@@ -57,8 +67,68 @@ export function ViewerHeader({
               disabled={!activeVideo && !(viewerMode === "frame" && activeSelectedFrame)}
               title={isZoomMode ? "Disable zoom mode" : "Enable zoom mode"}
             >
-              <ZoomInRoundedIcon fontSize="small" />
+              <SearchRoundedIcon fontSize="small" />
             </button>
+            <button
+              aria-label={isMagnifierMode ? "Disable magnifier tool" : "Enable magnifier tool"}
+              className={`selection-toolbar-icon-button${isMagnifierMode ? " active" : ""}`}
+              type="button"
+              onClick={handleToggleMagnifierMode}
+              disabled={!activeVideo && !(viewerMode === "frame" && activeSelectedFrame)}
+              title={isMagnifierMode ? "Disable magnifier tool" : "Enable magnifier tool"}
+            >
+              <ZoomOutMapRoundedIcon fontSize="small" />
+            </button>
+            {isMagnifierMode ? (
+              <span className="selection-toolbar-expander" ref={magnifierPopoverRef}>
+                <span className="selection-toolbar-expander-divider" aria-hidden="true" />
+                <button
+                  aria-label="Open magnifier options"
+                  className="selection-toolbar-expander-button"
+                  type="button"
+                  onClick={() => setShowMagnifierPopover((current) => !current)}
+                  title="Open magnifier options"
+                >
+                  <KeyboardArrowDownRoundedIcon fontSize="small" />
+                </button>
+                {showMagnifierPopover ? (
+                  <div className="viewer-tool-popover viewer-magnifier-popover">
+                    <label className="viewer-tool-popover-label">
+                      <span className="viewer-tool-popover-label-row">
+                        <span>Magnifier area</span>
+                        <strong>{magnifierConfig.size}px</strong>
+                      </span>
+                      <input
+                        aria-label="Magnifier area slider"
+                        className="viewer-fps-slider"
+                        max="500"
+                        min="200"
+                        step="1"
+                        type="range"
+                        value={magnifierConfig.size}
+                        onChange={(event) => handleMagnifierSizeChange(Number(event.target.value))}
+                      />
+                    </label>
+                    <label className="viewer-tool-popover-label">
+                      <span className="viewer-tool-popover-label-row">
+                        <span>Magnifier zoom</span>
+                        <strong>{magnifierConfig.zoomFactor.toFixed(1)}x</strong>
+                      </span>
+                      <input
+                        aria-label="Magnifier zoom slider"
+                        className="viewer-fps-slider"
+                        max="8"
+                        min="2"
+                        step="0.5"
+                        type="range"
+                        value={magnifierConfig.zoomFactor}
+                        onChange={(event) => handleMagnifierZoomChange(Number(event.target.value))}
+                      />
+                    </label>
+                  </div>
+                ) : null}
+              </span>
+            ) : null}
             <button
               aria-label="Rotate view 90 degree left"
               className="selection-toolbar-icon-button"
