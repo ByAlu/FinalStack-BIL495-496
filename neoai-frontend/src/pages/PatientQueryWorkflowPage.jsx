@@ -21,7 +21,6 @@ import {
   Typography,
   Collapse
 } from "@mui/material";
-import { WorkflowSteps } from "../components/WorkflowSteps";
 import { findPatientById } from "../services/mockApi";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
@@ -232,8 +231,6 @@ export function PatientQueryWorkflowPage() {
 
   return (
     <Stack spacing={3}>
-      <WorkflowSteps currentStep="query" />
-
       <Paper sx={{ p: 3.5, borderRadius: 3.5, boxShadow: "0 24px 60px rgba(0, 0, 0, 0.2)" }}>
         <Stack spacing={2.5}>
           <Box>

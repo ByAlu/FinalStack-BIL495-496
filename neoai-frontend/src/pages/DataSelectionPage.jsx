@@ -4,7 +4,6 @@ import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import ZoomInRoundedIcon from "@mui/icons-material/ZoomInRounded";
 import { SelectionToolbar } from "../components/SelectionToolbar";
 import { useViewerZoom } from "../hooks/useViewerZoom";
-import { WorkflowSteps } from "../components/WorkflowSteps";
 import { getExaminationByIds } from "../services/mockApi";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
@@ -538,8 +537,6 @@ export function DataSelectionPage() {
 
   return (
     <div className="page-stack selection-page">
-      <WorkflowSteps currentStep="selection" context={{ patientId, examinationId }} />
-
       <section
         className={`selection-layout${showVideoMenu ? "" : " hide-left"}${showSelectedMenu ? "" : " hide-right"}`}
       >
@@ -739,19 +736,18 @@ export function DataSelectionPage() {
                     <div className="viewer-frame-rail-track" />
                     <div className="viewer-frame-rail-thumb" style={{ top: `${scrubberThumbTop}%` }} />
                   </div>
+                  <div className="viewer-stage-status">
+                    {showCacheProgress ? (
+                      <span className="viewer-cache-status">Caching {activeProgressPercent}%</span>
+                    ) : null}
+                    <span className="viewer-frame-status">
+                      Frame {isActiveVideoReady ? Math.min(currentFrame + 1, Math.max(activeVideoFrames.length, 1)) : 0} / {Math.max(activeVideoFrames.length, 0)}
+                    </span>
+                  </div>
                 </>
               ) : (
                 <div className="viewer-placeholder">No video selected</div>
               )}
-            </div>
-
-            <div className="viewer-controls">
-              {showCacheProgress ? (
-                <span className="viewer-cache-status">Caching {activeProgressPercent}%</span>
-              ) : null}
-              <span className="viewer-frame-status">
-                Frame {isActiveVideoReady ? Math.min(currentFrame + 1, Math.max(activeVideoFrames.length, 1)) : 0} / {Math.max(activeVideoFrames.length, 0)}
-              </span>
             </div>
           </div>
         </section>

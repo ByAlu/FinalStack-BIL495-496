@@ -1,18 +1,10 @@
 import { useMemo } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
-import { WorkflowSteps } from "../components/WorkflowSteps";
+import { Link, useParams } from "react-router-dom";
 import { getReportById } from "../services/mockApi";
 
 export function ReportingPage() {
   const { reportId } = useParams();
-  const location = useLocation();
   const report = useMemo(() => getReportById(reportId), [reportId]);
-  const executionState = location.state;
-  const workflowContext = {
-    patientId: executionState?.patientId,
-    examinationId: executionState?.examinationId,
-    reportId
-  };
 
   if (!report) {
     return (
@@ -25,9 +17,5 @@ export function ReportingPage() {
     );
   }
 
-  return (
-    <div className="page-stack">
-      <WorkflowSteps currentStep="reporting" context={workflowContext} />
-    </div>
-  );
+  return <div className="page-stack" />;
 }

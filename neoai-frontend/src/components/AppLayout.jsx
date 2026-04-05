@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, matchPath, useLocation } from "react-router-dom";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import {
@@ -14,6 +14,7 @@ import {
   Typography
 } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
+import { WorkflowSteps } from "./WorkflowSteps";
 
 export function AppLayout() {
   const { user, logout } = useAuth();
@@ -34,6 +35,41 @@ export function AppLayout() {
     "/results/",
     "/report/"
   ].some((routePrefix) => location.pathname.startsWith(routePrefix));
+  const selectionMatch = matchPath("/selection/:patientId/:examinationId", location.pathname);
+  const preprocessingMatch = matchPath("/preprocessing/:patientId/:examinationId", location.pathname);
+  const aiModuleMatch = matchPath("/ai-module/:patientId/:examinationId", location.pathname);
+  const resultsMatch = matchPath("/results/:reportId", location.pathname);
+  const reportMatch = matchPath("/report/:reportId", location.pathname);
+  let workflowMeta = null;
+
+  if (location.pathname === "/query") {
+    workflowMeta = { currentStep: "query" };
+  } else if (selectionMatch) {
+    workflowMeta = { currentStep: "selection", context: selectionMatch.params };
+  } else if (preprocessingMatch) {
+    workflowMeta = { currentStep: "preprocessing", context: preprocessingMatch.params };
+  } else if (aiModuleMatch) {
+    workflowMeta = { currentStep: "ai-module", context: aiModuleMatch.params };
+  } else if (resultsMatch) {
+    workflowMeta = {
+      currentStep: "results",
+      context: {
+        patientId: location.state?.patientId,
+        examinationId: location.state?.examinationId,
+        reportId: resultsMatch.params.reportId
+      }
+    };
+  } else if (reportMatch) {
+    workflowMeta = {
+      currentStep: "reporting",
+      context: {
+        patientId: location.state?.patientId,
+        examinationId: location.state?.examinationId,
+        reportId: reportMatch.params.reportId
+      }
+    };
+  }
+
   const menuOpen = Boolean(anchorEl);
 
   return (
@@ -49,36 +85,42 @@ export function AppLayout() {
           mb: isWorkflowRoute ? { xs: 2.5, md: 3 } : 6
         }}
       >
-        <Toolbar disableGutters sx={{ justifyContent: "space-between", gap: 2 }}>
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 1.25,
-              color: "text.primary",
-              textDecoration: "none"
-            }}
-          >
+        <Toolbar disableGutters sx={{ gap: 2 }}>
+          <Box sx={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
             <Box
+              component={Link}
+              to="/"
               sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 2.5,
-                border: "1px solid rgba(148, 197, 255, 0.14)",
-                backgroundColor: "rgba(255,255,255,0.06)",
                 display: "inline-flex",
                 alignItems: "center",
-                justifyContent: "center"
+                gap: 1.25,
+                color: "text.primary",
+                textDecoration: "none"
               }}
             >
-              <HomeRoundedIcon sx={{ fontSize: 22 }} />
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 2.5,
+                  border: "1px solid rgba(148, 197, 255, 0.14)",
+                  backgroundColor: "rgba(255,255,255,0.06)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <HomeRoundedIcon sx={{ fontSize: 22 }} />
+              </Box>
+              <Typography sx={{ fontSize: "2rem", fontWeight: 800, letterSpacing: "0.02em" }}>NeoAi</Typography>
             </Box>
-            <Typography sx={{ fontSize: "2rem", fontWeight: 800, letterSpacing: "0.02em" }}>NeoAi</Typography>
           </Box>
 
-          <Box>
+          <Box sx={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "center" }}>
+            {workflowMeta ? <WorkflowSteps currentStep={workflowMeta.currentStep} context={workflowMeta.context} /> : null}
+          </Box>
+
+          <Box sx={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end" }}>
             <IconButton onClick={(event) => setAnchorEl(event.currentTarget)} sx={{ p: 0.25 }}>
               <Avatar
                 sx={{
