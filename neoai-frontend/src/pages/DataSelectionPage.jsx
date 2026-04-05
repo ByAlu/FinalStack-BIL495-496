@@ -206,6 +206,7 @@ export function DataSelectionPage() {
     let cancelled = false;
     extractionRunRef.current += 1;
     const queueRunId = extractionRunRef.current;
+    
     async function extractVideo(video) {
       const videoName = video.name;
       const existingFrames = videoFramesByNameRef.current[videoName] || [];

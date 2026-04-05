@@ -91,17 +91,59 @@ export async function registerUser(userData) {
   }
 }
 
-//Send images for preprocessing
-export async function preprocessImages(images) {
+//Get videos
+export async function getVideos({patientData}){
   try {
-    const processed_img = [];
+    const { patientId, examinationName } = patientData;
+    const token = localStorage.getItem("token");
+    const response = await api.get(
+      `/api/v1/examinations/${patientId}/${examinationName}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Register Error:", error.message);
 
-    for (const img of images) {
-      const response = await api.post("/api/v1/preprocess/apply", img);
-      processed_img.push(response.data);
+    if (error.response) {
+      throw new Error(
+        error.response.data?.message ||
+          "Registration failed. Please try again."
+      );
     }
 
-    return processed_img;
+    throw new Error("Could not connect to the registration server.");
+  }
+}
+
+//Send videos for preprocessing
+/*
+* The preprocess function sends the following information for each region in json format:
+* Patient Id
+* Examination Id
+* Selected Frame Index
+* Video name of the the selected examination
+*/
+export async function preprocess({ patientId, examinationId, selectedFrames }) {
+  try {
+    const processedFrames = [];
+
+    for (const frame of selectedFrames) {
+      // Include patientId and examinationId if your API requires them
+      const payload = {
+        patientId,
+        examinationId,
+        frame,
+      };
+
+      const response = await api.post("/api/v1/preprocess/apply", payload);
+      processedFrames.push(response.data);
+    }
+
+    return processedFrames;
   } catch (error) {
     console.error("Preprocess Error:", error.message);
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { WorkflowSteps } from "../components/WorkflowSteps";
-import { preprocessImages } from "../services/api";
+import { preprocess } from "../services/api";
 import ThreeColumnLayout from "../components/ThreeColumnLayout";
 import CircularProgress from "@mui/material/CircularProgress";
 /**
@@ -46,14 +46,14 @@ async function loadImages() {
     const storageKey = getStorageKey(patientId, examinationId);
     const storedSelectedFrames = selectedFrames || {};
     const selectedFramesArray = Object.values(storedSelectedFrames).filter(Boolean);
-
+    console.log(selectedFrames)
     if (selectedFramesArray.length === 0) {
       setProcessedFrames([]);
       setLoading(false);
       return;
     }
 
-    const result = await preprocessImages(selectedFramesArray);
+    const result = await preprocess({ patientId, examinationId, selectedFrames });
     setProcessedFrames(result);
     setError(null);
   } catch (err) {
@@ -70,7 +70,6 @@ async function loadImages() {
     console.log("Clicked frame data:", frameData);
   };
 
-  const isApprovedReady = Object.keys(selectedFrames).length > 0;
 
   return (
     <div className="page-stack">
