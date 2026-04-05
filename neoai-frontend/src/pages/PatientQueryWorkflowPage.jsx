@@ -351,9 +351,8 @@ export function PatientQueryWorkflowPage() {
                   value={dateRange.start}
                   onChange={(event) => handleDateRangeChange("start", event.target.value)}
                   type="date"
-                  helperText="Select from calendar"
                   InputLabelProps={{ shrink: true }}
-                  inputProps={{ max: dateRange.end || undefined }}
+                  inputProps={{ max: dateRange.end || undefined, lang: "en-GB" }}
                   fullWidth
                 />
                 <TextField
@@ -361,9 +360,8 @@ export function PatientQueryWorkflowPage() {
                   value={dateRange.end}
                   onChange={(event) => handleDateRangeChange("end", event.target.value)}
                   type="date"
-                  helperText="Select from calendar"
                   InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: dateRange.start || undefined }}
+                  inputProps={{ min: dateRange.start || undefined, lang: "en-GB" }}
                   fullWidth
                 />
               </Box>
