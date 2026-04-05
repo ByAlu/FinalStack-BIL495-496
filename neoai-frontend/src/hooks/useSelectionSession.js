@@ -27,6 +27,7 @@ export function useSelectionSession({ patientId, examinationId, initialRegion })
   const initialSelectionState = readSelectionSession(patientId, examinationId);
   const [activeRegion, setActiveRegion] = useState(initialSelectionState?.activeRegion || initialRegion);
   const [selectedFrames, setSelectedFrames] = useState(initialSelectionState?.selectedFrames || {});
+  const [lastViewedFrames, setLastViewedFrames] = useState(initialSelectionState?.lastViewedFrames || {});
 
   useEffect(() => {
     if (!patientId || !examinationId) {
@@ -37,14 +38,17 @@ export function useSelectionSession({ patientId, examinationId, initialRegion })
       getStorageKey(patientId, examinationId),
       JSON.stringify({
         activeRegion,
-        selectedFrames
+        selectedFrames,
+        lastViewedFrames
       })
     );
-  }, [activeRegion, examinationId, patientId, selectedFrames]);
+  }, [activeRegion, examinationId, lastViewedFrames, patientId, selectedFrames]);
 
   return {
     activeRegion,
     setActiveRegion,
+    lastViewedFrames,
+    setLastViewedFrames,
     selectedFrames,
     setSelectedFrames
   };

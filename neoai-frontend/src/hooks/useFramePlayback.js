@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useFramePlayback({ viewerMode, activeVideoFramesLength, totalFrames }) {
   const playbackTimerRef = useRef(0);
@@ -37,17 +37,17 @@ export function useFramePlayback({ viewerMode, activeVideoFramesLength, totalFra
     };
   }, []);
 
-  function stopPlayback() {
+  const stopPlayback = useCallback(() => {
     setIsPlaying(false);
-  }
+  }, []);
 
-  function togglePlayback() {
+  const togglePlayback = useCallback(() => {
     setIsPlaying((current) => !current);
-  }
+  }, []);
 
-  function adjustFps(delta) {
+  const adjustFps = useCallback((delta) => {
     setFps((current) => Math.max(1, Math.min(60, current + delta)));
-  }
+  }, []);
 
   return {
     fps,

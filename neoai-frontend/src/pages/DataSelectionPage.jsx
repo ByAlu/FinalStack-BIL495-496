@@ -35,7 +35,7 @@ export function DataSelectionPage() {
   const [disabledActionMessage, setDisabledActionMessage] = useState("");
   const [showVideoMenu, setShowVideoMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
-  const { activeRegion, setActiveRegion, selectedFrames, setSelectedFrames } = useSelectionSession({
+  const { activeRegion, setActiveRegion, lastViewedFrames, setLastViewedFrames, selectedFrames, setSelectedFrames } = useSelectionSession({
     patientId,
     examinationId,
     initialRegion
@@ -113,11 +113,24 @@ export function DataSelectionPage() {
 
       return 0;
     });
-  }, [activeRegion]);
+  }, [activeRegion, setCurrentFrame, stopPlayback]);
 
   useEffect(() => {
     setCurrentFrame((current) => Math.min(current, Math.max(activeVideoFrames.length - 1, 0)));
   }, [activeVideoFrames.length]);
+
+  useEffect(() => {
+    setLastViewedFrames((current) => {
+      if (current[activeRegion] === currentFrame) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [activeRegion]: currentFrame
+      };
+    });
+  }, [activeRegion, currentFrame, setLastViewedFrames]);
 
   useEffect(() => {
     if (!pendingFrameJumpRef.current || pendingFrameJumpRef.current.region !== activeRegion) {
@@ -162,6 +175,20 @@ export function DataSelectionPage() {
   }
 
   function handleSelectRegion(region) {
+    const nextFrame = lastViewedFrames[region] || 0;
+
+    if (activeRegion === region) {
+      setViewerMode("video");
+      setSelectedFrameRegion("");
+      stopPlayback();
+      setCurrentFrame(nextFrame);
+      return;
+    }
+
+    pendingFrameJumpRef.current = {
+      region,
+      frameIndex: nextFrame
+    };
     setActiveRegion(region);
     setSelectedFrameRegion("");
   }
