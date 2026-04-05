@@ -171,6 +171,95 @@
   flex: 0 0 auto;
 }
 
+.selection-toolbar {
+  min-height: 58px;
+  min-width: min(100%, 610px);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 197, 255, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
+    rgba(7, 17, 31, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.selection-toolbar.compact {
+  justify-content: flex-start;
+}
+
+.selection-toolbar-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.selection-toolbar-kicker {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.selection-toolbar-title {
+  color: var(--text);
+  font-size: 0.98rem;
+  white-space: nowrap;
+}
+
+.selection-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.selection-toolbar.compact .selection-toolbar-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.selection-toolbar-icon-button,
+.selection-toolbar-placeholder {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 197, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.selection-toolbar-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.selection-toolbar-icon-button.active {
+  border-color: rgba(125, 211, 252, 0.32);
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+}
+
+.selection-toolbar-icon-button:disabled {
+  opacity: 0.58;
+  cursor: default;
+}
+
+.selection-toolbar-placeholder {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--muted);
+}
+
 .viewer-control-cluster {
   display: inline-flex;
   align-items: center;
@@ -233,6 +322,14 @@
   overflow: hidden;
 }
 
+.viewer-stage.zoom-ready {
+  cursor: zoom-in;
+}
+
+.viewer-stage.zoom-active {
+  cursor: ns-resize;
+}
+
 .selection-hidden-video {
   display: none;
 }
@@ -249,6 +346,7 @@
   max-width: calc(100% - 28px);
   max-height: calc(100% - 40px);
   background: black;
+  user-select: none;
 }
 
 .viewer-placeholder {
@@ -542,6 +640,20 @@
 
   .selection-layout {
     min-height: auto;
+  }
+
+  .viewer-header-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .viewer-header-side,
+  .viewer-header-center {
+    justify-content: center;
+  }
+
+  .selection-toolbar {
+    min-width: 0;
+    width: 100%;
   }
 
   .viewer-stage,

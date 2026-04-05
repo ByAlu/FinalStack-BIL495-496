@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import ZoomInRoundedIcon from "@mui/icons-material/ZoomInRounded";
+import { SelectionToolbar } from "../components/SelectionToolbar";
+import { useViewerZoom } from "../hooks/useViewerZoom";
 import { WorkflowSteps } from "../components/WorkflowSteps";
 import { getExaminationByIds } from "../services/mockApi";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
@@ -81,6 +85,19 @@ export function DataSelectionPage() {
   const estimatedFrameCount = Math.max(1, activeVideoInfo?.totalFrames || 1);
   const availableFrameCount = Math.max(activeVideoFrames.length, 1);
   const totalFrames = activeExtractionState.status === "done" ? Math.max(activeVideoFrames.length, 1) : availableFrameCount;
+  const {
+    viewerStageRef,
+    previewImageRef,
+    isZoomMode,
+    zoomScale,
+    zoomOrigin,
+    isZoomGestureActive,
+    toggleZoomMode,
+    resetZoom,
+    handleViewerPointerDown,
+    handleViewerPointerMove,
+    stopViewerZoom
+  } = useViewerZoom([activeRegion, viewerMode]);
 
   useEffect(() => {
     videoFramesByNameRef.current = videoFramesByName;
@@ -579,7 +596,30 @@ export function DataSelectionPage() {
         <section className="selection-main panel">
           <div className="selection-viewer-header">
             <div className="viewer-header-actions">
-              <div className="viewer-header-side viewer-header-side-left" />
+              <div className="viewer-header-side viewer-header-side-left">
+                <SelectionToolbar ariaLabel="Viewer tools">
+                  <button
+                    aria-label={isZoomMode ? "Disable zoom mode" : "Enable zoom mode"}
+                    className={`selection-toolbar-icon-button${isZoomMode ? " active" : ""}`}
+                    type="button"
+                    onClick={toggleZoomMode}
+                    disabled={!activeVideo && !(viewerMode === "frame" && activeSelectedFrame)}
+                    title={isZoomMode ? "Disable zoom mode" : "Enable zoom mode"}
+                  >
+                    <ZoomInRoundedIcon fontSize="small" />
+                  </button>
+                  <button
+                    aria-label="Reset view"
+                    className="selection-toolbar-icon-button"
+                    type="button"
+                    onClick={resetZoom}
+                    disabled={zoomScale === 1}
+                    title="Reset view"
+                  >
+                    <RestartAltRoundedIcon fontSize="small" />
+                  </button>
+                </SelectionToolbar>
+              </div>
               <div className="viewer-header-center">
                 <div className="viewer-control-cluster">
                   <button className="viewer-play-button" type="button" onClick={handleTogglePlay}>
@@ -644,12 +684,26 @@ export function DataSelectionPage() {
           </div>
 
           <div className="viewer-shell">
-            <div className="viewer-stage" onWheel={handleViewerWheel}>
+            <div
+              className={`viewer-stage${isZoomMode ? " zoom-ready" : ""}${isZoomGestureActive ? " zoom-active" : ""}`}
+              onLostPointerCapture={stopViewerZoom}
+              onPointerCancel={stopViewerZoom}
+              onPointerDown={handleViewerPointerDown}
+              onPointerMove={handleViewerPointerMove}
+              onPointerUp={stopViewerZoom}
+              onWheel={handleViewerWheel}
+              ref={viewerStageRef}
+            >
               {viewerMode === "frame" && activeSelectedFrame ? (
                 <img
                   alt={`${selectedFrameRegion} selected frame`}
                   className="selection-frame-preview"
+                  ref={previewImageRef}
                   src={activeSelectedFrame.thumbnail}
+                  style={{
+                    transform: `translateX(-50%) scale(${zoomScale})`,
+                    transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                  }}
                 />
               ) : activeVideo ? (
                 <>
@@ -657,7 +711,12 @@ export function DataSelectionPage() {
                     <img
                       alt={`${activeRegion} frame ${currentFrame + 1}`}
                       className="selection-frame-preview"
+                      ref={previewImageRef}
                       src={activeVideoFrames[Math.min(currentFrame, Math.max(activeVideoFrames.length - 1, 0))]}
+                      style={{
+                        transform: `translateX(-50%) scale(${zoomScale})`,
+                        transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                      }}
                     />
                   ) : (
                     <div className="viewer-placeholder viewer-loading-state">Preparing frames...</div>
