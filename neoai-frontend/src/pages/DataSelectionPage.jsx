@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RegionVideosSidebar } from "../components/RegionVideosSidebar";
+import { SelectedFramesSidebar } from "../components/SelectedFramesSidebar";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import OpenWithRoundedIcon from "@mui/icons-material/OpenWithRounded";
-import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
-import ZoomInRoundedIcon from "@mui/icons-material/ZoomInRounded";
-import { SelectionToolbar } from "../components/SelectionToolbar";
+import { ViewerHeader } from "../components/ViewerHeader";
+import { useFramePlayback } from "../hooks/useFramePlayback";
+import { useViewerHold } from "../hooks/useViewerHold";
+import { useVideoFrameExtraction } from "../hooks/useVideoFrameExtraction";
 import { useViewerZoom } from "../hooks/useViewerZoom";
 import { getExaminationByIds } from "../services/mockApi";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
-const SOURCE_FPS = 30;
-const examinationCacheStore = new Map();
 
 function getStorageKey(patientId, examinationId) {
   return `neoai-selection:${patientId}:${examinationId}`;
@@ -26,7 +26,6 @@ export function DataSelectionPage() {
   const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
   const initialRegion = examination?.videos[0]?.region || "r1";
   const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
-  const initialCache = examinationCacheStore.get(examinationCacheKey);
   const initialSelectionState = (() => {
     if (!patientId || !examinationId) {
       return null;
@@ -47,29 +46,24 @@ export function DataSelectionPage() {
   })();
   const scrubberRailRef = useRef(null);
   const fpsPopoverRef = useRef(null);
-  const playbackTimerRef = useRef(0);
-  const extractionRunRef = useRef(0);
-  const activeExtractionNameRef = useRef("");
   const activeScrubberPointerIdRef = useRef(null);
   const isDraggingScrubberRef = useRef(false);
   const pendingFrameJumpRef = useRef(null);
-  const videoFramesByNameRef = useRef({});
-  const videoInfoByNameRef = useRef({});
-  const extractionStateByNameRef = useRef({});
+  const viewerStageRef = useRef(null);
+  const previewImageRef = useRef(null);
   const [activeRegion, setActiveRegion] = useState(initialSelectionState?.activeRegion || initialRegion);
   const [selectedFrames, setSelectedFrames] = useState(initialSelectionState?.selectedFrames || {});
   const [viewerMode, setViewerMode] = useState("video");
   const [selectedFrameRegion, setSelectedFrameRegion] = useState("");
-  const [fps, setFps] = useState(10);
   const [showFpsPopover, setShowFpsPopover] = useState(false);
-  const [currentFrame, setCurrentFrame] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [disabledActionMessage, setDisabledActionMessage] = useState("");
-  const [videoFramesByName, setVideoFramesByName] = useState(initialCache?.videoFramesByName || {});
-  const [videoInfoByName, setVideoInfoByName] = useState(initialCache?.videoInfoByName || {});
-  const [extractionStateByName, setExtractionStateByName] = useState(initialCache?.extractionStateByName || {});
   const [showVideoMenu, setShowVideoMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
+  const { videoFramesByName, videoInfoByName, extractionStateByName } = useVideoFrameExtraction({
+    examination,
+    activeRegion,
+    examinationCacheKey
+  });
 
   const activeVideo = useMemo(() => {
     return examination?.videos.find((video) => video.region === activeRegion) || null;
@@ -87,49 +81,47 @@ export function DataSelectionPage() {
   const availableFrameCount = Math.max(activeVideoFrames.length, 1);
   const totalFrames = activeExtractionState.status === "done" ? Math.max(activeVideoFrames.length, 1) : availableFrameCount;
   const {
-    viewerStageRef,
-    previewImageRef,
+    fps,
+    setFps,
+    currentFrame,
+    setCurrentFrame,
+    isPlaying,
+    setIsPlaying,
+    stopPlayback,
+    adjustFps
+  } = useFramePlayback({
+    viewerMode,
+    activeVideoFramesLength: activeVideoFrames.length,
+    totalFrames
+  });
+  const {
     isHoldMode,
+    panOffset,
+    isHoldGestureActive,
+    toggleHoldMode,
+    resetHold,
+    handleHoldPointerDown,
+    handleHoldPointerMove,
+    stopHold
+  } = useViewerHold({
+    viewerStageRef,
+    resetDependencies: [activeRegion, viewerMode]
+  });
+  const {
     isZoomMode,
     zoomScale,
     zoomOrigin,
-    panOffset,
-    isHoldGestureActive,
     isZoomGestureActive,
-    toggleHoldMode,
     toggleZoomMode,
     resetZoom,
-    handleViewerPointerDown,
-    handleViewerPointerMove,
-    stopViewerZoom
-  } = useViewerZoom([activeRegion, viewerMode]);
-
-  useEffect(() => {
-    videoFramesByNameRef.current = videoFramesByName;
-    examinationCacheStore.set(examinationCacheKey, {
-      videoFramesByName,
-      videoInfoByName: videoInfoByNameRef.current,
-      extractionStateByName: extractionStateByNameRef.current
-    });
-  }, [examinationCacheKey, videoFramesByName]);
-
-  useEffect(() => {
-    videoInfoByNameRef.current = videoInfoByName;
-    examinationCacheStore.set(examinationCacheKey, {
-      videoFramesByName: videoFramesByNameRef.current,
-      videoInfoByName,
-      extractionStateByName: extractionStateByNameRef.current
-    });
-  }, [examinationCacheKey, videoInfoByName]);
-
-  useEffect(() => {
-    extractionStateByNameRef.current = extractionStateByName;
-    examinationCacheStore.set(examinationCacheKey, {
-      videoFramesByName: videoFramesByNameRef.current,
-      videoInfoByName: videoInfoByNameRef.current,
-      extractionStateByName
-    });
-  }, [examinationCacheKey, extractionStateByName]);
+    handleZoomPointerDown,
+    handleZoomPointerMove,
+    stopZoom
+  } = useViewerZoom({
+    viewerStageRef,
+    previewImageRef,
+    resetDependencies: [activeRegion, viewerMode]
+  });
 
   useEffect(() => {
     if (!patientId || !examinationId) {
@@ -147,7 +139,7 @@ export function DataSelectionPage() {
 
   useEffect(() => {
     setViewerMode("video");
-    setIsPlaying(false);
+    stopPlayback();
     setCurrentFrame(() => {
       if (pendingFrameJumpRef.current?.region === activeRegion) {
         return pendingFrameJumpRef.current.frameIndex || 0;
@@ -175,37 +167,6 @@ export function DataSelectionPage() {
   }, [activeRegion, activeVideoFrames.length]);
 
   useEffect(() => {
-    window.clearInterval(playbackTimerRef.current);
-
-    if (viewerMode !== "video" || !isPlaying || activeVideoFrames.length === 0) {
-      return undefined;
-    }
-
-    playbackTimerRef.current = window.setInterval(() => {
-      setCurrentFrame((current) => {
-        const nextFrame = Math.min(current + 1, totalFrames - 1);
-
-        if (nextFrame >= totalFrames - 1) {
-          window.clearInterval(playbackTimerRef.current);
-          setIsPlaying(false);
-        }
-
-        return nextFrame;
-      });
-    }, Math.max(16, Math.round(1000 / fps)));
-
-    return () => {
-      window.clearInterval(playbackTimerRef.current);
-    };
-  }, [activeVideoFrames.length, fps, isPlaying, totalFrames, viewerMode]);
-
-  useEffect(() => {
-    return () => {
-      window.clearInterval(playbackTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
     function handlePointerDown(event) {
       if (!fpsPopoverRef.current?.contains(event.target)) {
         setShowFpsPopover(false);
@@ -219,170 +180,6 @@ export function DataSelectionPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!examination?.videos?.length) {
-      return undefined;
-    }
-
-    let cancelled = false;
-    extractionRunRef.current += 1;
-    const queueRunId = extractionRunRef.current;
-    async function extractVideo(video) {
-      const videoName = video.name;
-      const existingFrames = videoFramesByNameRef.current[videoName] || [];
-      const videoElement = document.createElement("video");
-      videoElement.muted = true;
-      videoElement.volume = 0;
-      videoElement.playsInline = true;
-      videoElement.preload = "auto";
-
-      await new Promise((resolve, reject) => {
-        const handleLoadedMetadata = () => {
-          videoElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
-          videoElement.removeEventListener("error", handleError);
-          resolve();
-        };
-
-        const handleError = () => {
-          videoElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
-          videoElement.removeEventListener("error", handleError);
-          reject(new Error(`Failed to load ${videoName}`));
-        };
-
-        videoElement.addEventListener("loadedmetadata", handleLoadedMetadata);
-        videoElement.addEventListener("error", handleError);
-        videoElement.src = video.videoUrl;
-        videoElement.load();
-      });
-
-      const durationValue = videoElement.duration || 0;
-      const frameCount = Math.max(1, Math.floor(durationValue * SOURCE_FPS));
-      const startIndex = Math.min(existingFrames.length, frameCount);
-
-      setVideoInfoByName((current) => ({
-        ...current,
-        [videoName]: {
-          duration: durationValue,
-          totalFrames: frameCount
-        }
-      }));
-      setExtractionStateByName((current) => ({
-        ...current,
-        [videoName]: {
-          status: "extracting",
-          progress: startIndex / frameCount
-        }
-      }));
-
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-
-      if (!context) {
-        return;
-      }
-
-      canvas.width = videoElement.videoWidth || 1280;
-      canvas.height = videoElement.videoHeight || 720;
-
-      const seekVideoTo = async (time) =>
-        new Promise((resolve) => {
-          const handleSeeked = () => {
-            videoElement.removeEventListener("seeked", handleSeeked);
-            resolve();
-          };
-
-          videoElement.addEventListener("seeked", handleSeeked, { once: true });
-          videoElement.currentTime = time;
-        });
-
-      const frames = existingFrames.slice();
-
-      for (let frameIndex = startIndex; frameIndex < frameCount; frameIndex += 1) {
-        if (cancelled || extractionRunRef.current !== queueRunId) {
-          setExtractionStateByName((current) => ({
-            ...current,
-            [videoName]: {
-              status: "paused",
-              progress: frames.length / frameCount
-            }
-          }));
-          return;
-        }
-
-        const time = Math.min(frameIndex / SOURCE_FPS, Math.max(durationValue - 0.001, 0));
-        await seekVideoTo(time);
-        context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-        frames.push(canvas.toDataURL("image/jpeg", 0.72));
-
-        if (frameIndex % 10 === 0 || frameIndex === frameCount - 1) {
-          setVideoFramesByName((current) => ({
-            ...current,
-            [videoName]: frames.slice()
-          }));
-          setExtractionStateByName((current) => ({
-            ...current,
-            [videoName]: {
-              status: "extracting",
-              progress: (frameIndex + 1) / frameCount
-            }
-          }));
-          await new Promise((resolve) => window.setTimeout(resolve, 0));
-        }
-      }
-
-      setVideoFramesByName((current) => ({
-        ...current,
-        [videoName]: frames
-      }));
-      setExtractionStateByName((current) => ({
-        ...current,
-        [videoName]: {
-          status: "done",
-          progress: 1
-        }
-      }));
-    }
-
-    async function runQueue() {
-      const orderedVideos = [
-        ...examination.videos.filter((video) => video.region === activeRegion),
-        ...examination.videos.filter((video) => video.region !== activeRegion)
-      ];
-
-      for (const video of orderedVideos) {
-        if (cancelled) {
-          return;
-        }
-
-        const state = extractionStateByNameRef.current[video.name];
-        if (state?.status === "done") {
-          continue;
-        }
-
-        activeExtractionNameRef.current = video.name;
-        try {
-          await extractVideo(video);
-        } catch {
-          setExtractionStateByName((current) => ({
-            ...current,
-            [video.name]: {
-              status: "error",
-              progress: 0
-            }
-          }));
-        }
-      }
-
-      activeExtractionNameRef.current = "";
-    }
-
-    runQueue();
-
-    return () => {
-      cancelled = true;
-      activeExtractionNameRef.current = "";
-    };
-  }, [activeRegion, examination]);
 
   if (!examination) {
     return (
@@ -429,6 +226,27 @@ export function DataSelectionPage() {
     setDisabledActionMessage("");
   }
 
+  function handleToggleHoldMode() {
+    if (!isHoldMode && isZoomMode) {
+      toggleZoomMode();
+    }
+
+    toggleHoldMode();
+  }
+
+  function handleToggleZoomMode() {
+    if (!isZoomMode && isHoldMode) {
+      toggleHoldMode();
+    }
+
+    toggleZoomMode();
+  }
+
+  function resetView() {
+    resetHold();
+    resetZoom();
+  }
+
   function handleApprove() {
     setActiveWorkflowContext({ patientId, examinationId });
     resetWorkflowAfterStep(patientId, examinationId, 2);
@@ -465,7 +283,7 @@ export function DataSelectionPage() {
     };
     setViewerMode("video");
     setSelectedFrameRegion(region);
-    setIsPlaying(false);
+    stopPlayback();
 
     if (activeRegion === region) {
       setCurrentFrame(selectedFrame.frameIndex || 0);
@@ -482,7 +300,7 @@ export function DataSelectionPage() {
 
     setViewerMode("video");
     setSelectedFrameRegion("");
-    setIsPlaying(false);
+    stopPlayback();
     setCurrentFrame(boundedFrame);
   }
 
@@ -494,10 +312,6 @@ export function DataSelectionPage() {
     event.preventDefault();
     const direction = event.deltaY > 0 ? 1 : -1;
     seekToFrame(currentFrame + direction);
-  }
-
-  function adjustFps(delta) {
-    setFps((current) => Math.max(1, Math.min(60, current + delta)));
   }
 
   function updateFrameFromRail(clientY) {
@@ -561,198 +375,87 @@ export function DataSelectionPage() {
   );
   const isViewChanged = zoomScale !== 1 || panOffset.x !== 0 || panOffset.y !== 0;
 
+  function handleViewerPointerDown(event) {
+    if (isHoldMode) {
+      handleHoldPointerDown(event);
+      return;
+    }
+
+    if (isZoomMode) {
+      handleZoomPointerDown(event);
+    }
+  }
+
+  function handleViewerPointerMove(event) {
+    if (isHoldMode) {
+      handleHoldPointerMove(event);
+      return;
+    }
+
+    if (isZoomMode) {
+      handleZoomPointerMove(event);
+    }
+  }
+
+  function stopViewerInteraction(event) {
+    stopHold(event);
+    stopZoom(event);
+  }
+
   return (
     <div className="page-stack selection-page">
       <section
         className={`selection-layout${showVideoMenu ? "" : " hide-left"}${showSelectedMenu ? "" : " hide-right"}`}
       >
-        <aside className={`selection-sidebar panel${showVideoMenu ? "" : " collapsed"}`}>
-          {showVideoMenu ? (
-            <>
-              <div className="panel-heading">
-                <div>
-                  <p className="panel-kicker">Region videos</p>
-                  <h3>{examination.id}</h3>
-                </div>
-                <button className="panel-arrow-toggle" type="button" onClick={() => setShowVideoMenu(false)}>
-                  ←
-                </button>
-              </div>
-
-              <div className="region-video-list">
-                {regions.map((region) => {
-                  const regionVideo = examination.videos.find((video) => video.region === region);
-                  const isActive = activeRegion === region;
-                  const isSelected = Boolean(selectedFrames[region]);
-
-                  return (
-                    <button
-                      key={region}
-                      className={`region-video-item${isActive ? " active" : ""}${isSelected ? " completed" : ""}`}
-                      type="button"
-                      onClick={() => handleSelectRegion(region)}
-                    >
-                      <img
-                        alt={`${regionVideo?.name || region} thumbnail`}
-                        className="region-video-thumbnail"
-                        src={regionVideo?.thumbnail}
-                      />
-                      <div className="region-video-meta">
-                        <strong>{region.toUpperCase()}</strong>
-                        <p>{regionVideo?.name || "No video"}</p>
-                        <span className={`selection-status${isSelected ? " done" : ""}`}>
-                          {isSelected ? "Frame selected" : "Select frame"}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          ) : (
-            <button className="panel-edge-toggle" type="button" onClick={() => setShowVideoMenu(true)}>
-              →
-            </button>
-          )}
-        </aside>
+        <RegionVideosSidebar
+          activeRegion={activeRegion}
+          examinationId={examination.id}
+          examinationVideos={examination.videos}
+          onClose={() => setShowVideoMenu(false)}
+          onOpen={() => setShowVideoMenu(true)}
+          onSelectRegion={handleSelectRegion}
+          regions={regions}
+          selectedFrames={selectedFrames}
+          showVideoMenu={showVideoMenu}
+        />
 
         <section className="selection-main panel">
-          <div className="selection-viewer-header">
-            <div className="viewer-header-actions">
-              <div className="viewer-header-side viewer-header-side-left">
-                <SelectionToolbar ariaLabel="Viewer tools">
-                  <button
-                    aria-label={isHoldMode ? "Disable hold tool" : "Enable hold tool"}
-                    className={`selection-toolbar-icon-button${isHoldMode ? " active" : ""}`}
-                    type="button"
-                    onClick={() => {
-                      toggleHoldMode();
-                    }}
-                    title={isHoldMode ? "Disable hold tool" : "Enable hold tool"}
-                  >
-                    <OpenWithRoundedIcon fontSize="small" />
-                  </button>
-                  <button
-                    aria-label={isZoomMode ? "Disable zoom mode" : "Enable zoom mode"}
-                    className={`selection-toolbar-icon-button selection-toolbar-icon-button-zoom${isZoomMode ? " active" : ""}`}
-                    type="button"
-                    onClick={toggleZoomMode}
-                    disabled={!activeVideo && !(viewerMode === "frame" && activeSelectedFrame)}
-                    title={isZoomMode ? "Disable zoom mode" : "Enable zoom mode"}
-                  >
-                    <ZoomInRoundedIcon fontSize="small" />
-                  </button>
-                  <button
-                    aria-label="Reset view"
-                    className="selection-toolbar-icon-button"
-                    type="button"
-                    onClick={resetZoom}
-                    disabled={!isViewChanged}
-                    title="Reset view"
-                  >
-                    <RestartAltRoundedIcon fontSize="small" />
-                  </button>
-                </SelectionToolbar>
-              </div>
-              <div className="viewer-header-center">
-                <div className="viewer-control-cluster">
-                  <button className="viewer-play-button" type="button" onClick={handleTogglePlay}>
-                    {isPlaying ? "||" : "▶"}
-                  </button>
-                  <div className="viewer-fps-control" ref={fpsPopoverRef}>
-                    <label className="viewer-fps-chip">
-                      <button className="viewer-fps-step" type="button" onClick={() => adjustFps(-1)}>
-                        ‹
-                      </button>
-                      <button
-                        className="viewer-fps-trigger"
-                        type="button"
-                        onClick={() => setShowFpsPopover((current) => !current)}
-                      >
-                        <input
-                          type="number"
-                          min="1"
-                          max="60"
-                          step="1"
-                          value={fps}
-                          onChange={(event) => setFps(Math.max(1, Math.min(60, Number(event.target.value) || 1)))}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setShowFpsPopover(true);
-                          }}
-                        />
-                        <span>FPS</span>
-                      </button>
-                      <button className="viewer-fps-step" type="button" onClick={() => adjustFps(1)}>
-                        ›
-                      </button>
-                    </label>
-                    {showFpsPopover ? (
-                      <div className="viewer-fps-popover">
-                        <input
-                          aria-label="FPS slider"
-                          className="viewer-fps-slider"
-                          max="60"
-                          min="1"
-                          step="1"
-                          type="range"
-                          value={fps}
-                          onChange={(event) => setFps(Number(event.target.value))}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-              <div className="viewer-header-side viewer-header-side-right">
-                <div className="viewer-primary-actions">
-                  <span
-                    onMouseEnter={() => {
-                      if (isCurrentFrameAlreadySelected) {
-                        showDisabledActionMessage("This frame is already selected.");
-                      }
-                    }}
-                    onMouseLeave={clearDisabledActionMessage}
-                  >
-                    <button
-                      className="primary-button"
-                      type="button"
-                      onClick={handleSelectFrame}
-                      disabled={
-                        viewerMode !== "video" ||
-                        !isActiveVideoReady ||
-                        !activeVideoFrames[currentFrame] ||
-                        isCurrentFrameAlreadySelected
-                      }
-                    >
-                      Select Frame
-                    </button>
-                  </span>
-                  <span
-                    onMouseEnter={() => {
-                      if (!isApprovedReady) {
-                        showDisabledActionMessage("Select 6 frames, one from each region, before approving.");
-                      }
-                    }}
-                    onMouseLeave={clearDisabledActionMessage}
-                  >
-                    <button className="primary-button" disabled={!isApprovedReady} type="button" onClick={handleApprove}>
-                      Approve
-                    </button>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
+          <ViewerHeader
+            activeSelectedFrame={activeSelectedFrame}
+            activeVideo={activeVideo}
+            activeVideoFrames={activeVideoFrames}
+            adjustFps={adjustFps}
+            clearDisabledActionMessage={clearDisabledActionMessage}
+            currentFrame={currentFrame}
+            fps={fps}
+            fpsPopoverRef={fpsPopoverRef}
+            handleApprove={handleApprove}
+            handleSelectFrame={handleSelectFrame}
+            handleToggleHoldMode={handleToggleHoldMode}
+            handleTogglePlay={handleTogglePlay}
+            handleToggleZoomMode={handleToggleZoomMode}
+            isActiveVideoReady={isActiveVideoReady}
+            isApprovedReady={isApprovedReady}
+            isCurrentFrameAlreadySelected={isCurrentFrameAlreadySelected}
+            isHoldMode={isHoldMode}
+            isPlaying={isPlaying}
+            isViewChanged={isViewChanged}
+            isZoomMode={isZoomMode}
+            resetView={resetView}
+            setFps={setFps}
+            setShowFpsPopover={setShowFpsPopover}
+            showDisabledActionMessage={showDisabledActionMessage}
+            showFpsPopover={showFpsPopover}
+            viewerMode={viewerMode}
+          />
           <div className="viewer-shell">
             <div
               className={`viewer-stage${isHoldMode ? " hold-ready" : ""}${isHoldGestureActive ? " hold-active" : ""}${isZoomMode ? " zoom-ready" : ""}${isZoomGestureActive ? " zoom-active" : ""}`}
-              onLostPointerCapture={stopViewerZoom}
-              onPointerCancel={stopViewerZoom}
+              onLostPointerCapture={stopViewerInteraction}
+              onPointerCancel={stopViewerInteraction}
               onPointerDown={handleViewerPointerDown}
               onPointerMove={handleViewerPointerMove}
-              onPointerUp={stopViewerZoom}
+              onPointerUp={stopViewerInteraction}
               onWheel={handleViewerWheel}
               ref={viewerStageRef}
             >
@@ -818,53 +521,17 @@ export function DataSelectionPage() {
           </div>
         </section>
 
-        <aside className={`selected-frames-sidebar panel${showSelectedMenu ? "" : " collapsed"}`}>
-          {showSelectedMenu ? (
-            <>
-              <div className="selected-frames-panel">
-                <div className="selected-frames-header">
-                  <button className="panel-arrow-toggle" type="button" onClick={() => setShowSelectedMenu(false)}>
-                    →
-                  </button>
-                  <strong>Selected Frames</strong>
-                  <span>
-                    {selectedCount} / 6 regions completed
-                  </span>
-                </div>
-
-                <div className="selected-frames-column">
-                  {regions.map((region) => {
-                    const frame = selectedFrames[region];
-
-                    return (
-                      <button
-                        className={`selected-frame-card${selectedFrameRegion === region && viewerMode === "frame" ? " active" : ""}`}
-                        key={region}
-                        type="button"
-                        onClick={() => handleSelectedFrameClick(region)}
-                      >
-                        {frame ? (
-                          <img alt={`${region} selected frame`} className="selected-frame-image" src={frame.thumbnail} />
-                        ) : (
-                          <div className="selected-frame-placeholder">{region.toUpperCase()}</div>
-                        )}
-                        <div className="selected-frame-meta">
-                          <strong>{region.toUpperCase()}</strong>
-                          <span>{frame ? frame.videoName : "No frame selected"}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </>
-          ) : (
-            <button className="panel-edge-toggle" type="button" onClick={() => setShowSelectedMenu(true)}>
-              ←
-            </button>
-          )}
-        </aside>
+        <SelectedFramesSidebar
+          onClose={() => setShowSelectedMenu(false)}
+          onOpen={() => setShowSelectedMenu(true)}
+          onSelectFrame={handleSelectedFrameClick}
+          regions={regions}
+          selectedCount={selectedCount}
+          selectedFrameRegion={selectedFrameRegion}
+          selectedFrames={selectedFrames}
+          showSelectedMenu={showSelectedMenu}
+          viewerMode={viewerMode}
+        />
       </section>
     </div>
   );
