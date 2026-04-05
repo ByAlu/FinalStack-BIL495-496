@@ -63,6 +63,7 @@ export function DataSelectionPage() {
   const [showFpsPopover, setShowFpsPopover] = useState(false);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [disabledActionMessage, setDisabledActionMessage] = useState("");
   const [videoFramesByName, setVideoFramesByName] = useState(initialCache?.videoFramesByName || {});
   const [videoInfoByName, setVideoInfoByName] = useState(initialCache?.videoInfoByName || {});
   const [extractionStateByName, setExtractionStateByName] = useState(initialCache?.extractionStateByName || {});
@@ -415,6 +416,14 @@ export function DataSelectionPage() {
     setSelectedFrameRegion("");
   }
 
+  function showDisabledActionMessage(message) {
+    setDisabledActionMessage(message);
+  }
+
+  function clearDisabledActionMessage() {
+    setDisabledActionMessage("");
+  }
+
   function handleApprove() {
     setActiveWorkflowContext({ patientId, examinationId });
     resetWorkflowAfterStep(patientId, examinationId, 2);
@@ -676,22 +685,40 @@ export function DataSelectionPage() {
               </div>
               <div className="viewer-header-side viewer-header-side-right">
                 <div className="viewer-primary-actions">
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={handleSelectFrame}
-                    disabled={
-                      viewerMode !== "video" ||
-                      !isActiveVideoReady ||
-                      !activeVideoFrames[currentFrame] ||
-                      isCurrentFrameAlreadySelected
-                    }
+                  <span
+                    onMouseEnter={() => {
+                      if (isCurrentFrameAlreadySelected) {
+                        showDisabledActionMessage("This frame is already selected.");
+                      }
+                    }}
+                    onMouseLeave={clearDisabledActionMessage}
                   >
-                    Select Frame
-                  </button>
-                  <button className="primary-button" disabled={!isApprovedReady} type="button" onClick={handleApprove}>
-                    Approve
-                  </button>
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={handleSelectFrame}
+                      disabled={
+                        viewerMode !== "video" ||
+                        !isActiveVideoReady ||
+                        !activeVideoFrames[currentFrame] ||
+                        isCurrentFrameAlreadySelected
+                      }
+                    >
+                      Select Frame
+                    </button>
+                  </span>
+                  <span
+                    onMouseEnter={() => {
+                      if (!isApprovedReady) {
+                        showDisabledActionMessage("Select 6 frames, one from each region, before approving.");
+                      }
+                    }}
+                    onMouseLeave={clearDisabledActionMessage}
+                  >
+                    <button className="primary-button" disabled={!isApprovedReady} type="button" onClick={handleApprove}>
+                      Approve
+                    </button>
+                  </span>
                 </div>
               </div>
             </div>
@@ -761,6 +788,7 @@ export function DataSelectionPage() {
                       Frame {isActiveVideoReady ? Math.min(currentFrame + 1, Math.max(activeVideoFrames.length, 1)) : 0} / {Math.max(activeVideoFrames.length, 0)}
                     </span>
                   </div>
+                  {disabledActionMessage ? <div className="viewer-disabled-action-message">{disabledActionMessage}</div> : null}
                 </>
               ) : (
                 <div className="viewer-placeholder">No video selected</div>
