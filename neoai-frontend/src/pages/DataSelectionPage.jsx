@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import OpenWithRoundedIcon from "@mui/icons-material/OpenWithRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import ZoomInRoundedIcon from "@mui/icons-material/ZoomInRounded";
 import { SelectionToolbar } from "../components/SelectionToolbar";
@@ -88,10 +89,14 @@ export function DataSelectionPage() {
   const {
     viewerStageRef,
     previewImageRef,
+    isHoldMode,
     isZoomMode,
     zoomScale,
     zoomOrigin,
+    panOffset,
+    isHoldGestureActive,
     isZoomGestureActive,
+    toggleHoldMode,
     toggleZoomMode,
     resetZoom,
     handleViewerPointerDown,
@@ -482,7 +487,7 @@ export function DataSelectionPage() {
   }
 
   function handleViewerWheel(event) {
-    if (!activeVideo || activeVideoFrames.length <= 1) {
+    if (isHoldMode || !activeVideo || activeVideoFrames.length <= 1) {
       return;
     }
 
@@ -507,6 +512,10 @@ export function DataSelectionPage() {
   }
 
   function handleRailMouseDown(event) {
+    if (isHoldMode) {
+      return;
+    }
+
     if (event.button !== 0) {
       return;
     }
@@ -550,6 +559,7 @@ export function DataSelectionPage() {
     activeRegionSelection.videoName === activeVideo.name &&
     activeRegionSelection.frameIndex === currentFrame
   );
+  const isViewChanged = zoomScale !== 1 || panOffset.x !== 0 || panOffset.y !== 0;
 
   return (
     <div className="page-stack selection-page">
@@ -612,8 +622,19 @@ export function DataSelectionPage() {
               <div className="viewer-header-side viewer-header-side-left">
                 <SelectionToolbar ariaLabel="Viewer tools">
                   <button
+                    aria-label={isHoldMode ? "Disable hold tool" : "Enable hold tool"}
+                    className={`selection-toolbar-icon-button${isHoldMode ? " active" : ""}`}
+                    type="button"
+                    onClick={() => {
+                      toggleHoldMode();
+                    }}
+                    title={isHoldMode ? "Disable hold tool" : "Enable hold tool"}
+                  >
+                    <OpenWithRoundedIcon fontSize="small" />
+                  </button>
+                  <button
                     aria-label={isZoomMode ? "Disable zoom mode" : "Enable zoom mode"}
-                    className={`selection-toolbar-icon-button${isZoomMode ? " active" : ""}`}
+                    className={`selection-toolbar-icon-button selection-toolbar-icon-button-zoom${isZoomMode ? " active" : ""}`}
                     type="button"
                     onClick={toggleZoomMode}
                     disabled={!activeVideo && !(viewerMode === "frame" && activeSelectedFrame)}
@@ -626,7 +647,7 @@ export function DataSelectionPage() {
                     className="selection-toolbar-icon-button"
                     type="button"
                     onClick={resetZoom}
-                    disabled={zoomScale === 1}
+                    disabled={!isViewChanged}
                     title="Reset view"
                   >
                     <RestartAltRoundedIcon fontSize="small" />
@@ -726,7 +747,7 @@ export function DataSelectionPage() {
 
           <div className="viewer-shell">
             <div
-              className={`viewer-stage${isZoomMode ? " zoom-ready" : ""}${isZoomGestureActive ? " zoom-active" : ""}`}
+              className={`viewer-stage${isHoldMode ? " hold-ready" : ""}${isHoldGestureActive ? " hold-active" : ""}${isZoomMode ? " zoom-ready" : ""}${isZoomGestureActive ? " zoom-active" : ""}`}
               onLostPointerCapture={stopViewerZoom}
               onPointerCancel={stopViewerZoom}
               onPointerDown={handleViewerPointerDown}
@@ -742,7 +763,7 @@ export function DataSelectionPage() {
                   ref={previewImageRef}
                   src={activeSelectedFrame.thumbnail}
                   style={{
-                    transform: `translateX(-50%) scale(${zoomScale})`,
+                    transform: `translate(calc(-50% + ${panOffset.x}px), ${panOffset.y}px) scale(${zoomScale})`,
                     transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
                   }}
                 />
@@ -755,7 +776,7 @@ export function DataSelectionPage() {
                       ref={previewImageRef}
                       src={activeVideoFrames[Math.min(currentFrame, Math.max(activeVideoFrames.length - 1, 0))]}
                       style={{
-                        transform: `translateX(-50%) scale(${zoomScale})`,
+                        transform: `translate(calc(-50% + ${panOffset.x}px), ${panOffset.y}px) scale(${zoomScale})`,
                         transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
                       }}
                     />
@@ -848,3 +869,4 @@ export function DataSelectionPage() {
     </div>
   );
 }
+
