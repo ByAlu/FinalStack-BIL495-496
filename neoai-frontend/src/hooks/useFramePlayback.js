@@ -41,6 +41,10 @@ export function useFramePlayback({ viewerMode, activeVideoFramesLength, totalFra
     setIsPlaying(false);
   }
 
+  function togglePlayback() {
+    setIsPlaying((current) => !current);
+  }
+
   function adjustFps(delta) {
     setFps((current) => Math.max(1, Math.min(60, current + delta)));
   }
@@ -51,8 +55,8 @@ export function useFramePlayback({ viewerMode, activeVideoFramesLength, totalFra
     currentFrame,
     setCurrentFrame,
     isPlaying,
-    setIsPlaying,
     stopPlayback,
+    togglePlayback,
     adjustFps
   };
 }

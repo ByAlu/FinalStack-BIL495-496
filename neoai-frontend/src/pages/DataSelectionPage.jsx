@@ -67,6 +67,7 @@ export function DataSelectionPage() {
     setCurrentFrame,
     isPlaying,
     stopPlayback,
+    togglePlayback,
     adjustFps
   } = useFramePlayback({
     viewerMode,
@@ -232,7 +233,7 @@ export function DataSelectionPage() {
       setCurrentFrame(0);
     }
 
-    setIsPlaying((current) => !current);
+    togglePlayback();
   }
 
   function handleSelectedFrameClick(region) {
