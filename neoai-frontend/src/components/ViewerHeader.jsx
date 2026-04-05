@@ -1,5 +1,7 @@
 import OpenWithRoundedIcon from "@mui/icons-material/OpenWithRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import RotateLeftRoundedIcon from "@mui/icons-material/RotateLeftRounded";
+import RotateRightRoundedIcon from "@mui/icons-material/RotateRightRounded";
 import ZoomInRoundedIcon from "@mui/icons-material/ZoomInRounded";
 import { SelectionToolbar } from "./SelectionToolbar";
 
@@ -12,6 +14,8 @@ export function ViewerHeader({
   isViewChanged,
   handleToggleHoldMode,
   handleToggleZoomMode,
+  handleRotateLeft,
+  handleRotateRight,
   resetView,
   isPlaying,
   handleTogglePlay,
@@ -54,6 +58,26 @@ export function ViewerHeader({
               title={isZoomMode ? "Disable zoom mode" : "Enable zoom mode"}
             >
               <ZoomInRoundedIcon fontSize="small" />
+            </button>
+            <button
+              aria-label="Rotate view 90 degree left"
+              className="selection-toolbar-icon-button"
+              type="button"
+              onClick={handleRotateLeft}
+              disabled={!activeVideo && !(viewerMode === "frame" && activeSelectedFrame)}
+              title="Rotate view 90 degree left"
+            >
+              <RotateLeftRoundedIcon fontSize="small" />
+            </button>
+            <button
+              aria-label="Rotate view 90 degree right"
+              className="selection-toolbar-icon-button"
+              type="button"
+              onClick={handleRotateRight}
+              disabled={!activeVideo && !(viewerMode === "frame" && activeSelectedFrame)}
+              title="Rotate view 90 degree right"
+            >
+              <RotateRightRoundedIcon fontSize="small" />
             </button>
             <button
               aria-label="Reset view"

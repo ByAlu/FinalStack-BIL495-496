@@ -23,6 +23,7 @@ export function ViewerStage({
   handleRailPointerMove,
   viewerMode,
   viewerStageRef,
+  viewRotation,
   zoomOrigin,
   zoomScale
 }) {
@@ -50,7 +51,7 @@ export function ViewerStage({
             ref={previewImageRef}
             src={activeSelectedFrame.thumbnail}
             style={{
-              transform: `translate(calc(-50% + ${panOffset.x}px), ${panOffset.y}px) scale(${zoomScale})`,
+              transform: `translate(calc(-50% + ${panOffset.x}px), ${panOffset.y}px) rotate(${viewRotation}deg) scale(${zoomScale})`,
               transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
             }}
           />
@@ -63,7 +64,7 @@ export function ViewerStage({
                 ref={previewImageRef}
                 src={activeFrameSrc}
                 style={{
-                  transform: `translate(calc(-50% + ${panOffset.x}px), ${panOffset.y}px) scale(${zoomScale})`,
+                  transform: `translate(calc(-50% + ${panOffset.x}px), ${panOffset.y}px) rotate(${viewRotation}deg) scale(${zoomScale})`,
                   transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
                 }}
               />

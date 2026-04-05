@@ -35,6 +35,7 @@ export function DataSelectionPage() {
   const [disabledActionMessage, setDisabledActionMessage] = useState("");
   const [showVideoMenu, setShowVideoMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
+  const [viewRotation, setViewRotation] = useState(0);
   const { activeRegion, setActiveRegion, lastViewedFrames, setLastViewedFrames, selectedFrames, setSelectedFrames } = useSelectionSession({
     patientId,
     examinationId,
@@ -235,9 +236,18 @@ export function DataSelectionPage() {
     toggleZoomMode();
   }
 
+  function handleRotateLeft() {
+    setViewRotation((current) => current - 90);
+  }
+
+  function handleRotateRight() {
+    setViewRotation((current) => current + 90);
+  }
+
   function resetView() {
     resetHold();
     resetZoom();
+    setViewRotation(0);
   }
 
   function handleApprove() {
@@ -329,7 +339,7 @@ export function DataSelectionPage() {
     activeRegionSelection.videoName === activeVideo.name &&
     activeRegionSelection.frameIndex === currentFrame
   );
-  const isViewChanged = zoomScale !== 1 || panOffset.x !== 0 || panOffset.y !== 0;
+  const isViewChanged = zoomScale !== 1 || panOffset.x !== 0 || panOffset.y !== 0 || viewRotation !== 0;
 
   function handleViewerPointerDown(event) {
     if (isHoldMode) {
@@ -386,6 +396,8 @@ export function DataSelectionPage() {
             fps={fps}
             fpsPopoverRef={fpsPopoverRef}
             handleApprove={handleApprove}
+            handleRotateLeft={handleRotateLeft}
+            handleRotateRight={handleRotateRight}
             handleSelectFrame={handleSelectFrame}
             handleToggleHoldMode={handleToggleHoldMode}
             handleTogglePlay={handleTogglePlay}
@@ -428,6 +440,7 @@ export function DataSelectionPage() {
             showCacheProgress={showCacheProgress}
             stopRailDrag={stopRailDrag}
             viewerMode={viewerMode}
+            viewRotation={viewRotation}
             viewerStageRef={viewerStageRef}
             zoomOrigin={zoomOrigin}
             zoomScale={zoomScale}
