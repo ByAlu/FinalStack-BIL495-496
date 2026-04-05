@@ -86,7 +86,7 @@ export function AppLayout() {
         }}
       >
         <Toolbar disableGutters sx={{ gap: 2 }}>
-          <Box sx={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+          <Box sx={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "flex-start", pl: 1.5 }}>
             <Box
               component={Link}
               to="/"
@@ -120,7 +120,7 @@ export function AppLayout() {
             {workflowMeta ? <WorkflowSteps currentStep={workflowMeta.currentStep} context={workflowMeta.context} /> : null}
           </Box>
 
-          <Box sx={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end" }}>
+          <Box sx={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end", pr: 1.5 }}>
             <IconButton onClick={(event) => setAnchorEl(event.currentTarget)} sx={{ p: 0.25 }}>
               <Avatar
                 sx={{

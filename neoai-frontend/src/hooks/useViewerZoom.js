@@ -79,13 +79,7 @@ export function useViewerZoom(resetDependencies = []) {
   }
 
   function toggleZoomMode() {
-    setIsZoomMode((current) => {
-      if (current) {
-        resetZoom();
-      }
-
-      return !current;
-    });
+    setIsZoomMode((current) => !current);
   }
 
   useEffect(() => {
