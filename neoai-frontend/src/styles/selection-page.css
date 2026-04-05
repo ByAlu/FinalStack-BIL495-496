@@ -1,6 +1,7 @@
 .selection-page {
   width: 100%;
-  height: calc(100vh - 108px);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   display: block;
 }
