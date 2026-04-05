@@ -26,6 +26,14 @@ export function AppLayout() {
     .slice(0, 2)
     .toUpperCase();
   const isSelectionRoute = location.pathname.startsWith("/selection/");
+  const isWorkflowRoute = [
+    "/query",
+    "/selection/",
+    "/preprocessing/",
+    "/ai-module/",
+    "/results/",
+    "/report/"
+  ].some((routePrefix) => location.pathname.startsWith(routePrefix));
   const menuOpen = Boolean(anchorEl);
 
   return (
@@ -38,7 +46,7 @@ export function AppLayout() {
           backgroundColor: "transparent",
           border: 0,
           boxShadow: "none",
-          mb: 6
+          mb: isWorkflowRoute ? { xs: 2.5, md: 3 } : 6
         }}
       >
         <Toolbar disableGutters sx={{ justifyContent: "space-between", gap: 2 }}>
