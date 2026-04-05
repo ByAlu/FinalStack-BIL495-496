@@ -411,8 +411,8 @@ export function DataSelectionPage() {
         frameIndex: currentFrame
       }
     }));
-    setViewerMode("frame");
-    setSelectedFrameRegion(activeRegion);
+    setViewerMode("video");
+    setSelectedFrameRegion("");
   }
 
   function handleApprove() {
@@ -534,6 +534,13 @@ export function DataSelectionPage() {
   const selectedCount = Object.keys(selectedFrames).length;
   const isApprovedReady = regions.every((region) => selectedFrames[region]);
   const scrubberThumbTop = activeVideoFrames.length <= 1 ? 0 : (currentFrame / (activeVideoFrames.length - 1)) * 100;
+  const activeRegionSelection = selectedFrames[activeRegion];
+  const isCurrentFrameAlreadySelected = Boolean(
+    activeRegionSelection &&
+    activeVideo &&
+    activeRegionSelection.videoName === activeVideo.name &&
+    activeRegionSelection.frameIndex === currentFrame
+  );
 
   return (
     <div className="page-stack selection-page">
@@ -571,13 +578,13 @@ export function DataSelectionPage() {
                         className="region-video-thumbnail"
                         src={regionVideo?.thumbnail}
                       />
-                      <div>
+                      <div className="region-video-meta">
                         <strong>{region.toUpperCase()}</strong>
                         <p>{regionVideo?.name || "No video"}</p>
+                        <span className={`selection-status${isSelected ? " done" : ""}`}>
+                          {isSelected ? "Frame selected" : "Select frame"}
+                        </span>
                       </div>
-                      <span className={`selection-status${isSelected ? " done" : ""}`}>
-                        {isSelected ? "Frame selected" : "Select frame"}
-                      </span>
                     </button>
                   );
                 })}
@@ -668,14 +675,24 @@ export function DataSelectionPage() {
                 </div>
               </div>
               <div className="viewer-header-side viewer-header-side-right">
-                <button
-                  className="primary-button"
-                  type="button"
-                  onClick={handleSelectFrame}
-                  disabled={viewerMode !== "video" || !isActiveVideoReady || !activeVideoFrames[currentFrame]}
-                >
-                  Select Frame
-                </button>
+                <div className="viewer-primary-actions">
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={handleSelectFrame}
+                    disabled={
+                      viewerMode !== "video" ||
+                      !isActiveVideoReady ||
+                      !activeVideoFrames[currentFrame] ||
+                      isCurrentFrameAlreadySelected
+                    }
+                  >
+                    Select Frame
+                  </button>
+                  <button className="primary-button" disabled={!isApprovedReady} type="button" onClick={handleApprove}>
+                    Approve
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -792,11 +809,6 @@ export function DataSelectionPage() {
                 </div>
               </div>
 
-              <div className="selection-approve-row">
-                <button className="primary-button" disabled={!isApprovedReady} type="button" onClick={handleApprove}>
-                  Approve
-                </button>
-              </div>
             </>
           ) : (
             <button className="panel-edge-toggle" type="button" onClick={() => setShowSelectedMenu(true)}>

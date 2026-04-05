@@ -73,7 +73,7 @@ export function AppLayout() {
   const menuOpen = Boolean(anchorEl);
 
   return (
-    <Box className="app-frame">
+    <Box className={`app-frame${isSelectionRoute ? " app-frame-selection" : ""}`}>
       <AppBar
         position="static"
         color="transparent"
@@ -116,7 +116,7 @@ export function AppLayout() {
             </Box>
           </Box>
 
-          <Box sx={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "center" }}>
+          <Box sx={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "center", pt: 0.75 }}>
             {workflowMeta ? <WorkflowSteps currentStep={workflowMeta.currentStep} context={workflowMeta.context} /> : null}
           </Box>
 
