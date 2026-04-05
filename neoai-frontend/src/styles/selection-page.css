@@ -198,7 +198,7 @@
 }
 
 .panel-edge-toggle {
-  position: static;
+  position: absolute;
   width: 34px;
   height: 34px;
   border-radius: 999px;

@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { WorkflowSteps } from "../components/WorkflowSteps";
 import { getExaminationByIds } from "../services/mockApi";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
 const SOURCE_FPS = 30;
@@ -514,14 +516,14 @@ export function DataSelectionPage() {
   const selectedCount = Object.keys(selectedFrames).length;
   const isApprovedReady = regions.every((region) => selectedFrames[region]);
   const scrubberThumbTop = activeVideoFrames.length <= 1 ? 0 : (currentFrame / (activeVideoFrames.length - 1)) * 100;
-
+  
   return (
     <div className="page-stack selection-page">
       <WorkflowSteps currentStep="selection" context={{ patientId, examinationId }} />
 
       <section
         className={`selection-layout${showVideoMenu ? "" : " hide-left"}${showSelectedMenu ? "" : " hide-right"}`}
-      >
+      > {/* Left Sidebar */}
         <aside className={`selection-sidebar panel${showVideoMenu ? "" : " collapsed"}`}>
           {showVideoMenu ? (
             <>
@@ -531,7 +533,7 @@ export function DataSelectionPage() {
                   <h3>{examination.id}</h3>
                 </div>
                 <button className="panel-arrow-toggle" type="button" onClick={() => setShowVideoMenu(false)}>
-                  ←
+                  <ArrowBackIosIcon fontSize="small"/>
                 </button>
               </div>
 
@@ -567,11 +569,11 @@ export function DataSelectionPage() {
             </>
           ) : (
             <button className="panel-edge-toggle" type="button" onClick={() => setShowVideoMenu(true)}>
-              →
+              <ArrowForwardIosIcon fontSize="small"/>
             </button>
           )}
         </aside>
-
+          {/* Main Panel */}
         <section className="selection-main panel">
           <div className="selection-viewer-header">
             <div className="viewer-header-actions">
@@ -688,14 +690,14 @@ export function DataSelectionPage() {
             </div>
           </div>
         </section>
-
+        {/* Right Sidebar */}
         <aside className={`selected-frames-sidebar panel${showSelectedMenu ? "" : " collapsed"}`}>
           {showSelectedMenu ? (
             <>
               <div className="selected-frames-panel">
                 <div className="selected-frames-header">
                   <button className="panel-arrow-toggle" type="button" onClick={() => setShowSelectedMenu(false)}>
-                    →
+                    <ArrowForwardIosIcon fontSize="small"/>
                   </button>
                   <strong>Selected Frames</strong>
                   <span>
@@ -737,11 +739,14 @@ export function DataSelectionPage() {
             </>
           ) : (
             <button className="panel-edge-toggle" type="button" onClick={() => setShowSelectedMenu(true)}>
-              ←
+              <ArrowBackIosIcon fontSize="small"/>
             </button>
           )}
         </aside>
       </section>
     </div>
   );
+
+
+
 }

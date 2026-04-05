@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { WorkflowSteps } from "../components/WorkflowSteps";
 import { preprocessImages } from "../services/api";
-
-function getStorageKey(patientId, examinationId) {
-  return `neoai-selection:${patientId}:${examinationId}`;
-}
+import ThreeColumnLayout from "../components/ThreeColumnLayout";
+import CircularProgress from "@mui/material/CircularProgress";
 /**
  * TODO:
  * Add retry button when an server side error occurs
@@ -14,79 +12,123 @@ function getStorageKey(patientId, examinationId) {
  * Show selected frames on the left
  * show applies filters on the right as a list
  */
-export function DataPreprocessingPage() {
-  const { patientId, examinationId } = useParams();
+function getStorageKey(patientId, examinationId) {
+  return `neoai-selection:${patientId}:${examinationId}`;
+}
 
-  const [showVideoMenu, setShowVideoMenu] = useState(true);
+export function DataPreprocessingPage() {
+
+  const [showFilterList, setShowFilterList] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
-  const [processedImages, setProcessedImages] = useState([]);
+  const [processedFrames, setProcessedFrames] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
+  const [selectedFrameRegion, setSelectedFrameRegion] = useState(null);
+
+  const viewerMode = "frame"; // Or make this dynamic if needed
+  const maxRegions = 6;
+
+  // Example regions list; adjust as needed
+  const regions = ["R1", "R2", "R3", "R4", "R5", "R6"];
+
+  const location = useLocation();
+  const { patientId, examinationId, selectedFrames } = location.state;
 
   useEffect(() => {
-  async function loadImages() {
-    setLoading(true);
-    setError("");
-
-    try {
-      const storageKey = getStorageKey(patientId, examinationId);
-      const storedData = JSON.parse(sessionStorage.getItem(storageKey) || "{}");
-      console.log(storedData);
-      
-      let selectedFrames = storedData.selectedFrames;
-
-      // Ensure selectedFrames is an array
-      if (!Array.isArray(selectedFrames)) {
-        console.warn("selectedFrames is not an array, converting to empty array");
-        selectedFrames = [];
-      }
-
-      if (selectedFrames.length === 0) {
-        setProcessedImages([]);
-        setLoading(false);
-        return;
-      }
-
-      // Preprocess the images
-      const result = await preprocessImages(selectedFrames);
-      setProcessedImages(result);
-    } catch (err) {
-      console.error("Error loading images:", err);
-      setError(err.message || "Failed to load images.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   loadImages();
 }, [patientId, examinationId]);
+
+async function loadImages() {
+  setLoading(true);
+  setError("");
+
+  try {
+    const storageKey = getStorageKey(patientId, examinationId);
+    const storedSelectedFrames = selectedFrames || {};
+    const selectedFramesArray = Object.values(storedSelectedFrames).filter(Boolean);
+
+    if (selectedFramesArray.length === 0) {
+      setProcessedFrames([]);
+      setLoading(false);
+      return;
+    }
+
+    const result = await preprocessImages(selectedFramesArray);
+    setProcessedFrames(result);
+    setError(null);
+  } catch (err) {
+    console.error("Error loading images:", err);
+    setError(err.message || "Failed to load images.");
+  } finally {
+    setLoading(false);
+  }
+}
+
+  const handleSelectedFrameClick = (region) => {
+    setSelectedFrameRegion(region);
+    const frameData = selectedFrames[region];
+    console.log("Clicked frame data:", frameData);
+  };
+
+  const isApprovedReady = Object.keys(selectedFrames).length > 0;
 
   return (
     <div className="page-stack">
       <WorkflowSteps currentStep="preprocessing" context={{ patientId, examinationId }} />
-      <section
-        className={`selection-layout${showVideoMenu ? "" : " hide-left"}${showSelectedMenu ? "" : " hide-right"}`}
-      >
-        <section className={`selection-sidebar panel${showVideoMenu ? "" : " collapsed"}`}>
-          {showSelectedMenu ? (<></>):(<></>)}
-        </section>
+      {loading && 
+          <div 
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "60vh"
+              }}
+          >
+          <CircularProgress />
+        </div>
+      }
 
-        <section className="selection-main panel">
-          {loading && <p>Loading images...</p>}
-          {error && <p style={{ color: "red" }}>{error}</p>}
+      {!loading && error && (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "60vh"
+        }}>
+          <p style={{ color: "red" }}>Error: {error}</p>
+          <button 
+          className="primary-button"
+          type="button" 
+          onClick={loadImages}
+          >
+            Try Again
+          </button>
+        </div>
+      )}
 
-          <div className="images-grid">
-            {processedImages.map((img, index) => (
-              <img key={index} src={img.url || img} alt={`Processed ${index}`} />
-            ))}
-          </div>
-        </section>
-
-        <section className={`selected-frames-sidebar panel${showSelectedMenu ? "" : " collapsed"}`}>
-          {showSelectedMenu ? (<></>):(<></>)}
-        </section>
-
-      </section>
+      {!loading && !error && (
+        <ThreeColumnLayout
+          leftContent={
+            <div>
+              {Object.entries(selectedFrames).map(([region, frame]) => (
+                <div key={region} onClick={() => handleSelectedFrameClick(region)}>
+                  <p>{region}</p>
+                  <img src={frame.thumbnail} alt={`Region ${region}`} />
+                </div>
+              ))}
+            </div>
+          }
+          centerContent={
+            <div>
+              {Object.entries(processedFrames).map(([frameId, processed]) => (
+                <img key={frameId} src={processed.url} alt={`Processed ${frameId}`} />
+              ))}
+            </div>
+          }
+        />
+      )}
     </div>
   );
 }
