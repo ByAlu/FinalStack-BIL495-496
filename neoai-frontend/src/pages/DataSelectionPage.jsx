@@ -325,7 +325,7 @@ export function DataSelectionPage() {
   });
 
   function handleViewerWheel(event) {
-    if (isHoldMode || !activeVideo || activeVideoFrames.length <= 1) {
+    if (!activeVideo || activeVideoFrames.length <= 1) {
       return;
     }
 
