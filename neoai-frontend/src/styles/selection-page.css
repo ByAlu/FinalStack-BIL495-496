@@ -427,6 +427,8 @@
   display: flex;
   justify-content: center;
   cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
 }
 
 .viewer-frame-rail-track {

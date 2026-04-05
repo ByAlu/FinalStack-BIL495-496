@@ -46,6 +46,7 @@ export function DataSelectionPage() {
   const playbackTimerRef = useRef(0);
   const extractionRunRef = useRef(0);
   const activeExtractionNameRef = useRef("");
+  const activeScrubberPointerIdRef = useRef(null);
   const isDraggingScrubberRef = useRef(false);
   const pendingFrameJumpRef = useRef(null);
   const videoFramesByNameRef = useRef({});
@@ -361,32 +362,6 @@ export function DataSelectionPage() {
     };
   }, [activeRegion, examination]);
 
-  useEffect(() => {
-    function handlePointerMove(event) {
-      if (!scrubberRailRef.current || !isDraggingScrubberRef.current) {
-        return;
-      }
-
-      const rect = scrubberRailRef.current.getBoundingClientRect();
-      const relativeY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
-      const ratio = rect.height <= 0 ? 0 : relativeY / rect.height;
-      seekToFrame(Math.round(ratio * Math.max(totalFrames - 1, 0)));
-    }
-
-    function handlePointerUp() {
-      isDraggingScrubberRef.current = false;
-    }
-
-    window.addEventListener("mousemove", handlePointerMove);
-    window.addEventListener("mouseup", handlePointerUp);
-
-    return () => {
-      window.removeEventListener("mousemove", handlePointerMove);
-      window.removeEventListener("mouseup", handlePointerUp);
-      isDraggingScrubberRef.current = false;
-    };
-  }, [totalFrames]);
-
   if (!examination) {
     return (
       <div className="page-stack">
@@ -507,8 +482,37 @@ export function DataSelectionPage() {
   }
 
   function handleRailMouseDown(event) {
+    if (event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
     isDraggingScrubberRef.current = true;
+    activeScrubberPointerIdRef.current = event.pointerId;
+    scrubberRailRef.current?.setPointerCapture(event.pointerId);
     updateFrameFromRail(event.clientY);
+  }
+
+  function handleRailPointerMove(event) {
+    if (!isDraggingScrubberRef.current || activeScrubberPointerIdRef.current !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    updateFrameFromRail(event.clientY);
+  }
+
+  function stopRailDrag(event) {
+    if (activeScrubberPointerIdRef.current !== event.pointerId) {
+      return;
+    }
+
+    if (scrubberRailRef.current?.hasPointerCapture(event.pointerId)) {
+      scrubberRailRef.current.releasePointerCapture(event.pointerId);
+    }
+
+    isDraggingScrubberRef.current = false;
+    activeScrubberPointerIdRef.current = null;
   }
 
   const selectedCount = Object.keys(selectedFrames).length;
@@ -664,7 +668,11 @@ export function DataSelectionPage() {
                     aria-valuemin="0"
                     aria-valuenow={Math.min(currentFrame, Math.max(0, activeVideoFrames.length - 1))}
                     className="viewer-frame-rail"
-                    onMouseDown={handleRailMouseDown}
+                    onPointerCancel={stopRailDrag}
+                    onPointerDown={handleRailMouseDown}
+                    onPointerMove={handleRailPointerMove}
+                    onPointerUp={stopRailDrag}
+                    onLostPointerCapture={stopRailDrag}
                     ref={scrubberRailRef}
                     role="slider"
                     tabIndex={0}
