@@ -399,7 +399,6 @@ export function DataSelectionPage() {
     getScrubberThumbTop
   } = useFrameScrubber({
     activeVideoFramesLength: activeVideoFrames.length,
-    isHoldMode,
     onSeekFrame: seekToFrame
   });
 

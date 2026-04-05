@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-export function useFrameScrubber({ activeVideoFramesLength, isHoldMode, onSeekFrame }) {
+export function useFrameScrubber({ activeVideoFramesLength, onSeekFrame }) {
   const scrubberRailRef = useRef(null);
   const activeScrubberPointerIdRef = useRef(null);
   const isDraggingScrubberRef = useRef(false);
@@ -17,15 +17,15 @@ export function useFrameScrubber({ activeVideoFramesLength, isHoldMode, onSeekFr
   }
 
   function handleRailMouseDown(event) {
-    if (isHoldMode || event.button !== 0) {
+    if (event.button !== 0) {
       return;
     }
 
     event.preventDefault();
+    event.stopPropagation();
     isDraggingScrubberRef.current = true;
     activeScrubberPointerIdRef.current = event.pointerId;
     scrubberRailRef.current?.setPointerCapture(event.pointerId);
-    updateFrameFromRail(event.clientY);
   }
 
   function handleRailPointerMove(event) {
@@ -34,6 +34,7 @@ export function useFrameScrubber({ activeVideoFramesLength, isHoldMode, onSeekFr
     }
 
     event.preventDefault();
+    event.stopPropagation();
     updateFrameFromRail(event.clientY);
   }
 
@@ -41,6 +42,8 @@ export function useFrameScrubber({ activeVideoFramesLength, isHoldMode, onSeekFr
     if (activeScrubberPointerIdRef.current !== event.pointerId) {
       return;
     }
+
+    event.stopPropagation();
 
     if (scrubberRailRef.current?.hasPointerCapture(event.pointerId)) {
       scrubberRailRef.current.releasePointerCapture(event.pointerId);
