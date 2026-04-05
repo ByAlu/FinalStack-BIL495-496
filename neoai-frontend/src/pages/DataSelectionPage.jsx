@@ -19,6 +19,11 @@ function getExaminationCacheKey(patientId, examinationId) {
   return `neoai-cache:${patientId}:${examinationId}`;
 }
 
+function normalizeRotation(nextRotation) {
+  const normalized = nextRotation % 360;
+  return normalized < 0 ? normalized + 360 : normalized;
+}
+
 export function DataSelectionPage() {
   const { patientId, examinationId } = useParams();
   const navigate = useNavigate();
@@ -237,11 +242,11 @@ export function DataSelectionPage() {
   }
 
   function handleRotateLeft() {
-    setViewRotation((current) => current - 90);
+    setViewRotation((current) => normalizeRotation(current - 90));
   }
 
   function handleRotateRight() {
-    setViewRotation((current) => current + 90);
+    setViewRotation((current) => normalizeRotation(current + 90));
   }
 
   function resetView() {
