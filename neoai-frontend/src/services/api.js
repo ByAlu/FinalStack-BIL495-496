@@ -92,10 +92,13 @@ export async function registerUser(userData) {
 }
 
 //Get videos
-export async function getVideos({patientData}){
+export async function getVideos(patientId, examinationName) {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("No authorization token found. Please log in.");
+
   try {
-    const { patientId, examinationName } = patientData;
-    const token = localStorage.getItem("token");
+    console.log("Fetching videos:", `/api/v1/examinations/${patientId}/${examinationName}`);
+    console.log("Token:", token);
     const response = await api.get(
       `/api/v1/examinations/${patientId}/${examinationName}`,
       {
@@ -104,18 +107,19 @@ export async function getVideos({patientData}){
         },
       }
     );
+    console.log("HERE")
+    console.log(response)
     return response.data;
   } catch (error) {
-    console.error("Register Error:", error.message);
+    console.error("Get Videos Error:", error.message);
 
     if (error.response) {
       throw new Error(
-        error.response.data?.message ||
-          "Registration failed. Please try again."
+        error.response.data?.message || "Failed to fetch videos."
       );
     }
 
-    throw new Error("Could not connect to the registration server.");
+    throw new Error("Could not connect to the server.");
   }
 }
 
@@ -153,6 +157,6 @@ export async function preprocess({ patientId, examinationId, selectedFrames }) {
       );
     }
 
-    throw new Error("Could not connect to the server.");
+    throw new Error("Could not connect to the server for preprocessing.");
   }
 }
