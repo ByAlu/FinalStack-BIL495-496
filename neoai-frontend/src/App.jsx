@@ -11,12 +11,15 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PatientQueryWorkflowPage } from "./pages/PatientQueryWorkflowPage";
 import { ReportingPage } from "./pages/ReportingPage";
+import VideoTestPage from "./pages/VideoTestPage";
 
 function App() {
   return (
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/*TODO: Delete test page */}
+        <Route path="/test" element={<VideoTestPage/>}/>
         <Route
           path="/"
           element={
