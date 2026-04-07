@@ -9,7 +9,8 @@ export function AppLayout() {
   const isWorkspaceRoute =
     location.pathname.startsWith("/selection/") ||
     location.pathname.startsWith("/preprocessing/") ||
-    location.pathname.startsWith("/ai-module/");
+    location.pathname.startsWith("/ai-module/") ||
+    location.pathname.startsWith("/results/");
   const isWorkflowRoute = [
     "/query",
     "/selection/",

@@ -114,63 +114,175 @@ export const patients = [
   }
 ];
 
-export const preprocessingOptions = [
-  {
-    key: "denoise",
-    label: "Noise reduction",
-    description: "Smooth the selected ultrasound frames before diagnosis.",
-    enabled: true,
-    intensity: 45
-  },
-  {
-    key: "contrast",
-    label: "Contrast normalization",
-    description: "Standardize intensity distribution between regions.",
-    enabled: true,
-    intensity: 60
-  },
-  {
-    key: "crop",
-    label: "Region focused crop",
-    description: "Trim unused borders before sending images to the AI module.",
-    enabled: false,
-    intensity: 30
-  }
-];
 
-export const aiModels = [
-  {
-    id: "thyroid-v2",
-    name: "Thyroid Insight v2",
-    specialty: "Ultrasound lesion classification",
-    turnaround: "25 sec",
-    confidence: "High"
+export const aiRegionResults = {
+  r1: {
+    region: "R1",
+    image_quality: "acceptable",
+    b_line_module: {
+      b_line_count: 6,
+      pattern: "multiple",
+      bounding_boxes: [
+        { x_min: 110, y_min: 75, x_max: 150, y_max: 320, confidence: 0.94 },
+        { x_min: 180, y_min: 80, x_max: 220, y_max: 310, confidence: 0.91 },
+        { x_min: 250, y_min: 85, x_max: 290, y_max: 300, confidence: 0.9 }
+      ],
+      pleural_line: {
+        status: "irregular",
+        confidence: 0.88
+      },
+      white_lung: false,
+      confidence: 0.92
+    },
+    rds_score_module: {
+      region_score: 2,
+      severity_label: "moderate_loss_of_aeration",
+      findings: ["multiple B-lines", "irregular pleural line"],
+      confidence: 0.89,
+      explainability: {
+        heatmap_available: true
+      }
+    }
   },
-  {
-    id: "nodex-lite",
-    name: "Nodex Lite",
-    specialty: "Fast screening",
-    turnaround: "12 sec",
-    confidence: "Medium"
+  r2: {
+    region: "R2",
+    image_quality: "acceptable",
+    b_line_module: {
+      b_line_count: 4,
+      pattern: "focal",
+      bounding_boxes: [
+        { x_min: 90, y_min: 88, x_max: 126, y_max: 302, confidence: 0.9 },
+        { x_min: 190, y_min: 78, x_max: 226, y_max: 314, confidence: 0.88 }
+      ],
+      pleural_line: {
+        status: "regular",
+        confidence: 0.82
+      },
+      white_lung: false,
+      confidence: 0.87
+    },
+    rds_score_module: {
+      region_score: 1,
+      severity_label: "mild_loss_of_aeration",
+      findings: ["focal B-lines"],
+      confidence: 0.85,
+      explainability: {
+        heatmap_available: true
+      }
+    }
+  },
+  r3: {
+    region: "R3",
+    image_quality: "acceptable",
+    b_line_module: {
+      b_line_count: 8,
+      pattern: "confluent",
+      bounding_boxes: [
+        { x_min: 72, y_min: 80, x_max: 110, y_max: 315, confidence: 0.95 },
+        { x_min: 130, y_min: 82, x_max: 170, y_max: 322, confidence: 0.94 },
+        { x_min: 205, y_min: 76, x_max: 246, y_max: 318, confidence: 0.92 },
+        { x_min: 278, y_min: 84, x_max: 316, y_max: 308, confidence: 0.91 }
+      ],
+      pleural_line: {
+        status: "irregular",
+        confidence: 0.91
+      },
+      white_lung: true,
+      confidence: 0.95
+    },
+    rds_score_module: {
+      region_score: 3,
+      severity_label: "severe_loss_of_aeration",
+      findings: ["confluent B-lines", "white lung pattern", "irregular pleural line"],
+      confidence: 0.94,
+      explainability: {
+        heatmap_available: true
+      }
+    }
+  },
+  r4: {
+    region: "R4",
+    image_quality: "acceptable",
+    b_line_module: {
+      b_line_count: 3,
+      pattern: "focal",
+      bounding_boxes: [
+        { x_min: 118, y_min: 92, x_max: 154, y_max: 286, confidence: 0.86 },
+        { x_min: 234, y_min: 88, x_max: 270, y_max: 295, confidence: 0.84 }
+      ],
+      pleural_line: {
+        status: "regular",
+        confidence: 0.8
+      },
+      white_lung: false,
+      confidence: 0.83
+    },
+    rds_score_module: {
+      region_score: 1,
+      severity_label: "mild_loss_of_aeration",
+      findings: ["limited focal B-lines"],
+      confidence: 0.81,
+      explainability: {
+        heatmap_available: true
+      }
+    }
+  },
+  r5: {
+    region: "R5",
+    image_quality: "suboptimal",
+    b_line_module: {
+      b_line_count: 5,
+      pattern: "multiple",
+      bounding_boxes: [
+        { x_min: 96, y_min: 94, x_max: 135, y_max: 306, confidence: 0.89 },
+        { x_min: 164, y_min: 91, x_max: 202, y_max: 298, confidence: 0.87 },
+        { x_min: 258, y_min: 96, x_max: 296, y_max: 290, confidence: 0.85 }
+      ],
+      pleural_line: {
+        status: "irregular",
+        confidence: 0.84
+      },
+      white_lung: false,
+      confidence: 0.86
+    },
+    rds_score_module: {
+      region_score: 2,
+      severity_label: "moderate_loss_of_aeration",
+      findings: ["multiple B-lines", "reduced image quality"],
+      confidence: 0.83,
+      explainability: {
+        heatmap_available: true
+      }
+    }
+  },
+  r6: {
+    region: "R6",
+    image_quality: "acceptable",
+    b_line_module: {
+      b_line_count: 2,
+      pattern: "isolated",
+      bounding_boxes: [
+        { x_min: 140, y_min: 86, x_max: 178, y_max: 276, confidence: 0.8 },
+        { x_min: 232, y_min: 94, x_max: 268, y_max: 282, confidence: 0.79 }
+      ],
+      pleural_line: {
+        status: "regular",
+        confidence: 0.77
+      },
+      white_lung: false,
+      confidence: 0.78
+    },
+    rds_score_module: {
+      region_score: 0,
+      severity_label: "normal_aeration",
+      findings: ["isolated B-lines within normal limits"],
+      confidence: 0.76,
+      explainability: {
+        heatmap_available: true
+      }
+    }
   }
-];
-
-export const reportTemplates = [
-  {
-    id: "REP-2001",
-    patientId: "PT-1001",
-    examinationId: "Exam_1001",
-    title: "AI Diagnostic Report",
-    summary: "Suspicious nodule detected in region r3. Recommend specialist confirmation.",
-    findings: [
-      "Selected 6 representative frames, one per region.",
-      "Applied denoise and contrast normalization before inference.",
-      "Highest anomaly probability observed in region r3."
-    ],
-    confidence: "89%",
-    exportedFormats: ["PDF", "DOCX"]
-  }
-];
+};
 
 export const auditEntries = [
   {

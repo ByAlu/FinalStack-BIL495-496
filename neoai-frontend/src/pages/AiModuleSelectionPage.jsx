@@ -1,19 +1,49 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AiModuleOptionsSidebar } from "../components/AiModuleOptionsSidebar";
+import { AiViewerToolbar } from "../components/AiViewerToolbar";
 import { SelectedFramesSidebar } from "../components/SelectedFramesSidebar";
 import { ViewerStage } from "../components/ViewerStage";
+import { useViewerHold } from "../hooks/useViewerHold";
+import { useViewerZoom } from "../hooks/useViewerZoom";
 import { getExaminationByIds } from "../services/mockApi";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
 const DEFAULT_MODULE_IDS = ["rds-score"];
 const DEFAULT_REPORT_ID = "REP-2001";
+const DEFAULT_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
+const MAX_MAGNIFIER_CONFIG = { size: 500, zoomFactor: 8 };
+const MIN_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
+
+function normalizeRotation(nextRotation) {
+  const normalized = nextRotation % 360;
+  return normalized < 0 ? normalized + 360 : normalized;
+}
+
+function getMagnifierState(stageRect, imageRect, clientX, clientY, magnifierConfig) {
+  const lensSize = magnifierConfig.size;
+  const zoomFactor = magnifierConfig.zoomFactor;
+  const clampedX = Math.min(Math.max(clientX, imageRect.left), imageRect.right);
+  const clampedY = Math.min(Math.max(clientY, imageRect.top), imageRect.bottom);
+  const localX = clampedX - imageRect.left;
+  const localY = clampedY - imageRect.top;
+
+  return {
+    x: clampedX - stageRect.left,
+    y: clampedY - stageRect.top,
+    backgroundWidth: imageRect.width * zoomFactor,
+    backgroundHeight: imageRect.height * zoomFactor,
+    backgroundOffsetX: -(localX * zoomFactor) + lensSize / 2,
+    backgroundOffsetY: -(localY * zoomFactor) + lensSize / 2
+  };
+}
 
 export function AiModuleSelectionPage() {
   const { patientId, examinationId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const magnifierPopoverRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
   const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
@@ -22,6 +52,19 @@ export function AiModuleSelectionPage() {
   const [showOptionsMenu, setShowOptionsMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
   const [disabledActionMessage, setDisabledActionMessage] = useState("");
+  const [isMagnifierMode, setIsMagnifierMode] = useState(false);
+  const [showMagnifierPopover, setShowMagnifierPopover] = useState(false);
+  const [magnifierConfig, setMagnifierConfig] = useState(DEFAULT_MAGNIFIER_CONFIG);
+  const [magnifierState, setMagnifierState] = useState({
+    x: 0,
+    y: 0,
+    backgroundWidth: 0,
+    backgroundHeight: 0,
+    backgroundOffsetX: 0,
+    backgroundOffsetY: 0
+  });
+  const [isMagnifierActive, setIsMagnifierActive] = useState(false);
+  const [viewRotation, setViewRotation] = useState(0);
   const [selectedModuleIds, setSelectedModuleIds] = useState(() => {
     if (Array.isArray(location.state?.selectedModuleIds) && location.state.selectedModuleIds.length > 0) {
       return location.state.selectedModuleIds;
@@ -34,6 +77,47 @@ export function AiModuleSelectionPage() {
     return DEFAULT_MODULE_IDS;
   });
   const [activeRegion, setActiveRegion] = useState(location.state?.activePreprocessingRegion || selectedRegions[0] || "r1");
+  const {
+    isHoldMode,
+    panOffset,
+    isHoldGestureActive,
+    toggleHoldMode,
+    resetHold,
+    handleHoldPointerDown,
+    handleHoldPointerMove,
+    stopHold
+  } = useViewerHold({
+    viewerStageRef,
+    resetDependencies: [activeRegion]
+  });
+  const {
+    isZoomMode,
+    zoomScale,
+    zoomOrigin,
+    isZoomGestureActive,
+    toggleZoomMode,
+    resetZoom,
+    handleZoomPointerDown,
+    handleZoomPointerMove,
+    stopZoom
+  } = useViewerZoom({
+    viewerStageRef,
+    previewImageRef,
+    resetDependencies: [activeRegion]
+  });
+
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!magnifierPopoverRef.current?.contains(event.target)) {
+        setShowMagnifierPopover(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, []);
 
   if (!examination) {
     return (
@@ -63,11 +147,11 @@ export function AiModuleSelectionPage() {
   }
 
   const activeSelectedFrame = activeRegion ? selectedFrameMap[activeRegion] || null : null;
-  const selectedModuleLabel = selectedModuleIds.length > 0
-    ? selectedModuleIds
-        .map((moduleId) => (moduleId === "b-line" ? "B-LINE" : "RDS-SCORE"))
-        .join(", ")
-    : "No module selected";
+  const selectedModuleLabel =
+    selectedModuleIds.length > 0
+      ? selectedModuleIds.map((moduleId) => (moduleId === "b-line" ? "B-LINE" : "RDS-SCORE")).join(", ")
+      : "No module selected";
+  const isViewChanged = zoomScale !== 1 || panOffset.x !== 0 || panOffset.y !== 0 || viewRotation !== 0;
 
   function handleToggleModule(moduleId) {
     setDisabledActionMessage("");
@@ -82,6 +166,77 @@ export function AiModuleSelectionPage() {
 
   function clearDisabledActionMessage() {
     setDisabledActionMessage("");
+  }
+
+  function handleToggleHoldMode() {
+    if (!isHoldMode && isZoomMode) {
+      toggleZoomMode();
+    }
+
+    if (!isHoldMode && isMagnifierMode) {
+      setIsMagnifierMode(false);
+      setIsMagnifierActive(false);
+      setShowMagnifierPopover(false);
+    }
+
+    toggleHoldMode();
+  }
+
+  function handleToggleZoomMode() {
+    if (!isZoomMode && isHoldMode) {
+      toggleHoldMode();
+    }
+
+    if (!isZoomMode && isMagnifierMode) {
+      setIsMagnifierMode(false);
+      setIsMagnifierActive(false);
+      setShowMagnifierPopover(false);
+    }
+
+    toggleZoomMode();
+  }
+
+  function handleToggleMagnifierMode() {
+    if (!isMagnifierMode && isHoldMode) {
+      toggleHoldMode();
+    }
+
+    if (!isMagnifierMode && isZoomMode) {
+      toggleZoomMode();
+    }
+
+    setIsMagnifierMode((current) => !current);
+    setIsMagnifierActive(false);
+    setShowMagnifierPopover(false);
+  }
+
+  function handleMagnifierSizeChange(nextSize) {
+    setMagnifierConfig((current) => ({
+      ...current,
+      size: Math.max(MIN_MAGNIFIER_CONFIG.size, Math.min(MAX_MAGNIFIER_CONFIG.size, nextSize))
+    }));
+  }
+
+  function handleMagnifierZoomChange(nextZoomFactor) {
+    setMagnifierConfig((current) => ({
+      ...current,
+      zoomFactor: Math.max(MIN_MAGNIFIER_CONFIG.zoomFactor, Math.min(MAX_MAGNIFIER_CONFIG.zoomFactor, nextZoomFactor))
+    }));
+  }
+
+  function handleRotateLeft() {
+    setViewRotation((current) => normalizeRotation(current - 90));
+  }
+
+  function handleRotateRight() {
+    setViewRotation((current) => normalizeRotation(current + 90));
+  }
+
+  function resetView() {
+    resetHold();
+    resetZoom();
+    setMagnifierConfig(DEFAULT_MAGNIFIER_CONFIG);
+    setViewRotation(0);
   }
 
   function handleContinue() {
@@ -99,6 +254,83 @@ export function AiModuleSelectionPage() {
     });
   }
 
+  function handleViewerPointerDown(event) {
+    if (isMagnifierMode) {
+      const stageElement = viewerStageRef.current;
+      const imageElement = previewImageRef.current;
+
+      if (!stageElement || !imageElement) {
+        return;
+      }
+
+      const stageRect = stageElement.getBoundingClientRect();
+      const imageRect = imageElement.getBoundingClientRect();
+      const insideImage =
+        event.clientX >= imageRect.left &&
+        event.clientX <= imageRect.right &&
+        event.clientY >= imageRect.top &&
+        event.clientY <= imageRect.bottom;
+
+      if (!insideImage) {
+        setIsMagnifierActive(false);
+        return;
+      }
+
+      setMagnifierState(getMagnifierState(stageRect, imageRect, event.clientX, event.clientY, magnifierConfig));
+      setIsMagnifierActive(true);
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      return;
+    }
+
+    if (isHoldMode) {
+      handleHoldPointerDown(event);
+      return;
+    }
+
+    if (isZoomMode) {
+      handleZoomPointerDown(event);
+    }
+  }
+
+  function handleViewerPointerMove(event) {
+    if (isMagnifierMode) {
+      if ((event.buttons & 1) !== 1) {
+        return;
+      }
+
+      const stageElement = viewerStageRef.current;
+      const imageElement = previewImageRef.current;
+
+      if (!stageElement || !imageElement) {
+        return;
+      }
+
+      const stageRect = stageElement.getBoundingClientRect();
+      const imageRect = imageElement.getBoundingClientRect();
+      setMagnifierState(getMagnifierState(stageRect, imageRect, event.clientX, event.clientY, magnifierConfig));
+      setIsMagnifierActive(true);
+      return;
+    }
+
+    if (isHoldMode) {
+      handleHoldPointerMove(event);
+      return;
+    }
+
+    if (isZoomMode) {
+      handleZoomPointerMove(event);
+    }
+  }
+
+  function stopViewerInteraction(event) {
+    if (isMagnifierActive) {
+      setIsMagnifierActive(false);
+    }
+
+    stopHold(event);
+    stopZoom(event);
+  }
+
   return (
     <div className="page-stack selection-page">
       <section className={`selection-layout${showOptionsMenu ? "" : " hide-left"}${showSelectedMenu ? "" : " hide-right"}`}>
@@ -111,39 +343,39 @@ export function AiModuleSelectionPage() {
         />
 
         <section className="selection-main panel">
-          <div className="selection-viewer-header ai-module-viewer-header">
-            <div className="viewer-header-actions">
-              <div className="viewer-header-side viewer-header-side-left" />
-
-              <div className="viewer-header-center">
-                <div className="viewer-control-cluster preprocessing-center-chip ai-module-center-chip">
-                  {selectedModuleLabel} selected
-                </div>
-              </div>
-
-              <div className="viewer-header-side viewer-header-side-right">
-                <div className="viewer-primary-actions">
-                  <span
-                    onMouseEnter={() => {
-                      if (selectedModuleIds.length === 0) {
-                        showDisabledActionMessage("Select at least one AI module before continuing.");
-                      }
-                    }}
-                    onMouseLeave={clearDisabledActionMessage}
-                  >
-                    <button
-                      className="primary-button"
-                      type="button"
-                      onClick={handleContinue}
-                      disabled={selectedModuleIds.length === 0}
-                    >
-                      Continue
-                    </button>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <AiViewerToolbar
+            centerContent={<div className="viewer-control-cluster preprocessing-center-chip ai-module-center-chip">{selectedModuleLabel} selected</div>}
+            handleMagnifierSizeChange={handleMagnifierSizeChange}
+            handleMagnifierZoomChange={handleMagnifierZoomChange}
+            handleRotateLeft={handleRotateLeft}
+            handleRotateRight={handleRotateRight}
+            handleToggleHoldMode={handleToggleHoldMode}
+            handleToggleMagnifierMode={handleToggleMagnifierMode}
+            handleToggleZoomMode={handleToggleZoomMode}
+            isHoldMode={isHoldMode}
+            isMagnifierMode={isMagnifierMode}
+            isViewChanged={isViewChanged}
+            isZoomMode={isZoomMode}
+            magnifierConfig={magnifierConfig}
+            magnifierPopoverRef={magnifierPopoverRef}
+            resetView={resetView}
+            rightContent={
+              <span
+                onMouseEnter={() => {
+                  if (selectedModuleIds.length === 0) {
+                    showDisabledActionMessage("Select at least one AI module before continuing.");
+                  }
+                }}
+                onMouseLeave={clearDisabledActionMessage}
+              >
+                <button className="primary-button" type="button" onClick={handleContinue} disabled={selectedModuleIds.length === 0}>
+                  Continue
+                </button>
+              </span>
+            }
+            setShowMagnifierPopover={setShowMagnifierPopover}
+            showMagnifierPopover={showMagnifierPopover}
+          />
 
           <ViewerStage
             activeProgressPercent={0}
@@ -151,27 +383,20 @@ export function AiModuleSelectionPage() {
             activeSelectedFrame={activeSelectedFrame}
             activeVideo={null}
             activeVideoFrames={[]}
-            className="viewer-stage"
+            className={`viewer-stage${isHoldMode ? " hold-ready" : ""}${isHoldGestureActive ? " hold-active" : ""}${isZoomMode ? " zoom-ready" : ""}${isZoomGestureActive ? " zoom-active" : ""}${isMagnifierMode ? " magnifier-ready" : ""}${isMagnifierActive ? " magnifier-active" : ""}`}
             currentFrame={0}
             disabledActionMessage={disabledActionMessage}
             handleRailMouseDown={() => {}}
             handleRailPointerMove={() => {}}
-            handleViewerPointerDown={() => {}}
-            handleViewerPointerMove={() => {}}
+            handleViewerPointerDown={handleViewerPointerDown}
+            handleViewerPointerMove={handleViewerPointerMove}
             handleViewerWheel={() => {}}
             isActiveVideoReady={false}
-            isMagnifierActive={false}
-            magnifierConfig={{ size: 200, zoomFactor: 2 }}
-            magnifierState={{
-              x: 0,
-              y: 0,
-              backgroundWidth: 0,
-              backgroundHeight: 0,
-              backgroundOffsetX: 0,
-              backgroundOffsetY: 0
-            }}
-            onStopViewerInteraction={() => {}}
-            panOffset={{ x: 0, y: 0 }}
+            isMagnifierActive={isMagnifierActive}
+            magnifierConfig={magnifierConfig}
+            magnifierState={magnifierState}
+            onStopViewerInteraction={stopViewerInteraction}
+            panOffset={panOffset}
             previewImageRef={previewImageRef}
             scrubberRailRef={null}
             scrubberThumbTop={0}
@@ -179,12 +404,12 @@ export function AiModuleSelectionPage() {
             showCacheProgress={false}
             stopRailDrag={() => {}}
             viewerMode="frame"
-            viewRotation={0}
+            viewRotation={viewRotation}
             viewerStageRef={viewerStageRef}
             framePlaceholderMessage="Preparing selected frame..."
             viewerOverlayMessage=""
-            zoomOrigin={{ x: 50, y: 50 }}
-            zoomScale={1}
+            zoomOrigin={zoomOrigin}
+            zoomScale={zoomScale}
           />
         </section>
 
