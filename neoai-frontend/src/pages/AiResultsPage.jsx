@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AiResultsModulesSidebar } from "../components/AiResultsModulesSidebar";
 import { AiViewerToolbar } from "../components/AiViewerToolbar";
 import { SelectedFramesSidebar } from "../components/SelectedFramesSidebar";
@@ -45,6 +45,7 @@ function getMagnifierState(stageRect, imageRect, clientX, clientY, magnifierConf
 export function AiResultsPage() {
   const { reportId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const magnifierPopoverRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
@@ -316,6 +317,15 @@ export function AiResultsPage() {
     stopZoom(event);
   }
 
+  function handleGoToReporting() {
+    navigate(`/report/${reportId}`, {
+      state: {
+        ...location.state,
+        reportId
+      }
+    });
+  }
+
   return (
     <div className="page-stack selection-page">
       <section className={`selection-layout${showResultsMenu ? "" : " hide-left"}${showSelectedMenu ? "" : " hide-right"}`}>
@@ -349,7 +359,11 @@ export function AiResultsPage() {
             magnifierConfig={magnifierConfig}
             magnifierPopoverRef={magnifierPopoverRef}
             resetView={resetView}
-            rightContent={null}
+            rightContent={
+              <button className="primary-button" type="button" onClick={handleGoToReporting}>
+                Go to Reporting
+              </button>
+            }
             setShowMagnifierPopover={setShowMagnifierPopover}
             showMagnifierPopover={showMagnifierPopover}
           />
