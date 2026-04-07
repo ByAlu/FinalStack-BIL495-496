@@ -3,6 +3,7 @@ package com.backend.datamanagment.controller;
 import com.backend.cloud.service.CloudService;
 import com.backend.datamanagment.service.ExaminationVideoListingService;
 import com.backend.model.dto.ExaminationVideoDTO;
+import com.backend.model.dto.GCSPage;
 import com.backend.model.dto.UploadUrlResponseDTO;
 import com.backend.model.entity.ExaminationRegion;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,9 +29,10 @@ public class ExaminationVideoListingController {
      * @return page of Examination Video datas, containing video URL and metadata
      */
     @GetMapping
-    public ResponseEntity<Page<ExaminationVideoDTO>> getExaminationVideosByPatientId(@RequestParam Long patientId,
-                                                                                    Pageable pageable) {
-        return ResponseEntity.ok(service.getExaminationVideosByPatientId(patientId, pageable));
+    public ResponseEntity<GCSPage<ExaminationVideoDTO>> getExaminationVideosByPatientId(@RequestParam Long patientId,
+                                                                                        @RequestParam(required = false) String pageToken,
+                                                                                        Pageable pageable) {
+        return ResponseEntity.ok(service.getExaminationVideosByPatientId(patientId,pageToken ,pageable));
     }
 
     /**
