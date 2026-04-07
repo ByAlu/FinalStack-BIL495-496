@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { WorkflowSteps } from "../components/WorkflowSteps";
 import { getExaminationByIds } from "../services/mockApi";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
+import VideoPlayer from "../components/VideoPlayer";
+import PlayControls from "../components/PlayControls";
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 
@@ -21,30 +23,19 @@ function getExaminationCacheKey(patientId, examinationId) {
 export function DataSelectionPage() {
   const { patientId, examinationId } = useParams();
   const navigate = useNavigate();
-  const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
-  const initialRegion = examination?.videos[0]?.region || "r1";
-  const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
-  const initialCache = examinationCacheStore.get(examinationCacheKey);
-  const initialSelectionState = (() => {
-    if (!patientId || !examinationId) {
-      return null;
-    }
-
-    const rawValue = window.sessionStorage.getItem(getStorageKey(patientId, examinationId));
-
-    if (!rawValue) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(rawValue);
-    } catch {
-      window.sessionStorage.removeItem(getStorageKey(patientId, examinationId));
-      return null;
-    }
-  })();
+  const [activeRegion, setActiveRegion] = useState("r1");
+  const [selectedFrames, setSelectedFrames] = useState({});
+  const [viewerMode, setViewerMode] = useState("video");
+  const [selectedFrameRegion, setSelectedFrameRegion] = useState("");
+  const [fps, setFps] = useState(10);
+  const [currentFrame, setCurrentFrame] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [videoFramesByName, setVideoFramesByName] = useState({});
+  const [videoInfoByName, setVideoInfoByName] = useState({});
+  const [extractionStateByName, setExtractionStateByName] = useState({});
+  const [showVideoMenu, setShowVideoMenu] = useState(true);
+  const [showSelectedMenu, setShowSelectedMenu] = useState(true);
   const scrubberRailRef = useRef(null);
-  const fpsPopoverRef = useRef(null);
   const playbackTimerRef = useRef(0);
   const extractionRunRef = useRef(0);
   const activeExtractionNameRef = useRef("");
@@ -53,24 +44,28 @@ export function DataSelectionPage() {
   const videoFramesByNameRef = useRef({});
   const videoInfoByNameRef = useRef({});
   const extractionStateByNameRef = useRef({});
-  const [activeRegion, setActiveRegion] = useState(initialSelectionState?.activeRegion || initialRegion);
-  const [selectedFrames, setSelectedFrames] = useState(initialSelectionState?.selectedFrames || {});
-  const [viewerMode, setViewerMode] = useState("video");
-  const [selectedFrameRegion, setSelectedFrameRegion] = useState("");
-  const [fps, setFps] = useState(10);
-  const [showFpsPopover, setShowFpsPopover] = useState(false);
-  const [currentFrame, setCurrentFrame] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [videoFramesByName, setVideoFramesByName] = useState(initialCache?.videoFramesByName || {});
-  const [videoInfoByName, setVideoInfoByName] = useState(initialCache?.videoInfoByName || {});
-  const [extractionStateByName, setExtractionStateByName] = useState(initialCache?.extractionStateByName || {});
-  const [showVideoMenu, setShowVideoMenu] = useState(true);
-  const [showSelectedMenu, setShowSelectedMenu] = useState(true);
+  const [examination, setExamination] = useState(null);
+
+  // Fetch videos on initial load
+  useEffect(() => {
+    const fetchExamination = async () => {
+      try {
+        const videos = await getVideos(patientId, examinationId);
+        setExamination(videos);
+        const initialRegion = videos?.[0]?.region || "r1";
+        setActiveRegion(initialRegion);
+      } catch (error) {
+        console.error("Error fetching videos:", error);
+      }
+    };
+
+    fetchExamination();
+  }, [patientId, examinationId]);
 
   const activeVideo = useMemo(() => {
     return examination?.videos.find((video) => video.region === activeRegion) || null;
   }, [activeRegion, examination]);
-  const activeSelectedFrame = selectedFrameRegion ? selectedFrames[selectedFrameRegion] : null;
+
   const activeVideoFrames = activeVideo ? videoFramesByName[activeVideo.name] || [] : [];
   const activeVideoInfo = activeVideo ? videoInfoByName[activeVideo.name] || null : null;
   const activeExtractionState = activeVideo
@@ -83,76 +78,20 @@ export function DataSelectionPage() {
   const availableFrameCount = Math.max(activeVideoFrames.length, 1);
   const totalFrames = activeExtractionState.status === "done" ? Math.max(activeVideoFrames.length, 1) : availableFrameCount;
 
+  // Store selected frames and other data
   useEffect(() => {
-    videoFramesByNameRef.current = videoFramesByName;
-    examinationCacheStore.set(examinationCacheKey, {
-      videoFramesByName,
-      videoInfoByName: videoInfoByNameRef.current,
-      extractionStateByName: extractionStateByNameRef.current
-    });
-  }, [examinationCacheKey, videoFramesByName]);
-
-  useEffect(() => {
-    videoInfoByNameRef.current = videoInfoByName;
-    examinationCacheStore.set(examinationCacheKey, {
-      videoFramesByName: videoFramesByNameRef.current,
-      videoInfoByName,
-      extractionStateByName: extractionStateByNameRef.current
-    });
-  }, [examinationCacheKey, videoInfoByName]);
-
-  useEffect(() => {
-    extractionStateByNameRef.current = extractionStateByName;
-    examinationCacheStore.set(examinationCacheKey, {
-      videoFramesByName: videoFramesByNameRef.current,
-      videoInfoByName: videoInfoByNameRef.current,
-      extractionStateByName
-    });
-  }, [examinationCacheKey, extractionStateByName]);
-
-  useEffect(() => {
-    if (!patientId || !examinationId) {
-      return;
-    }
+    if (!patientId || !examinationId) return;
 
     window.sessionStorage.setItem(
       getStorageKey(patientId, examinationId),
       JSON.stringify({
         activeRegion,
-        selectedFrames
+        selectedFrames,
       })
     );
   }, [activeRegion, selectedFrames, patientId, examinationId]);
 
-  useEffect(() => {
-    setViewerMode("video");
-    setIsPlaying(false);
-    setCurrentFrame(() => {
-      if (pendingFrameJumpRef.current?.region === activeRegion) {
-        return pendingFrameJumpRef.current.frameIndex || 0;
-      }
-
-      return 0;
-    });
-  }, [activeRegion]);
-
-  useEffect(() => {
-    setCurrentFrame((current) => Math.min(current, Math.max(activeVideoFrames.length - 1, 0)));
-  }, [activeVideoFrames.length]);
-
-  useEffect(() => {
-    if (!pendingFrameJumpRef.current || pendingFrameJumpRef.current.region !== activeRegion) {
-      return;
-    }
-
-    if (activeVideoFrames.length === 0) {
-      return;
-    }
-
-    setCurrentFrame(Math.min(pendingFrameJumpRef.current.frameIndex || 0, Math.max(activeVideoFrames.length - 1, 0)));
-    pendingFrameJumpRef.current = null;
-  }, [activeRegion, activeVideoFrames.length]);
-
+  // Handle frame-by-frame playback
   useEffect(() => {
     window.clearInterval(playbackTimerRef.current);
 
@@ -178,217 +117,64 @@ export function DataSelectionPage() {
     };
   }, [activeVideoFrames.length, fps, isPlaying, totalFrames, viewerMode]);
 
-  useEffect(() => {
-    return () => {
-      window.clearInterval(playbackTimerRef.current);
-    };
-  }, []);
+  const handleSelectRegion = (region) => {
+    setActiveRegion(region);
+    setSelectedFrameRegion("");
+  };
 
-  useEffect(() => {
-    function handlePointerDown(event) {
-      if (!fpsPopoverRef.current?.contains(event.target)) {
-        setShowFpsPopover(false);
-      }
-    }
+  const handleSelectFrame = () => {
+    if (!isActiveVideoReady || !activeVideoFrames[currentFrame]) return;
 
-    window.addEventListener("mousedown", handlePointerDown);
+    setSelectedFrames((current) => ({
+      ...current,
+      [activeRegion]: {
+        region: activeRegion,
+        videoName: activeVideo.name,
+        thumbnail: activeVideoFrames[currentFrame],
+        frameIndex: currentFrame,
+      },
+    }));
 
-    return () => {
-      window.removeEventListener("mousedown", handlePointerDown);
-    };
-  }, []);
+    setViewerMode("frame");
+    setSelectedFrameRegion(activeRegion);
+  };
 
-  useEffect(() => {
-    if (!examination?.videos?.length) {
-      return undefined;
-    }
-
-    let cancelled = false;
-    extractionRunRef.current += 1;
-    const queueRunId = extractionRunRef.current;
-    
-    async function extractVideo(video) {
-      const videoName = video.name;
-      const existingFrames = videoFramesByNameRef.current[videoName] || [];
-      const videoElement = document.createElement("video");
-      videoElement.muted = true;
-      videoElement.volume = 0;
-      videoElement.playsInline = true;
-      videoElement.preload = "auto";
-
-      await new Promise((resolve, reject) => {
-        const handleLoadedMetadata = () => {
-          videoElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
-          videoElement.removeEventListener("error", handleError);
-          resolve();
-        };
-
-        const handleError = () => {
-          videoElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
-          videoElement.removeEventListener("error", handleError);
-          reject(new Error(`Failed to load ${videoName}`));
-        };
-
-        videoElement.addEventListener("loadedmetadata", handleLoadedMetadata);
-        videoElement.addEventListener("error", handleError);
-        videoElement.src = video.videoUrl;
-        videoElement.load();
+  const handleApprove = async () => {
+    // Preprocess selected frames
+    try {
+      const processedFrames = await preprocess({
+        patientId,
+        examinationId,
+        selectedFrames: Object.values(selectedFrames),
       });
+      navigate(`/preprocessing/${patientId}/${examinationId}`, {
+        state: { patientId, examinationId, selectedFrames: processedFrames },
+      });
+    } catch (error) {
+      console.error("Error during preprocessing:", error);
+    }
+  };
 
-      const durationValue = videoElement.duration || 0;
-      const frameCount = Math.max(1, Math.floor(durationValue * SOURCE_FPS));
-      const startIndex = Math.min(existingFrames.length, frameCount);
+  const handleTogglePlay = () => {
+    setViewerMode("video");
+    setSelectedFrameRegion("");
 
-      setVideoInfoByName((current) => ({
-        ...current,
-        [videoName]: {
-          duration: durationValue,
-          totalFrames: frameCount
-        }
-      }));
-      setExtractionStateByName((current) => ({
-        ...current,
-        [videoName]: {
-          status: "extracting",
-          progress: startIndex / frameCount
-        }
-      }));
-
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-
-      if (!context) {
-        return;
-      }
-
-      canvas.width = videoElement.videoWidth || 1280;
-      canvas.height = videoElement.videoHeight || 720;
-
-      const seekVideoTo = async (time) =>
-        new Promise((resolve) => {
-          const handleSeeked = () => {
-            videoElement.removeEventListener("seeked", handleSeeked);
-            resolve();
-          };
-
-          videoElement.addEventListener("seeked", handleSeeked, { once: true });
-          videoElement.currentTime = time;
-        });
-
-      const frames = existingFrames.slice();
-
-      for (let frameIndex = startIndex; frameIndex < frameCount; frameIndex += 1) {
-        if (cancelled || extractionRunRef.current !== queueRunId) {
-          setExtractionStateByName((current) => ({
-            ...current,
-            [videoName]: {
-              status: "paused",
-              progress: frames.length / frameCount
-            }
-          }));
-          return;
-        }
-
-        const time = Math.min(frameIndex / SOURCE_FPS, Math.max(durationValue - 0.001, 0));
-        await seekVideoTo(time);
-        context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-        frames.push(canvas.toDataURL("image/jpeg", 0.72));
-
-        if (frameIndex % 10 === 0 || frameIndex === frameCount - 1) {
-          setVideoFramesByName((current) => ({
-            ...current,
-            [videoName]: frames.slice()
-          }));
-          setExtractionStateByName((current) => ({
-            ...current,
-            [videoName]: {
-              status: "extracting",
-              progress: (frameIndex + 1) / frameCount
-            }
-          }));
-          await new Promise((resolve) => window.setTimeout(resolve, 0));
-        }
-      }
-
-      setVideoFramesByName((current) => ({
-        ...current,
-        [videoName]: frames
-      }));
-      setExtractionStateByName((current) => ({
-        ...current,
-        [videoName]: {
-          status: "done",
-          progress: 1
-        }
-      }));
+    if (currentFrame >= Math.max(activeVideoFrames.length - 1, 0)) {
+      setCurrentFrame(0);
     }
 
-    async function runQueue() {
-      const orderedVideos = [
-        ...examination.videos.filter((video) => video.region === activeRegion),
-        ...examination.videos.filter((video) => video.region !== activeRegion)
-      ];
+    setIsPlaying((current) => !current);
+  };
 
-      for (const video of orderedVideos) {
-        if (cancelled) {
-          return;
-        }
+  const seekToFrame = (nextFrame) => {
+    const maxFrame = Math.max(activeVideoFrames.length - 1, 0);
+    const boundedFrame = Math.max(0, Math.min(maxFrame, nextFrame));
 
-        const state = extractionStateByNameRef.current[video.name];
-        if (state?.status === "done") {
-          continue;
-        }
-
-        activeExtractionNameRef.current = video.name;
-        try {
-          await extractVideo(video);
-        } catch {
-          setExtractionStateByName((current) => ({
-            ...current,
-            [video.name]: {
-              status: "error",
-              progress: 0
-            }
-          }));
-        }
-      }
-
-      activeExtractionNameRef.current = "";
-    }
-
-    runQueue();
-
-    return () => {
-      cancelled = true;
-      activeExtractionNameRef.current = "";
-    };
-  }, [activeRegion, examination]);
-
-  useEffect(() => {
-    function handlePointerMove(event) {
-      if (!scrubberRailRef.current || !isDraggingScrubberRef.current) {
-        return;
-      }
-
-      const rect = scrubberRailRef.current.getBoundingClientRect();
-      const relativeY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
-      const ratio = rect.height <= 0 ? 0 : relativeY / rect.height;
-      seekToFrame(Math.round(ratio * Math.max(totalFrames - 1, 0)));
-    }
-
-    function handlePointerUp() {
-      isDraggingScrubberRef.current = false;
-    }
-
-    window.addEventListener("mousemove", handlePointerMove);
-    window.addEventListener("mouseup", handlePointerUp);
-
-    return () => {
-      window.removeEventListener("mousemove", handlePointerMove);
-      window.removeEventListener("mouseup", handlePointerUp);
-      isDraggingScrubberRef.current = false;
-    };
-  }, [totalFrames]);
+    setViewerMode("video");
+    setSelectedFrameRegion("");
+    setIsPlaying(false);
+    setCurrentFrame(boundedFrame);
+  };
 
   if (!examination) {
     return (
@@ -403,120 +189,6 @@ export function DataSelectionPage() {
       </div>
     );
   }
-
-  function handleSelectRegion(region) {
-    setActiveRegion(region);
-    setSelectedFrameRegion("");
-  }
-
-  function handleSelectFrame() {
-    if (!isActiveVideoReady || !activeVideoFrames[currentFrame]) {
-      return;
-    }
-
-    setSelectedFrames((current) => ({
-      ...current,
-      [activeRegion]: {
-        region: activeRegion,
-        videoName: activeVideo.name,
-        thumbnail: activeVideoFrames[currentFrame],
-        frameIndex: currentFrame
-      }
-    }));
-    setViewerMode("frame");
-    setSelectedFrameRegion(activeRegion);
-  }
-
-  function handleApprove() {
-    setActiveWorkflowContext({ patientId, examinationId });
-    resetWorkflowAfterStep(patientId, examinationId, 2);
-    navigate(`/preprocessing/${patientId}/${examinationId}`, {
-      state: {
-        patientId,
-        examinationId,
-        selectedFrames
-      }
-    });
-  }
-
-  function handleTogglePlay() {
-    setViewerMode("video");
-    setSelectedFrameRegion("");
-
-    if (currentFrame >= Math.max(activeVideoFrames.length - 1, 0)) {
-      setCurrentFrame(0);
-    }
-
-    setIsPlaying((current) => !current);
-  }
-
-  function handleSelectedFrameClick(region) {
-    const selectedFrame = selectedFrames[region];
-
-    if (!selectedFrame) {
-      return;
-    }
-
-    pendingFrameJumpRef.current = {
-      region,
-      frameIndex: selectedFrame.frameIndex || 0
-    };
-    setViewerMode("video");
-    setSelectedFrameRegion(region);
-    setIsPlaying(false);
-
-    if (activeRegion === region) {
-      setCurrentFrame(selectedFrame.frameIndex || 0);
-      pendingFrameJumpRef.current = null;
-      return;
-    }
-
-    setActiveRegion(region);
-  }
-
-  function seekToFrame(nextFrame) {
-    const maxFrame = Math.max(activeVideoFrames.length - 1, 0);
-    const boundedFrame = Math.max(0, Math.min(maxFrame, nextFrame));
-
-    setViewerMode("video");
-    setSelectedFrameRegion("");
-    setIsPlaying(false);
-    setCurrentFrame(boundedFrame);
-  }
-
-  function handleViewerWheel(event) {
-    if (!activeVideo || activeVideoFrames.length <= 1) {
-      return;
-    }
-
-    event.preventDefault();
-    const direction = event.deltaY > 0 ? 1 : -1;
-    seekToFrame(currentFrame + direction);
-  }
-
-  function adjustFps(delta) {
-    setFps((current) => Math.max(1, Math.min(60, current + delta)));
-  }
-
-  function updateFrameFromRail(clientY) {
-    if (!scrubberRailRef.current) {
-      return;
-    }
-
-    const rect = scrubberRailRef.current.getBoundingClientRect();
-    const relativeY = Math.max(0, Math.min(rect.height, clientY - rect.top));
-    const ratio = rect.height <= 0 ? 0 : relativeY / rect.height;
-    seekToFrame(Math.round(ratio * Math.max(activeVideoFrames.length - 1, 0)));
-  }
-
-  function handleRailMouseDown(event) {
-    isDraggingScrubberRef.current = true;
-    updateFrameFromRail(event.clientY);
-  }
-
-  const selectedCount = Object.keys(selectedFrames).length;
-  const isApprovedReady = regions.every((region) => selectedFrames[region]);
-  const scrubberThumbTop = activeVideoFrames.length <= 1 ? 0 : (currentFrame / (activeVideoFrames.length - 1)) * 100;
   
   return (
     <div className="page-stack selection-page">
@@ -580,54 +252,16 @@ export function DataSelectionPage() {
             <div className="viewer-header-actions">
               <div className="viewer-header-side viewer-header-side-left" />
               <div className="viewer-header-center">
-                <div className="viewer-control-cluster">
-                  <button className="viewer-play-button" type="button" onClick={handleTogglePlay}>
-                    {isPlaying ? "||" : "▶"}
-                  </button>
-                  <div className="viewer-fps-control" ref={fpsPopoverRef}>
-                    <label className="viewer-fps-chip">
-                      <button className="viewer-fps-step" type="button" onClick={() => adjustFps(-1)}>
-                        ‹
-                      </button>
-                      <button
-                        className="viewer-fps-trigger"
-                        type="button"
-                        onClick={() => setShowFpsPopover((current) => !current)}
-                      >
-                        <input
-                          type="number"
-                          min="1"
-                          max="60"
-                          step="1"
-                          value={fps}
-                          onChange={(event) => setFps(Math.max(1, Math.min(60, Number(event.target.value) || 1)))}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setShowFpsPopover(true);
-                          }}
-                        />
-                        <span>FPS</span>
-                      </button>
-                      <button className="viewer-fps-step" type="button" onClick={() => adjustFps(1)}>
-                        ›
-                      </button>
-                    </label>
-                    {showFpsPopover ? (
-                      <div className="viewer-fps-popover">
-                        <input
-                          aria-label="FPS slider"
-                          className="viewer-fps-slider"
-                          max="60"
-                          min="1"
-                          step="1"
-                          type="range"
-                          value={fps}
-                          onChange={(event) => setFps(Number(event.target.value))}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
+                <PlayControls
+                  isPlaying={isPlaying}
+                  handleTogglePlay={handleTogglePlay}
+                  fps={fps}
+                  setFps={setFps}
+                  showFpsPopover={showFpsPopover}
+                  setShowFpsPopover={setShowFpsPopover}
+                  adjustFps={adjustFps}
+                  fpsPopoverRef={fpsPopoverRef}
+                />
               </div>
               <div className="viewer-header-side viewer-header-side-right">
                 <button
@@ -650,34 +284,14 @@ export function DataSelectionPage() {
                   className="selection-frame-preview"
                   src={activeSelectedFrame.thumbnail}
                 />
-              ) : activeVideo ? (
-                <>
-                  {isActiveVideoReady && activeVideoFrames[Math.min(currentFrame, Math.max(activeVideoFrames.length - 1, 0))] ? (
-                    <img
-                      alt={`${activeRegion} frame ${currentFrame + 1}`}
-                      className="selection-frame-preview"
-                      src={activeVideoFrames[Math.min(currentFrame, Math.max(activeVideoFrames.length - 1, 0))]}
-                    />
-                  ) : (
-                    <div className="viewer-placeholder viewer-loading-state">Preparing frames...</div>
-                  )}
-                  <div
-                    aria-label="Frame scrubber"
-                    aria-valuemax={Math.max(0, activeVideoFrames.length - 1)}
-                    aria-valuemin="0"
-                    aria-valuenow={Math.min(currentFrame, Math.max(0, activeVideoFrames.length - 1))}
-                    className="viewer-frame-rail"
-                    onMouseDown={handleRailMouseDown}
-                    ref={scrubberRailRef}
-                    role="slider"
-                    tabIndex={0}
-                  >
-                    <div className="viewer-frame-rail-track" />
-                    <div className="viewer-frame-rail-thumb" style={{ top: `${scrubberThumbTop}%` }} />
-                  </div>
-                </>
               ) : (
-                <div className="viewer-placeholder">No video selected</div>
+                <VideoPlayer
+                  videoURL={examination.videos.find(video => video.region === activeRegion)?.url}
+                  isPlaying={isPlaying}
+                  currentFrame={currentFrame}
+                  activeVideoFrames={activeVideoFrames}
+                  isActiveVideoReady={isActiveVideoReady}
+                />
               )}
             </div>
 

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { WorkflowSteps } from "../components/WorkflowSteps";
 import ThreeColumnLayout from "../components/ThreeColumnLayout";
 import { getVideos } from '../services/api';
+import VideoPlayerTest from '../components/VideoPlayer';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function VideoTestPage() {
@@ -56,6 +57,7 @@ export default function VideoTestPage() {
   return (
     <div className="page-stack selection-page">
       <h2>Videos</h2>
+      
       <div className="video-list">
         {videos.map((video, index) => (
           <button key={index} onClick={() => test(video)}>
@@ -65,18 +67,21 @@ export default function VideoTestPage() {
       </div>
 
       {selectedVideo && (
-        <div className="video-player">
+        <VideoPlayer url={selectedVideo.url} />
+        
+      )}
+    </div>
+  );
+}
+/*
+<div className="video-player">
           <video
             ref={videoRef}
             src={selectedVideo.url}
-            controls
             crossOrigin="anonymous"
             style={{ maxWidth: "600px" }}
           />
           <button onClick={captureFrame}>Capture Current Frame</button>
           <canvas ref={canvasRef} style={{ display: "none" }} />
         </div>
-      )}
-    </div>
-  );
-}
+*/
