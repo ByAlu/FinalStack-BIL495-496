@@ -36,6 +36,16 @@ const DEFAULT_OPERATIONS = [
     clipLimit: 2
   },
   {
+    id: "gaussian-filter",
+    type: "gaussian-filter",
+    label: "Gaussian filter",
+    description: "Smooth the selected ultrasound frame with a Gaussian blur to reduce softer noise.",
+    enabled: false,
+    kernelSize: 3,
+    sigmaX: 0,
+    sigmaY: 0
+  },
+  {
     id: "grayscale",
     type: "grayscale",
     label: "Convert to grayscale",

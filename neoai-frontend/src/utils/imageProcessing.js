@@ -52,6 +52,29 @@ export async function applyMedianFilter(src, kernelSize = 3) {
   }
 }
 
+export async function applyGaussianFilter(src, kernelSize = 3, sigmaX = 0, sigmaY = 0) {
+  if (!src || kernelSize <= 1) {
+    return src;
+  }
+
+  ensureOpenCvReady();
+
+  const image = await loadImage(src);
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  const sourceMat = loadMatFromSourceCanvas(image, width, height);
+  const targetMat = new window.cv.Mat();
+  const kernel = new window.cv.Size(kernelSize, kernelSize);
+
+  try {
+    window.cv.GaussianBlur(sourceMat, targetMat, kernel, sigmaX, sigmaY, window.cv.BORDER_DEFAULT);
+    return matToDataUrl(targetMat);
+  } finally {
+    sourceMat.delete();
+    targetMat.delete();
+  }
+}
+
 export async function applyClahe(src, clipLimit = 2) {
   if (!src) {
     return src;
@@ -161,6 +184,10 @@ export async function applyOperationsToFrame(src, operations) {
 
     if (operation.type === "median-filter") {
       currentSrc = await applyMedianFilter(currentSrc, operation.kernelSize);
+    }
+
+    if (operation.type === "gaussian-filter") {
+      currentSrc = await applyGaussianFilter(currentSrc, operation.kernelSize, operation.sigmaX, operation.sigmaY);
     }
 
     if (operation.type === "clahe") {

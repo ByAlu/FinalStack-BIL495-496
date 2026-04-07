@@ -23,7 +23,9 @@ export function PreprocessingOptionsSidebar({
         {
           kernelSize: operation.kernelSize,
           clipLimit: operation.clipLimit,
-          strength: operation.strength
+          strength: operation.strength,
+          sigmaX: operation.sigmaX,
+          sigmaY: operation.sigmaY
         }
       ])
     )
@@ -37,7 +39,9 @@ export function PreprocessingOptionsSidebar({
           {
             kernelSize: operation.kernelSize,
             clipLimit: operation.clipLimit,
-            strength: operation.strength
+            strength: operation.strength,
+            sigmaX: operation.sigmaX,
+            sigmaY: operation.sigmaY
           }
         ])
       )
@@ -159,6 +163,8 @@ export function PreprocessingOptionsSidebar({
               const draftKernelSize = draftValues[operation.id]?.kernelSize ?? operation.kernelSize;
               const draftClipLimit = draftValues[operation.id]?.clipLimit ?? operation.clipLimit;
               const draftStrength = draftValues[operation.id]?.strength ?? operation.strength;
+              const draftSigmaX = draftValues[operation.id]?.sigmaX ?? operation.sigmaX ?? 0;
+              const draftSigmaY = draftValues[operation.id]?.sigmaY ?? operation.sigmaY ?? 0;
 
               return (
                 <div key={operation.id}>
@@ -225,7 +231,7 @@ export function PreprocessingOptionsSidebar({
                     {isExpanded ? (
                       <div className="preprocessing-operation-body">
                         <p>{operation.description}</p>
-                        {operation.type === "median-filter" ? (
+                        {operation.type === "median-filter" || operation.type === "gaussian-filter" ? (
                           <label className="preprocessing-control-block">
                             <span className="preprocessing-control-label">
                               <span>Kernel size</span>
@@ -251,6 +257,56 @@ export function PreprocessingOptionsSidebar({
                               }}
                             />
                           </label>
+                        ) : null}
+                        {operation.type === "gaussian-filter" ? (
+                          <>
+                            <label className="preprocessing-control-block">
+                              <span className="preprocessing-control-label">
+                                <span>Sigma X</span>
+                                <strong>{draftSigmaX.toFixed(1)}</strong>
+                              </span>
+                              <input
+                                className="viewer-fps-slider"
+                                disabled={!operation.enabled}
+                                max="10"
+                                min="0"
+                                step="0.5"
+                                type="range"
+                                value={draftSigmaX}
+                                onChange={(event) => handleDraftValueChange(operation.id, "sigmaX", Number(event.target.value))}
+                                onMouseUp={() => commitDraftValue(operation.id, "sigmaX")}
+                                onTouchEnd={() => commitDraftValue(operation.id, "sigmaX")}
+                                onKeyUp={(event) => {
+                                  if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+                                    commitDraftValue(operation.id, "sigmaX");
+                                  }
+                                }}
+                              />
+                            </label>
+                            <label className="preprocessing-control-block">
+                              <span className="preprocessing-control-label">
+                                <span>Sigma Y</span>
+                                <strong>{draftSigmaY.toFixed(1)}</strong>
+                              </span>
+                              <input
+                                className="viewer-fps-slider"
+                                disabled={!operation.enabled}
+                                max="10"
+                                min="0"
+                                step="0.5"
+                                type="range"
+                                value={draftSigmaY}
+                                onChange={(event) => handleDraftValueChange(operation.id, "sigmaY", Number(event.target.value))}
+                                onMouseUp={() => commitDraftValue(operation.id, "sigmaY")}
+                                onTouchEnd={() => commitDraftValue(operation.id, "sigmaY")}
+                                onKeyUp={(event) => {
+                                  if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+                                    commitDraftValue(operation.id, "sigmaY");
+                                  }
+                                }}
+                              />
+                            </label>
+                          </>
                         ) : null}
                         {operation.type === "clahe" ? (
                           <label className="preprocessing-control-block">
