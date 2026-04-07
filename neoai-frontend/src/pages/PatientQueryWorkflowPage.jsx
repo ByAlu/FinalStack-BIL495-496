@@ -22,7 +22,8 @@ import {
   Collapse
 } from "@mui/material";
 import { findPatientById } from "../services/mockApi";
-import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
+import { resetExaminationWorkflowSession } from "../utils/resetExaminationWorkflowSession";
+import { getActiveWorkflowContext, resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
@@ -217,6 +218,16 @@ export function PatientQueryWorkflowPage() {
   }
 
   function handleContinue(patientId, examinationId) {
+    const activeWorkflowContext = getActiveWorkflowContext();
+    const isSameExamination =
+      activeWorkflowContext?.patientId === patientId && activeWorkflowContext?.examinationId === examinationId;
+
+    if (isSameExamination) {
+      setActiveWorkflowContext({ patientId, examinationId, reportId: activeWorkflowContext.reportId });
+      return;
+    }
+
+    resetExaminationWorkflowSession(patientId, examinationId);
     setActiveWorkflowContext({ patientId, examinationId });
     resetWorkflowAfterStep(patientId, examinationId, 1);
   }

@@ -3,6 +3,14 @@ import { useEffect, useRef, useState } from "react";
 const SOURCE_FPS = 30;
 const examinationCacheStore = new Map();
 
+export function clearExaminationFrameExtractionCache(examinationCacheKey) {
+  if (!examinationCacheKey) {
+    return;
+  }
+
+  examinationCacheStore.delete(examinationCacheKey);
+}
+
 export function useVideoFrameExtraction({ examination, activeRegion, examinationCacheKey }) {
   const initialCache = examinationCacheStore.get(examinationCacheKey);
   const extractionRunRef = useRef(0);
