@@ -1,6 +1,7 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
+import { getPreprocessingOperationDefinition } from "../config/preprocessingOperations";
 
 export function PreprocessingOptionsSidebar({
   operations,
@@ -126,6 +127,37 @@ export function PreprocessingOptionsSidebar({
     setDropIndicator(null);
   }
 
+  function renderControl(operation, control) {
+    const draftValue = draftValues[operation.id]?.[control.fieldName] ?? operation[control.fieldName];
+    const formattedValue = control.formatValue ? control.formatValue(draftValue) : draftValue;
+
+    return (
+      <label key={`${operation.id}-${control.fieldName}`} className="preprocessing-control-block">
+        <span className="preprocessing-control-label">
+          <span>{control.label}</span>
+          <strong>{formattedValue}</strong>
+        </span>
+        <input
+          className="viewer-fps-slider"
+          disabled={!operation.enabled}
+          max={String(control.max)}
+          min={String(control.min)}
+          step={String(control.step)}
+          type="range"
+          value={draftValue}
+          onChange={(event) => handleDraftValueChange(operation.id, control.fieldName, Number(event.target.value))}
+          onMouseUp={() => commitDraftValue(operation.id, control.fieldName)}
+          onTouchEnd={() => commitDraftValue(operation.id, control.fieldName)}
+          onKeyUp={(event) => {
+            if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+              commitDraftValue(operation.id, control.fieldName);
+            }
+          }}
+        />
+      </label>
+    );
+  }
+
   return (
     <aside className={`selection-sidebar preprocessing-sidebar panel${showMenu ? "" : " collapsed"}`}>
       {showMenu ? (
@@ -150,6 +182,7 @@ export function PreprocessingOptionsSidebar({
               const shouldRenderDivider = firstDisabledIndex > 0 && operationIndex === firstDisabledIndex;
               const isReorderable = operation.enabled && enabledOperations.length > 0;
               const isDragged = draggedOperationId === operation.id;
+              const operationDefinition = getPreprocessingOperationDefinition(operation.type);
               const showDropBefore =
                 dropIndicator?.operationId === operation.id &&
                 dropIndicator.placement === "before" &&
@@ -160,11 +193,6 @@ export function PreprocessingOptionsSidebar({
                 dropIndicator.placement === "after" &&
                 draggedOperationId &&
                 draggedOperationId !== operation.id;
-              const draftKernelSize = draftValues[operation.id]?.kernelSize ?? operation.kernelSize;
-              const draftClipLimit = draftValues[operation.id]?.clipLimit ?? operation.clipLimit;
-              const draftStrength = draftValues[operation.id]?.strength ?? operation.strength;
-              const draftSigmaX = draftValues[operation.id]?.sigmaX ?? operation.sigmaX ?? 0;
-              const draftSigmaY = draftValues[operation.id]?.sigmaY ?? operation.sigmaY ?? 0;
 
               return (
                 <div key={operation.id}>
@@ -231,133 +259,7 @@ export function PreprocessingOptionsSidebar({
                     {isExpanded ? (
                       <div className="preprocessing-operation-body">
                         <p>{operation.description}</p>
-                        {operation.type === "median-filter" || operation.type === "gaussian-filter" ? (
-                          <label className="preprocessing-control-block">
-                            <span className="preprocessing-control-label">
-                              <span>Kernel size</span>
-                              <strong>
-                                {draftKernelSize}x{draftKernelSize}
-                              </strong>
-                            </span>
-                            <input
-                              className="viewer-fps-slider"
-                              disabled={!operation.enabled}
-                              max="15"
-                              min="3"
-                              step="2"
-                              type="range"
-                              value={draftKernelSize}
-                              onChange={(event) => handleDraftValueChange(operation.id, "kernelSize", Number(event.target.value))}
-                              onMouseUp={() => commitDraftValue(operation.id, "kernelSize")}
-                              onTouchEnd={() => commitDraftValue(operation.id, "kernelSize")}
-                              onKeyUp={(event) => {
-                                if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
-                                  commitDraftValue(operation.id, "kernelSize");
-                                }
-                              }}
-                            />
-                          </label>
-                        ) : null}
-                        {operation.type === "gaussian-filter" ? (
-                          <>
-                            <label className="preprocessing-control-block">
-                              <span className="preprocessing-control-label">
-                                <span>Sigma X</span>
-                                <strong>{draftSigmaX.toFixed(1)}</strong>
-                              </span>
-                              <input
-                                className="viewer-fps-slider"
-                                disabled={!operation.enabled}
-                                max="10"
-                                min="0"
-                                step="0.5"
-                                type="range"
-                                value={draftSigmaX}
-                                onChange={(event) => handleDraftValueChange(operation.id, "sigmaX", Number(event.target.value))}
-                                onMouseUp={() => commitDraftValue(operation.id, "sigmaX")}
-                                onTouchEnd={() => commitDraftValue(operation.id, "sigmaX")}
-                                onKeyUp={(event) => {
-                                  if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
-                                    commitDraftValue(operation.id, "sigmaX");
-                                  }
-                                }}
-                              />
-                            </label>
-                            <label className="preprocessing-control-block">
-                              <span className="preprocessing-control-label">
-                                <span>Sigma Y</span>
-                                <strong>{draftSigmaY.toFixed(1)}</strong>
-                              </span>
-                              <input
-                                className="viewer-fps-slider"
-                                disabled={!operation.enabled}
-                                max="10"
-                                min="0"
-                                step="0.5"
-                                type="range"
-                                value={draftSigmaY}
-                                onChange={(event) => handleDraftValueChange(operation.id, "sigmaY", Number(event.target.value))}
-                                onMouseUp={() => commitDraftValue(operation.id, "sigmaY")}
-                                onTouchEnd={() => commitDraftValue(operation.id, "sigmaY")}
-                                onKeyUp={(event) => {
-                                  if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
-                                    commitDraftValue(operation.id, "sigmaY");
-                                  }
-                                }}
-                              />
-                            </label>
-                          </>
-                        ) : null}
-                        {operation.type === "clahe" ? (
-                          <label className="preprocessing-control-block">
-                            <span className="preprocessing-control-label">
-                              <span>Clip limit</span>
-                              <strong>{draftClipLimit.toFixed(1)}</strong>
-                            </span>
-                            <input
-                              className="viewer-fps-slider"
-                              disabled={!operation.enabled}
-                              max="8"
-                              min="1"
-                              step="0.5"
-                              type="range"
-                              value={draftClipLimit}
-                              onChange={(event) => handleDraftValueChange(operation.id, "clipLimit", Number(event.target.value))}
-                              onMouseUp={() => commitDraftValue(operation.id, "clipLimit")}
-                              onTouchEnd={() => commitDraftValue(operation.id, "clipLimit")}
-                              onKeyUp={(event) => {
-                                if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
-                                  commitDraftValue(operation.id, "clipLimit");
-                                }
-                              }}
-                            />
-                          </label>
-                        ) : null}
-                        {operation.type === "sharpen" ? (
-                          <label className="preprocessing-control-block">
-                            <span className="preprocessing-control-label">
-                              <span>Strength</span>
-                              <strong>{draftStrength.toFixed(1)}x</strong>
-                            </span>
-                            <input
-                              className="viewer-fps-slider"
-                              disabled={!operation.enabled}
-                              max="4"
-                              min="1"
-                              step="0.5"
-                              type="range"
-                              value={draftStrength}
-                              onChange={(event) => handleDraftValueChange(operation.id, "strength", Number(event.target.value))}
-                              onMouseUp={() => commitDraftValue(operation.id, "strength")}
-                              onTouchEnd={() => commitDraftValue(operation.id, "strength")}
-                              onKeyUp={(event) => {
-                                if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
-                                  commitDraftValue(operation.id, "strength");
-                                }
-                              }}
-                            />
-                          </label>
-                        ) : null}
+                        {operationDefinition?.controls.map((control) => renderControl(operation, control))}
                       </div>
                     ) : null}
                   </section>

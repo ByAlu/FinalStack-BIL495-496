@@ -8,6 +8,7 @@ import { useSelectionSession } from "../hooks/useSelectionSession";
 import { useViewerHold } from "../hooks/useViewerHold";
 import { useVideoFrameExtraction } from "../hooks/useVideoFrameExtraction";
 import { useViewerZoom } from "../hooks/useViewerZoom";
+import { createDefaultPreprocessingOperations } from "../config/preprocessingOperations";
 import { getExaminationByIds } from "../services/mockApi";
 import { applyOperationsToFrame } from "../utils/imageProcessing";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
@@ -18,49 +19,6 @@ const MAX_MAGNIFIER_CONFIG = { size: 500, zoomFactor: 8 };
 const MIN_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
 const PREVIEW_PROCESSING_DEBOUNCE_MS = 180;
 const OPENCV_READY_EVENT = "opencv-ready";
-const DEFAULT_OPERATIONS = [
-  {
-    id: "median-filter",
-    type: "median-filter",
-    label: "Median filter",
-    description: "Reduce speckle noise on the selected ultrasound frames.",
-    enabled: true,
-    kernelSize: 3
-  },
-  {
-    id: "clahe",
-    type: "clahe",
-    label: "CLAHE",
-    description: "Boost local contrast to make subtle tissue structures easier to see.",
-    enabled: false,
-    clipLimit: 2
-  },
-  {
-    id: "gaussian-filter",
-    type: "gaussian-filter",
-    label: "Gaussian filter",
-    description: "Smooth the selected ultrasound frame with a Gaussian blur to reduce softer noise.",
-    enabled: false,
-    kernelSize: 3,
-    sigmaX: 0,
-    sigmaY: 0
-  },
-  {
-    id: "grayscale",
-    type: "grayscale",
-    label: "Convert to grayscale",
-    description: "Convert the selected ultrasound frame to grayscale before later preprocessing steps.",
-    enabled: false
-  },
-  {
-    id: "sharpen",
-    type: "sharpen",
-    label: "Sharpen",
-    description: "Enhance edges after denoising to make boundaries appear crisper.",
-    enabled: false,
-    strength: 1
-  }
-];
 
 function getExaminationCacheKey(patientId, examinationId) {
   return `neoai-cache:${patientId}:${examinationId}`;
@@ -99,8 +57,8 @@ export function DataPreprocessingPage() {
   const magnifierPopoverRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
-  const [operations, setOperations] = useState(DEFAULT_OPERATIONS);
-  const [previewOperations, setPreviewOperations] = useState(DEFAULT_OPERATIONS);
+  const [operations, setOperations] = useState(() => createDefaultPreprocessingOperations());
+  const [previewOperations, setPreviewOperations] = useState(() => createDefaultPreprocessingOperations());
   const [showOptionsMenu, setShowOptionsMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
   const [isMagnifierMode, setIsMagnifierMode] = useState(false);

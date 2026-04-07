@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser } from "../services/api";
+import { loginUser } from "../services/mockApi";
 
 const STORAGE_KEY = "react-codex-auth";
 const AuthContext = createContext(null);

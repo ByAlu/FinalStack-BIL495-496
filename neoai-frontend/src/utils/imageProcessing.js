@@ -1,3 +1,5 @@
+import { PREPROCESSING_OPERATION_TYPES } from "../config/preprocessingOperations";
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -175,6 +177,17 @@ export async function applyGrayscale(src) {
 }
 
 export async function applyOperationsToFrame(src, operations) {
+  const operationHandlers = {
+    [PREPROCESSING_OPERATION_TYPES.MEDIAN_FILTER]: (currentSrc, operation) =>
+      applyMedianFilter(currentSrc, operation.kernelSize),
+    [PREPROCESSING_OPERATION_TYPES.GAUSSIAN_FILTER]: (currentSrc, operation) =>
+      applyGaussianFilter(currentSrc, operation.kernelSize, operation.sigmaX, operation.sigmaY),
+    [PREPROCESSING_OPERATION_TYPES.CLAHE]: (currentSrc, operation) =>
+      applyClahe(currentSrc, operation.clipLimit),
+    [PREPROCESSING_OPERATION_TYPES.GRAYSCALE]: (currentSrc) => applyGrayscale(currentSrc),
+    [PREPROCESSING_OPERATION_TYPES.SHARPEN]: (currentSrc, operation) =>
+      applySharpen(currentSrc, operation.strength)
+  };
   let currentSrc = src;
 
   for (const operation of operations) {
@@ -182,24 +195,10 @@ export async function applyOperationsToFrame(src, operations) {
       continue;
     }
 
-    if (operation.type === "median-filter") {
-      currentSrc = await applyMedianFilter(currentSrc, operation.kernelSize);
-    }
+    const handler = operationHandlers[operation.type];
 
-    if (operation.type === "gaussian-filter") {
-      currentSrc = await applyGaussianFilter(currentSrc, operation.kernelSize, operation.sigmaX, operation.sigmaY);
-    }
-
-    if (operation.type === "clahe") {
-      currentSrc = await applyClahe(currentSrc, operation.clipLimit);
-    }
-
-    if (operation.type === "grayscale") {
-      currentSrc = await applyGrayscale(currentSrc);
-    }
-
-    if (operation.type === "sharpen") {
-      currentSrc = await applySharpen(currentSrc, operation.strength);
+    if (handler) {
+      currentSrc = await handler(currentSrc, operation);
     }
   }
 
