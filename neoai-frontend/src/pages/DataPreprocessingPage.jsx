@@ -28,6 +28,10 @@ function getPreprocessingStateCacheKey(patientId, examinationId) {
   return `neoai-preprocessing:${patientId}:${examinationId}`;
 }
 
+function getCommittedPreprocessingStateCacheKey(patientId, examinationId) {
+  return `neoai-preprocessing-committed:${patientId}:${examinationId}`;
+}
+
 function normalizeRotation(nextRotation) {
   const normalized = nextRotation % 360;
   return normalized < 0 ? normalized + 360 : normalized;
@@ -59,6 +63,7 @@ export function DataPreprocessingPage() {
   const initialRegion = examination?.videos[0]?.region || "r1";
   const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
   const preprocessingStateCacheKey = getPreprocessingStateCacheKey(patientId, examinationId);
+  const committedPreprocessingStateCacheKey = getCommittedPreprocessingStateCacheKey(patientId, examinationId);
   const magnifierPopoverRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
@@ -106,6 +111,29 @@ export function DataPreprocessingPage() {
   const [isApplyPending, setIsApplyPending] = useState(false);
   const [openCvStatus, setOpenCvStatus] = useState("loading");
   const [processingErrorMessage, setProcessingErrorMessage] = useState("");
+  const [committedOperationsSignature, setCommittedOperationsSignature] = useState(() => {
+    const routeOperations = location.state?.preprocessingOperations;
+
+    if (Array.isArray(routeOperations) && routeOperations.length > 0) {
+      return JSON.stringify(hydratePreprocessingOperations(routeOperations));
+    }
+
+    try {
+      const savedCommittedState = window.sessionStorage.getItem(committedPreprocessingStateCacheKey);
+
+      if (savedCommittedState) {
+        const parsedCommittedState = JSON.parse(savedCommittedState);
+
+        if (Array.isArray(parsedCommittedState?.operations) && parsedCommittedState.operations.length > 0) {
+          return JSON.stringify(hydratePreprocessingOperations(parsedCommittedState.operations));
+        }
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  });
   const { selectedFrames, setSelectedFrames } = useSelectionSession({
     patientId,
     examinationId,
@@ -277,6 +305,16 @@ export function DataPreprocessingPage() {
       // Ignore session storage failures and keep the page functional.
     }
   }, [activeRegion, operations, preprocessingStateCacheKey]);
+
+  useEffect(() => {
+    const currentOperationsSignature = JSON.stringify(operations);
+
+    if (!committedOperationsSignature || currentOperationsSignature === committedOperationsSignature) {
+      return;
+    }
+
+    resetWorkflowAfterStep(patientId, examinationId, 2);
+  }, [committedOperationsSignature, examinationId, operations, patientId]);
 
   useEffect(() => {
     let ignore = false;
@@ -512,6 +550,21 @@ export function DataPreprocessingPage() {
         Object.keys(processedFrames).length === selectedRegions.length ? processedFrames : await processAllSelectedFrames();
 
       setProcessedFrames(nextProcessedFrames);
+      const nextCommittedOperationsSignature = JSON.stringify(operations);
+
+      setCommittedOperationsSignature(nextCommittedOperationsSignature);
+
+      try {
+        window.sessionStorage.setItem(
+          committedPreprocessingStateCacheKey,
+          JSON.stringify({
+            operations
+          })
+        );
+      } catch {
+        // Ignore session storage failures and keep the page functional.
+      }
+
       setActiveWorkflowContext({ patientId, examinationId });
       resetWorkflowAfterStep(patientId, examinationId, 3);
       navigate(`/ai-module/${patientId}/${examinationId}`, {
