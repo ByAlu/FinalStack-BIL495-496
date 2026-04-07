@@ -4,6 +4,7 @@ import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.UploadUrlResponseDTO;
 import com.backend.model.entity.ExaminationRegion;
 import com.google.cloud.storage.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 public class GCSStorageService implements CloudService {
+    @Autowired
     private final Storage storage;
 
     @Value("${gcp.storage.bucket-name}")
@@ -76,6 +78,8 @@ public class GCSStorageService implements CloudService {
                 Storage.BlobListOption.pageSize(pageSize),
                 Storage.BlobListOption.pageToken(pageToken));
     }
+
+    @Override
     public String generateV4GetObjectSignedUrl(String cloudPath) {
         // 1. Bucket ve dosya yolunu (path) tanımlıyoruz
         BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(bucketName, cloudPath)).build();
@@ -126,5 +130,10 @@ public class GCSStorageService implements CloudService {
         }
         return dtoList;
 
+    }
+
+    @Override
+    public Storage getStorage() {
+        return this.storage;
     }
 }

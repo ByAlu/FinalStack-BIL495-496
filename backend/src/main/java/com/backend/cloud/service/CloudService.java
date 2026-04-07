@@ -4,6 +4,7 @@ import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.UploadUrlResponseDTO;
 import com.backend.model.entity.ExaminationRegion;
 import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Storage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -16,5 +17,9 @@ public interface CloudService {
 
     com.google.api.gax.paging.Page<Blob> listFilesWithPagination(String folder, int size, String token);
 
+    String generateV4GetObjectSignedUrl(String cloudPath);
+
     List<ExaminationVideoDTO> getExaminationVideoDTO(Long patientId, String examName);
+
+    Storage getStorage();
 }
