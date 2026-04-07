@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 
@@ -9,37 +9,65 @@ export function PreprocessingOptionsSidebar({
   onOpen,
   onToggleOperation,
   onKernelSizeChange,
-  selectedCount
+  onOperationParameterChange
 }) {
   const [expandedOperationId, setExpandedOperationId] = useState(operations[0]?.id || "");
-  const [draftKernelSizes, setDraftKernelSizes] = useState(() =>
-    Object.fromEntries(operations.map((operation) => [operation.id, operation.kernelSize]))
+  const [draftValues, setDraftValues] = useState(() =>
+    Object.fromEntries(
+      operations.map((operation) => [
+        operation.id,
+        {
+          kernelSize: operation.kernelSize,
+          clipLimit: operation.clipLimit,
+          strength: operation.strength
+        }
+      ])
+    )
   );
 
   useEffect(() => {
-    setDraftKernelSizes(Object.fromEntries(operations.map((operation) => [operation.id, operation.kernelSize])));
+    setDraftValues(
+      Object.fromEntries(
+        operations.map((operation) => [
+          operation.id,
+          {
+            kernelSize: operation.kernelSize,
+            clipLimit: operation.clipLimit,
+            strength: operation.strength
+          }
+        ])
+      )
+    );
   }, [operations]);
 
   function toggleExpanded(operationId) {
     setExpandedOperationId((current) => (current === operationId ? "" : operationId));
   }
 
-  function handleKernelSizeInput(operationId, kernelSize) {
-    setDraftKernelSizes((current) => ({
+  function handleDraftValueChange(operationId, fieldName, value) {
+    setDraftValues((current) => ({
       ...current,
-      [operationId]: kernelSize
+      [operationId]: {
+        ...current[operationId],
+        [fieldName]: value
+      }
     }));
   }
 
-  function commitKernelSize(operationId) {
-    const nextKernelSize = draftKernelSizes[operationId];
+  function commitDraftValue(operationId, fieldName) {
     const operation = operations.find((item) => item.id === operationId);
+    const nextValue = draftValues[operationId]?.[fieldName];
 
-    if (!operation || nextKernelSize === operation.kernelSize) {
+    if (!operation || nextValue === undefined || nextValue === operation[fieldName]) {
       return;
     }
 
-    onKernelSizeChange(operationId, nextKernelSize);
+    if (fieldName === "kernelSize") {
+      onKernelSizeChange(operationId, nextValue);
+      return;
+    }
+
+    onOperationParameterChange(operationId, fieldName, nextValue);
   }
 
   return (
@@ -48,19 +76,20 @@ export function PreprocessingOptionsSidebar({
         <>
           <div className="preprocessing-sidebar-header">
             <button className="panel-arrow-toggle" type="button" onClick={onClose}>
-              →
+              ‹
             </button>
             <div className="preprocessing-sidebar-copy">
               <span className="selection-toolbar-kicker">Preprocessing</span>
               <strong>Operations</strong>
-              <span>{selectedCount} selected frames</span>
             </div>
           </div>
 
           <div className="preprocessing-operation-list">
             {operations.map((operation) => {
               const isExpanded = expandedOperationId === operation.id;
-              const draftKernelSize = draftKernelSizes[operation.id] ?? operation.kernelSize;
+              const draftKernelSize = draftValues[operation.id]?.kernelSize ?? operation.kernelSize;
+              const draftClipLimit = draftValues[operation.id]?.clipLimit ?? operation.clipLimit;
+              const draftStrength = draftValues[operation.id]?.strength ?? operation.strength;
 
               return (
                 <section className="preprocessing-operation-card" key={operation.id}>
@@ -90,31 +119,83 @@ export function PreprocessingOptionsSidebar({
                   {isExpanded ? (
                     <div className="preprocessing-operation-body">
                       <p>{operation.description}</p>
-                      <label className="preprocessing-control-block">
-                        <span className="preprocessing-control-label">
-                          <span>Kernel size</span>
-                          <strong>
-                            {draftKernelSize}x{draftKernelSize}
-                          </strong>
-                        </span>
-                        <input
-                          className="viewer-fps-slider"
-                          disabled={!operation.enabled}
-                          max="9"
-                          min="3"
-                          step="2"
-                          type="range"
-                          value={draftKernelSize}
-                          onChange={(event) => handleKernelSizeInput(operation.id, Number(event.target.value))}
-                          onMouseUp={() => commitKernelSize(operation.id)}
-                          onTouchEnd={() => commitKernelSize(operation.id)}
-                          onKeyUp={(event) => {
-                            if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
-                              commitKernelSize(operation.id);
-                            }
-                          }}
-                        />
-                      </label>
+                      {operation.type === "median-filter" ? (
+                        <label className="preprocessing-control-block">
+                          <span className="preprocessing-control-label">
+                            <span>Kernel size</span>
+                            <strong>
+                              {draftKernelSize}x{draftKernelSize}
+                            </strong>
+                          </span>
+                          <input
+                            className="viewer-fps-slider"
+                            disabled={!operation.enabled}
+                            max="15"
+                            min="3"
+                            step="2"
+                            type="range"
+                            value={draftKernelSize}
+                            onChange={(event) => handleDraftValueChange(operation.id, "kernelSize", Number(event.target.value))}
+                            onMouseUp={() => commitDraftValue(operation.id, "kernelSize")}
+                            onTouchEnd={() => commitDraftValue(operation.id, "kernelSize")}
+                            onKeyUp={(event) => {
+                              if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+                                commitDraftValue(operation.id, "kernelSize");
+                              }
+                            }}
+                          />
+                        </label>
+                      ) : null}
+                      {operation.type === "clahe" ? (
+                        <label className="preprocessing-control-block">
+                          <span className="preprocessing-control-label">
+                            <span>Clip limit</span>
+                            <strong>{draftClipLimit.toFixed(1)}</strong>
+                          </span>
+                          <input
+                            className="viewer-fps-slider"
+                            disabled={!operation.enabled}
+                            max="8"
+                            min="1"
+                            step="0.5"
+                            type="range"
+                            value={draftClipLimit}
+                            onChange={(event) => handleDraftValueChange(operation.id, "clipLimit", Number(event.target.value))}
+                            onMouseUp={() => commitDraftValue(operation.id, "clipLimit")}
+                            onTouchEnd={() => commitDraftValue(operation.id, "clipLimit")}
+                            onKeyUp={(event) => {
+                              if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+                                commitDraftValue(operation.id, "clipLimit");
+                              }
+                            }}
+                          />
+                        </label>
+                      ) : null}
+                      {operation.type === "sharpen" ? (
+                        <label className="preprocessing-control-block">
+                          <span className="preprocessing-control-label">
+                            <span>Strength</span>
+                            <strong>{draftStrength.toFixed(1)}x</strong>
+                          </span>
+                          <input
+                            className="viewer-fps-slider"
+                            disabled={!operation.enabled}
+                            max="4"
+                            min="1"
+                            step="0.5"
+                            type="range"
+                            value={draftStrength}
+                            onChange={(event) => handleDraftValueChange(operation.id, "strength", Number(event.target.value))}
+                            onMouseUp={() => commitDraftValue(operation.id, "strength")}
+                            onTouchEnd={() => commitDraftValue(operation.id, "strength")}
+                            onKeyUp={(event) => {
+                              if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+                                commitDraftValue(operation.id, "strength");
+                              }
+                            }}
+                          />
+                        </label>
+                      ) : null}
                     </div>
                   ) : null}
                 </section>
@@ -124,7 +205,7 @@ export function PreprocessingOptionsSidebar({
         </>
       ) : (
         <button className="panel-edge-toggle" type="button" onClick={onOpen}>
-          ←
+          ›
         </button>
       )}
     </aside>

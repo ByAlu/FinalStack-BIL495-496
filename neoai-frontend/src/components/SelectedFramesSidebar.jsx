@@ -1,9 +1,8 @@
-export function SelectedFramesSidebar({
+﻿export function SelectedFramesSidebar({
   regions,
   selectedFrames,
   selectedFrameRegion,
   viewerMode,
-  selectedCount,
   showSelectedMenu,
   onClose,
   onOpen,
@@ -16,10 +15,12 @@ export function SelectedFramesSidebar({
           <div className="selected-frames-panel">
             <div className="selected-frames-header">
               <button className="panel-arrow-toggle" type="button" onClick={onClose}>
-                →
+                ›
               </button>
-              <strong>Selected Frames</strong>
-              <span>{selectedCount} / 6 regions completed</span>
+              <div className="selected-frames-header-copy">
+                <span className="selection-toolbar-kicker">Selected</span>
+                <strong>Frames</strong>
+              </div>
             </div>
 
             <div className="selected-frames-column">
@@ -50,7 +51,7 @@ export function SelectedFramesSidebar({
         </>
       ) : (
         <button className="panel-edge-toggle" type="button" onClick={onOpen}>
-          ←
+          ‹
         </button>
       )}
     </aside>

@@ -90,7 +90,9 @@ export function ViewerStage({
               {viewerMessageOverlay}
             </>
           ) : (
-            <div className="viewer-placeholder viewer-loading-state">{framePlaceholderMessage}</div>
+            <div className="viewer-placeholder viewer-loading-state">
+              {viewerOverlayMessage || framePlaceholderMessage}
+            </div>
           )
         ) : activeVideo ? (
           <>

@@ -26,6 +26,22 @@ const DEFAULT_OPERATIONS = [
     description: "Reduce speckle noise on the selected ultrasound frames.",
     enabled: true,
     kernelSize: 3
+  },
+  {
+    id: "clahe",
+    type: "clahe",
+    label: "CLAHE",
+    description: "Boost local contrast to make subtle tissue structures easier to see.",
+    enabled: false,
+    clipLimit: 2
+  },
+  {
+    id: "sharpen",
+    type: "sharpen",
+    label: "Sharpen",
+    description: "Enhance edges after denoising to make boundaries appear crisper.",
+    enabled: false,
+    strength: 1
   }
 ];
 
@@ -87,6 +103,7 @@ export function DataPreprocessingPage() {
   const [processedFrames, setProcessedFrames] = useState({});
   const [isApplyPending, setIsApplyPending] = useState(false);
   const [openCvStatus, setOpenCvStatus] = useState("loading");
+  const [processingErrorMessage, setProcessingErrorMessage] = useState("");
   const { selectedFrames, setSelectedFrames } = useSelectionSession({
     patientId,
     examinationId,
@@ -127,7 +144,7 @@ export function DataPreprocessingPage() {
       ? "Loading OpenCV for preprocessing..."
       : openCvStatus === "error"
         ? "OpenCV failed to load. Please refresh the page."
-        : "";
+        : processingErrorMessage;
 
   useEffect(() => {
     if (location.state?.selectedFrames && Object.keys(location.state.selectedFrames).length > 0) {
@@ -229,11 +246,13 @@ export function DataPreprocessingPage() {
     async function buildPreview() {
       if (!previewSource) {
         setProcessedPreviewSrc("");
+        setProcessingErrorMessage("");
         return;
       }
 
       if (!isOpenCvReady) {
         setProcessedPreviewSrc("");
+        setProcessingErrorMessage("");
         return;
       }
 
@@ -242,11 +261,12 @@ export function DataPreprocessingPage() {
 
         if (!ignore) {
           setProcessedPreviewSrc(nextPreview);
+          setProcessingErrorMessage("");
         }
       } catch (error) {
         if (!ignore) {
           setProcessedPreviewSrc("");
-          setOpenCvStatus("error");
+          setProcessingErrorMessage(error.message || "Preprocessing failed for the selected frame.");
         }
       }
     }
@@ -370,6 +390,10 @@ export function DataPreprocessingPage() {
     updateOperation(operationId, () => ({ kernelSize }));
   }
 
+  function handleOperationParameterChange(operationId, parameterName, value) {
+    updateOperation(operationId, () => ({ [parameterName]: value }));
+  }
+
   async function processAllSelectedFrames() {
     const nextEntries = await Promise.all(
       selectedRegions.map(async (region) => {
@@ -384,7 +408,7 @@ export function DataPreprocessingPage() {
   }
 
   async function handleContinue() {
-    if (!isOpenCvReady) {
+    if (!isOpenCvReady || processingErrorMessage) {
       return;
     }
 
@@ -502,17 +526,17 @@ export function DataPreprocessingPage() {
       <section className={`selection-layout${showOptionsMenu ? "" : " hide-left"}${showSelectedMenu ? "" : " hide-right"}`}>
         <PreprocessingOptionsSidebar
           operations={operations}
-          selectedCount={selectedRegions.length}
           showMenu={showOptionsMenu}
           onClose={() => setShowOptionsMenu(false)}
           onOpen={() => setShowOptionsMenu(true)}
           onToggleOperation={handleToggleOperation}
           onKernelSizeChange={handleKernelSizeChange}
+          onOperationParameterChange={handleOperationParameterChange}
         />
 
         <section className="selection-main panel">
           <ProcessingViewerHeader
-            canContinue={selectedRegions.length > 0 && isOpenCvReady}
+            canContinue={selectedRegions.length > 0 && isOpenCvReady && !processingErrorMessage}
             enabledOperationCount={enabledOperationCount}
             handleMagnifierSizeChange={handleMagnifierSizeChange}
             handleMagnifierZoomChange={handleMagnifierZoomChange}
@@ -575,7 +599,6 @@ export function DataPreprocessingPage() {
           onOpen={() => setShowSelectedMenu(true)}
           onSelectFrame={setActiveRegion}
           regions={regions}
-          selectedCount={selectedRegions.length}
           selectedFrameRegion={activeRegion}
           selectedFrames={selectedFrameMap}
           showSelectedMenu={showSelectedMenu}

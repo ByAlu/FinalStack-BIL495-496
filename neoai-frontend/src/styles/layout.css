@@ -133,6 +133,7 @@
 .content-selection-shell {
   padding: 0;
   overflow: hidden;
+  scrollbar-gutter: auto;
 }
 
 .page-stack {
