@@ -26,6 +26,7 @@ export function ViewerStage({
   handleRailPointerMove,
   viewerMode,
   viewerStageRef,
+  framePlaceholderMessage = "Preparing frame...",
   viewRotation,
   zoomOrigin,
   zoomScale
@@ -36,6 +37,25 @@ export function ViewerStage({
       : "";
   const displayedFrameSrc =
     viewerMode === "frame" && activeSelectedFrame ? activeSelectedFrame.thumbnail : activeFrameSrc;
+  const magnifierOverlay =
+    isMagnifierActive && displayedFrameSrc ? (
+      <div
+        aria-hidden="true"
+        className="viewer-magnifier"
+        style={{
+          left: `${magnifierState.x}px`,
+          top: `${magnifierState.y}px`,
+          width: `${magnifierConfig.size}px`,
+          height: `${magnifierConfig.size}px`,
+          backgroundImage: `url("${displayedFrameSrc}")`,
+          backgroundPosition: `${magnifierState.backgroundOffsetX}px ${magnifierState.backgroundOffsetY}px`,
+          backgroundSize: `${magnifierState.backgroundWidth}px ${magnifierState.backgroundHeight}px`
+        }}
+      />
+    ) : null;
+  const disabledMessageOverlay = disabledActionMessage ? (
+    <div className="viewer-disabled-action-message">{disabledActionMessage}</div>
+  ) : null;
 
   return (
     <div className="viewer-shell">
@@ -50,17 +70,25 @@ export function ViewerStage({
         ref={viewerStageRef}
       >
         {viewerMode === "frame" && activeSelectedFrame ? (
-          <img
-            alt={`${selectedFrameRegion} selected frame`}
-            className="selection-frame-preview"
-            draggable={false}
-            ref={previewImageRef}
-            src={activeSelectedFrame.thumbnail}
-            style={{
-              transform: `translate(calc(-50% + ${panOffset.x}px), ${panOffset.y}px) rotate(${viewRotation}deg) scale(${zoomScale})`,
-              transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
-            }}
-          />
+          activeSelectedFrame.thumbnail ? (
+            <>
+              <img
+                alt={`${selectedFrameRegion} selected frame`}
+                className="selection-frame-preview"
+                draggable={false}
+                ref={previewImageRef}
+                src={activeSelectedFrame.thumbnail}
+                style={{
+                  transform: `translate(calc(-50% + ${panOffset.x}px), ${panOffset.y}px) rotate(${viewRotation}deg) scale(${zoomScale})`,
+                  transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                }}
+              />
+              {magnifierOverlay}
+              {disabledMessageOverlay}
+            </>
+          ) : (
+            <div className="viewer-placeholder viewer-loading-state">{framePlaceholderMessage}</div>
+          )
         ) : activeVideo ? (
           <>
             {activeFrameSrc ? (
@@ -103,22 +131,8 @@ export function ViewerStage({
                 {Math.max(activeVideoFrames.length, 0)}
               </span>
             </div>
-            {isMagnifierActive && displayedFrameSrc ? (
-              <div
-                aria-hidden="true"
-                className="viewer-magnifier"
-                style={{
-                  left: `${magnifierState.x}px`,
-                  top: `${magnifierState.y}px`,
-                  width: `${magnifierConfig.size}px`,
-                  height: `${magnifierConfig.size}px`,
-                  backgroundImage: `url("${displayedFrameSrc}")`,
-                  backgroundPosition: `${magnifierState.backgroundOffsetX}px ${magnifierState.backgroundOffsetY}px`,
-                  backgroundSize: `${magnifierState.backgroundWidth}px ${magnifierState.backgroundHeight}px`
-                }}
-              />
-            ) : null}
-            {disabledActionMessage ? <div className="viewer-disabled-action-message">{disabledActionMessage}</div> : null}
+            {magnifierOverlay}
+            {disabledMessageOverlay}
           </>
         ) : (
           <div className="viewer-placeholder">No video selected</div>

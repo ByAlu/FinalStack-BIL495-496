@@ -6,7 +6,8 @@ import { AppHeader } from "./AppHeader";
 export function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const isSelectionRoute = location.pathname.startsWith("/selection/");
+  const isWorkspaceRoute =
+    location.pathname.startsWith("/selection/") || location.pathname.startsWith("/preprocessing/");
   const isWorkflowRoute = [
     "/query",
     "/selection/",
@@ -51,13 +52,13 @@ export function AppLayout() {
   }
 
   return (
-    <Box className={`app-frame${isSelectionRoute ? " app-frame-selection" : ""}`}>
+    <Box className={`app-frame${isWorkspaceRoute ? " app-frame-selection" : ""}`}>
       <Box className="app-header-shell">
         <AppHeader user={user} logout={logout} workflowMeta={workflowMeta} />
       </Box>
 
-      <Box component="main" className={`content ${isSelectionRoute ? "content-full content-selection-shell" : ""}`}>
-        {isSelectionRoute ? (
+      <Box component="main" className={`content ${isWorkspaceRoute ? "content-full content-selection-shell" : ""}`}>
+        {isWorkspaceRoute ? (
           <Outlet />
         ) : (
           <Box className="content-centered">
