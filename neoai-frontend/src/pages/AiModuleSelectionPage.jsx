@@ -16,6 +16,10 @@ const DEFAULT_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
 const MAX_MAGNIFIER_CONFIG = { size: 500, zoomFactor: 8 };
 const MIN_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
 
+function getCommittedAiModuleStateCacheKey(patientId, examinationId) {
+  return `neoai-ai-module-committed:${patientId}:${examinationId}`;
+}
+
 function normalizeRotation(nextRotation) {
   const normalized = nextRotation % 360;
   return normalized < 0 ? normalized + 360 : normalized;
@@ -47,6 +51,7 @@ export function AiModuleSelectionPage() {
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
   const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
+  const committedAiModuleStateCacheKey = getCommittedAiModuleStateCacheKey(patientId, examinationId);
   const selectedFrameMap = location.state?.processedFrames || location.state?.selectedFrames || {};
   const selectedRegions = useMemo(() => regions.filter((region) => selectedFrameMap[region]), [selectedFrameMap]);
   const [showOptionsMenu, setShowOptionsMenu] = useState(true);
@@ -75,6 +80,33 @@ export function AiModuleSelectionPage() {
     }
 
     return DEFAULT_MODULE_IDS;
+  });
+  const [committedModuleSignature, setCommittedModuleSignature] = useState(() => {
+    if (Array.isArray(location.state?.selectedModuleIds) && location.state.selectedModuleIds.length > 0) {
+      return JSON.stringify(location.state.selectedModuleIds);
+    }
+
+    if (location.state?.selectedModuleId) {
+      return JSON.stringify([location.state.selectedModuleId]);
+    }
+
+    try {
+      const savedCommittedState = window.sessionStorage.getItem(committedAiModuleStateCacheKey);
+
+      if (!savedCommittedState) {
+        return null;
+      }
+
+      const parsedCommittedState = JSON.parse(savedCommittedState);
+
+      if (Array.isArray(parsedCommittedState?.selectedModuleIds) && parsedCommittedState.selectedModuleIds.length > 0) {
+        return JSON.stringify(parsedCommittedState.selectedModuleIds);
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
   });
   const [activeRegion, setActiveRegion] = useState(location.state?.activePreprocessingRegion || selectedRegions[0] || "r1");
   const {
@@ -240,8 +272,26 @@ export function AiModuleSelectionPage() {
   }
 
   function handleContinue() {
+    const nextModuleSignature = JSON.stringify(selectedModuleIds);
+
     setActiveWorkflowContext({ patientId, examinationId, reportId: DEFAULT_REPORT_ID });
-    resetWorkflowAfterStep(patientId, examinationId, 4);
+
+    if (committedModuleSignature !== nextModuleSignature) {
+      resetWorkflowAfterStep(patientId, examinationId, 4);
+      setCommittedModuleSignature(nextModuleSignature);
+
+      try {
+        window.sessionStorage.setItem(
+          committedAiModuleStateCacheKey,
+          JSON.stringify({
+            selectedModuleIds
+          })
+        );
+      } catch {
+        // Ignore session storage failures and keep the page functional.
+      }
+    }
+
     navigate(`/results/${DEFAULT_REPORT_ID}`, {
       state: {
         ...location.state,
