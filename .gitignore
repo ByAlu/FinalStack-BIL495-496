@@ -17,3 +17,5 @@ mvnw.cmd
 __pycache__
 
 gcp-key.json
+
+.venv
