@@ -1,14 +1,12 @@
 import { useMemo, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { pdf } from "@react-pdf/renderer";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { ReportPdfDocument } from "../components/ReportPdfDocument";
 import { aiRegionResults } from "../data/mockData";
 import { useAuth } from "../context/AuthContext";
 import { findPatientById, getExaminationByIds, getReportById } from "../services/mockApi";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
-const moduleLabelMap = {
-  "rds-score": "RDS-SCORE",
-  "b-line": "B-LINE"
-};
 const clinicalIndicationOptions = [
   { id: "respiratory-distress", label: "Respiratory distress" },
   { id: "suspected-rds", label: "Suspected RDS" },
@@ -117,15 +115,9 @@ export function ReportingPage() {
     "suspected-rds"
   ]);
   const [otherClinicalIndication, setOtherClinicalIndication] = useState("");
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const selectedFrameMap = location.state?.processedFrames || location.state?.selectedFrames || {};
-  const selectedModuleIds = useMemo(() => {
-    if (Array.isArray(location.state?.selectedModuleIds) && location.state.selectedModuleIds.length > 0) {
-      return location.state.selectedModuleIds;
-    }
-
-    return ["rds-score", "b-line"];
-  }, [location.state]);
 
   const selectedRegions = useMemo(() => {
     const stateRegions = regions.filter((region) => selectedFrameMap[region]);
@@ -154,8 +146,8 @@ export function ReportingPage() {
           pleuralLine: regionResult?.b_line_module?.pleural_line?.status || "-",
           whiteLung: regionResult?.b_line_module?.white_lung ? "Present" : "Absent",
           regionScore: regionResult?.rds_score_module?.region_score ?? 0,
-          severity: regionResult?.rds_score_module?.severity_label || "normal_aeration",
-          confidence: regionResult?.rds_score_module?.confidence ?? 0,
+          severityLabel: toHeadlineCase(formatSeverityLabel(regionResult?.rds_score_module?.severity_label || "normal_aeration")),
+          confidence: formatPercent(regionResult?.rds_score_module?.confidence ?? 0),
           findings: regionResult?.rds_score_module?.findings || []
         };
       }),
@@ -169,11 +161,85 @@ export function ReportingPage() {
     .filter((row) => row.regionScore >= 2 || row.whiteLung === "Present")
     .map((row) => row.region.toUpperCase());
   const signedBy = user?.fullName || report?.reviewedBy || "Dr. Elif Kaya";
+  const patientFields = useMemo(
+    () => [
+      { label: "Patient ID:", value: report?.patientId || "-" },
+      { label: "Full Name:", value: patient?.name || "-" },
+      { label: "Date of Birth:", value: report?.dateOfBirth || "-" },
+      { label: "Gestational Age:", value: report?.gestationalAge || "-" },
+      { label: "Birth Weight:", value: report?.birthWeight || "-" },
+      { label: "Postnatal Age:", value: report?.postnatalAge || "-" },
+      { label: "Clinic (NICU):", value: report?.clinic || "-" },
+      { label: "Bed Number:", value: report?.bedNumber || "-" },
+      { label: "Scan Date / Time:", value: report?.reportDate || "-" },
+      { label: "AI Software Version (NeoAI LUS Assistant):", value: report?.softwareVersion || "-" }
+    ],
+    [patient?.name, report]
+  );
+  const selectedIndicationLabels = clinicalIndicationOptions
+    .filter((option) => selectedClinicalIndications.includes(option.id))
+    .map((option) => option.label);
+  const pdfReportData = useMemo(
+    () => ({
+      title: report?.title || "NeoAi LUS Assistant",
+      patientFields,
+      selectedIndications: selectedIndicationLabels,
+      otherIndication: otherClinicalIndication,
+      regionRows: regionReportRows,
+      diagnosisProbabilities: diagnosisProbabilities.map((item) => ({
+        label: item.label,
+        probability: formatPercent(item.probability)
+      })),
+      totalScore,
+      overallSeverityLabel: overallSeverity.label,
+      highlightedRegions,
+      finalDiagnosis,
+      treatmentRecommendation,
+      followUpRecommendation,
+      signedBy
+    }),
+    [
+      diagnosisProbabilities,
+      finalDiagnosis,
+      followUpRecommendation,
+      highlightedRegions,
+      otherClinicalIndication,
+      overallSeverity.label,
+      patientFields,
+      regionReportRows,
+      report?.title,
+      selectedIndicationLabels,
+      signedBy,
+      totalScore,
+      treatmentRecommendation
+    ]
+  );
 
   function handleClinicalIndicationToggle(optionId) {
     setSelectedClinicalIndications((current) =>
       current.includes(optionId) ? current.filter((item) => item !== optionId) : [...current, optionId]
     );
+  }
+
+  async function handleExportPdf() {
+    setIsExportingPdf(true);
+
+    try {
+      const blob = await pdf(<ReportPdfDocument reportData={pdfReportData} />).toBlob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const safeTitle = (report?.title || "NeoAi-LUS-Assistant").replace(/[^a-z0-9]+/gi, "-");
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+      link.href = downloadUrl;
+      link.download = `${safeTitle}-${reportId}-${timestamp}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } finally {
+      setIsExportingPdf(false);
+    }
   }
 
   if (!report) {
@@ -346,8 +412,8 @@ export function ReportingPage() {
                     <tr key={row.region}>
                       <td>{row.region.toUpperCase()}</td>
                       <td>{row.regionScore}</td>
-                      <td>{toHeadlineCase(formatSeverityLabel(row.severity))}</td>
-                      <td>{formatPercent(row.confidence)}</td>
+                      <td>{row.severityLabel}</td>
+                      <td>{row.confidence}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -376,13 +442,6 @@ export function ReportingPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
-            <div className="report-classification-note">
-              <span className="report-badge">Total LUS score {totalScore} / 18</span>
-              <span className="report-badge">{overallSeverity.label}</span>
-              {highlightedRegions.length > 0 ? (
-                <span className="report-badge">Highlighted regions {highlightedRegions.join(", ")}</span>
-              ) : null}
             </div>
           </section>
 
@@ -457,8 +516,8 @@ export function ReportingPage() {
           </section>
 
           <div className="report-actions report-actions-bottom">
-            <button className="report-button primary" type="button">
-              Export PDF
+            <button className="report-button primary" disabled={isExportingPdf} type="button" onClick={handleExportPdf}>
+              {isExportingPdf ? "Preparing PDF..." : "Export PDF"}
             </button>
             <button className="report-button" type="button">
               Export DOCX
