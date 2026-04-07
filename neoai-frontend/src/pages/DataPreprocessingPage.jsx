@@ -36,6 +36,13 @@ const DEFAULT_OPERATIONS = [
     clipLimit: 2
   },
   {
+    id: "grayscale",
+    type: "grayscale",
+    label: "Convert to grayscale",
+    description: "Convert the selected ultrasound frame to grayscale before later preprocessing steps.",
+    enabled: false
+  },
+  {
     id: "sharpen",
     type: "sharpen",
     label: "Sharpen",
@@ -383,7 +390,32 @@ export function DataPreprocessingPage() {
   }
 
   function handleToggleOperation(operationId, enabled) {
-    updateOperation(operationId, () => ({ enabled }));
+    setOperations((current) => {
+      const currentIndex = current.findIndex((operation) => operation.id === operationId);
+
+      if (currentIndex === -1) {
+        return current;
+      }
+
+      const next = [...current];
+      const [targetOperation] = next.splice(currentIndex, 1);
+      const updatedOperation = { ...targetOperation, enabled };
+
+      if (enabled) {
+        const firstDisabledIndex = next.findIndex((operation) => !operation.enabled);
+
+        if (firstDisabledIndex === -1) {
+          next.push(updatedOperation);
+          return next;
+        }
+
+        next.splice(firstDisabledIndex, 0, updatedOperation);
+        return next;
+      }
+
+      next.push(updatedOperation);
+      return next;
+    });
   }
 
   function handleKernelSizeChange(operationId, kernelSize) {
@@ -392,6 +424,61 @@ export function DataPreprocessingPage() {
 
   function handleOperationParameterChange(operationId, parameterName, value) {
     updateOperation(operationId, () => ({ [parameterName]: value }));
+  }
+
+  function handleMoveOperation(operationId, direction) {
+    setOperations((current) => {
+      const currentIndex = current.findIndex((operation) => operation.id === operationId);
+
+      if (currentIndex === -1 || !current[currentIndex].enabled) {
+        return current;
+      }
+
+      const enabledIndexes = current.reduce((indexes, operation, index) => {
+        if (operation.enabled) {
+          indexes.push(index);
+        }
+
+        return indexes;
+      }, []);
+      const enabledPosition = enabledIndexes.indexOf(currentIndex);
+      const targetEnabledPosition = enabledPosition + direction;
+
+      if (targetEnabledPosition < 0 || targetEnabledPosition >= enabledIndexes.length) {
+        return current;
+      }
+
+      const targetIndex = enabledIndexes[targetEnabledPosition];
+      const next = [...current];
+
+      [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
+      return next;
+    });
+  }
+
+  function handleReorderOperation(sourceOperationId, targetOperationId) {
+    if (sourceOperationId === targetOperationId) {
+      return;
+    }
+
+    setOperations((current) => {
+      const sourceIndex = current.findIndex((operation) => operation.id === sourceOperationId);
+      const targetIndex = current.findIndex((operation) => operation.id === targetOperationId);
+
+      if (sourceIndex === -1 || targetIndex === -1) {
+        return current;
+      }
+
+      if (!current[sourceIndex].enabled || !current[targetIndex].enabled) {
+        return current;
+      }
+
+      const next = [...current];
+      const [movedOperation] = next.splice(sourceIndex, 1);
+      const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+      next.splice(adjustedTargetIndex, 0, movedOperation);
+      return next;
+    });
   }
 
   async function processAllSelectedFrames() {
@@ -532,6 +619,8 @@ export function DataPreprocessingPage() {
           onToggleOperation={handleToggleOperation}
           onKernelSizeChange={handleKernelSizeChange}
           onOperationParameterChange={handleOperationParameterChange}
+          onMoveOperation={handleMoveOperation}
+          onReorderOperation={handleReorderOperation}
         />
 
         <section className="selection-main panel">

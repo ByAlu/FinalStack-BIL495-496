@@ -9,9 +9,13 @@ export function PreprocessingOptionsSidebar({
   onOpen,
   onToggleOperation,
   onKernelSizeChange,
-  onOperationParameterChange
+  onOperationParameterChange,
+  onMoveOperation,
+  onReorderOperation
 }) {
   const [expandedOperationId, setExpandedOperationId] = useState(operations[0]?.id || "");
+  const [draggedOperationId, setDraggedOperationId] = useState("");
+  const [dropTargetOperationId, setDropTargetOperationId] = useState("");
   const [draftValues, setDraftValues] = useState(() =>
     Object.fromEntries(
       operations.map((operation) => [
@@ -70,6 +74,47 @@ export function PreprocessingOptionsSidebar({
     onOperationParameterChange(operationId, fieldName, nextValue);
   }
 
+  function handleDragStart(event, operationId, isReorderable) {
+    if (!isReorderable) {
+      event.preventDefault();
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", operationId);
+    setDraggedOperationId(operationId);
+    setDropTargetOperationId(operationId);
+  }
+
+  function handleDragOver(event, operationId, isReorderable) {
+    if (!draggedOperationId || !isReorderable || draggedOperationId === operationId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDropTargetOperationId(operationId);
+  }
+
+  function handleDrop(event, operationId, isReorderable) {
+    event.preventDefault();
+
+    if (!draggedOperationId || !isReorderable || draggedOperationId === operationId) {
+      setDraggedOperationId("");
+      setDropTargetOperationId("");
+      return;
+    }
+
+    onReorderOperation(draggedOperationId, operationId);
+    setDraggedOperationId("");
+    setDropTargetOperationId("");
+  }
+
+  function resetDragState() {
+    setDraggedOperationId("");
+    setDropTargetOperationId("");
+  }
+
   return (
     <aside className={`selection-sidebar preprocessing-sidebar panel${showMenu ? "" : " collapsed"}`}>
       {showMenu ? (
@@ -87,118 +132,173 @@ export function PreprocessingOptionsSidebar({
           <div className="preprocessing-operation-list">
             {operations.map((operation) => {
               const isExpanded = expandedOperationId === operation.id;
+              const operationIndex = operations.findIndex((item) => item.id === operation.id);
+              const enabledOperations = operations.filter((item) => item.enabled);
+              const enabledOperationIndex = enabledOperations.findIndex((item) => item.id === operation.id);
+              const firstDisabledIndex = operations.findIndex((item) => !item.enabled);
+              const shouldRenderDivider =
+                firstDisabledIndex > 0 && operationIndex === firstDisabledIndex;
+              const isReorderable = operation.enabled && enabledOperations.length > 0;
+              const isFirstOperation = enabledOperationIndex === 0;
+              const isLastOperation = enabledOperationIndex === enabledOperations.length - 1;
+              const isDragged = draggedOperationId === operation.id;
+              const isDropTarget =
+                dropTargetOperationId === operation.id && draggedOperationId && draggedOperationId !== operation.id;
               const draftKernelSize = draftValues[operation.id]?.kernelSize ?? operation.kernelSize;
               const draftClipLimit = draftValues[operation.id]?.clipLimit ?? operation.clipLimit;
               const draftStrength = draftValues[operation.id]?.strength ?? operation.strength;
 
               return (
-                <section className="preprocessing-operation-card" key={operation.id}>
-                  <div className="preprocessing-operation-top preprocessing-operation-top-compact">
-                    <label className="preprocessing-operation-toggle">
-                      <input
-                        checked={operation.enabled}
-                        type="checkbox"
-                        onChange={(event) => onToggleOperation(operation.id, event.target.checked)}
-                      />
-                      <span>{operation.label}</span>
-                    </label>
-                    <button
-                      aria-label={isExpanded ? `Collapse ${operation.label}` : `Expand ${operation.label}`}
-                      className={`preprocessing-expand-button${isExpanded ? " expanded" : ""}`}
-                      type="button"
-                      onClick={() => toggleExpanded(operation.id)}
-                    >
-                      {isExpanded ? (
-                        <KeyboardArrowDownRoundedIcon fontSize="small" />
-                      ) : (
-                        <KeyboardArrowRightRoundedIcon fontSize="small" />
-                      )}
-                    </button>
-                  </div>
-
-                  {isExpanded ? (
-                    <div className="preprocessing-operation-body">
-                      <p>{operation.description}</p>
-                      {operation.type === "median-filter" ? (
-                        <label className="preprocessing-control-block">
-                          <span className="preprocessing-control-label">
-                            <span>Kernel size</span>
-                            <strong>
-                              {draftKernelSize}x{draftKernelSize}
-                            </strong>
-                          </span>
-                          <input
-                            className="viewer-fps-slider"
-                            disabled={!operation.enabled}
-                            max="15"
-                            min="3"
-                            step="2"
-                            type="range"
-                            value={draftKernelSize}
-                            onChange={(event) => handleDraftValueChange(operation.id, "kernelSize", Number(event.target.value))}
-                            onMouseUp={() => commitDraftValue(operation.id, "kernelSize")}
-                            onTouchEnd={() => commitDraftValue(operation.id, "kernelSize")}
-                            onKeyUp={(event) => {
-                              if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
-                                commitDraftValue(operation.id, "kernelSize");
-                              }
-                            }}
-                          />
-                        </label>
-                      ) : null}
-                      {operation.type === "clahe" ? (
-                        <label className="preprocessing-control-block">
-                          <span className="preprocessing-control-label">
-                            <span>Clip limit</span>
-                            <strong>{draftClipLimit.toFixed(1)}</strong>
-                          </span>
-                          <input
-                            className="viewer-fps-slider"
-                            disabled={!operation.enabled}
-                            max="8"
-                            min="1"
-                            step="0.5"
-                            type="range"
-                            value={draftClipLimit}
-                            onChange={(event) => handleDraftValueChange(operation.id, "clipLimit", Number(event.target.value))}
-                            onMouseUp={() => commitDraftValue(operation.id, "clipLimit")}
-                            onTouchEnd={() => commitDraftValue(operation.id, "clipLimit")}
-                            onKeyUp={(event) => {
-                              if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
-                                commitDraftValue(operation.id, "clipLimit");
-                              }
-                            }}
-                          />
-                        </label>
-                      ) : null}
-                      {operation.type === "sharpen" ? (
-                        <label className="preprocessing-control-block">
-                          <span className="preprocessing-control-label">
-                            <span>Strength</span>
-                            <strong>{draftStrength.toFixed(1)}x</strong>
-                          </span>
-                          <input
-                            className="viewer-fps-slider"
-                            disabled={!operation.enabled}
-                            max="4"
-                            min="1"
-                            step="0.5"
-                            type="range"
-                            value={draftStrength}
-                            onChange={(event) => handleDraftValueChange(operation.id, "strength", Number(event.target.value))}
-                            onMouseUp={() => commitDraftValue(operation.id, "strength")}
-                            onTouchEnd={() => commitDraftValue(operation.id, "strength")}
-                            onKeyUp={(event) => {
-                              if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
-                                commitDraftValue(operation.id, "strength");
-                              }
-                            }}
-                          />
-                        </label>
-                      ) : null}
+                <div key={operation.id}>
+                  {shouldRenderDivider ? <div className="preprocessing-operation-divider" aria-hidden="true" /> : null}
+                  <section
+                    className={`preprocessing-operation-card${isDragged ? " dragging" : ""}${isDropTarget ? " drop-target" : ""}`}
+                    draggable={isReorderable}
+                    onDragEnd={resetDragState}
+                    onDragOver={(event) => handleDragOver(event, operation.id, isReorderable)}
+                    onDragStart={(event) => handleDragStart(event, operation.id, isReorderable)}
+                    onDrop={(event) => handleDrop(event, operation.id, isReorderable)}
+                  >
+                    <div className="preprocessing-operation-top preprocessing-operation-top-compact">
+                      <label className="preprocessing-operation-toggle">
+                        <input
+                          checked={operation.enabled}
+                          type="checkbox"
+                          onChange={(event) => onToggleOperation(operation.id, event.target.checked)}
+                        />
+                        <span>{operation.label}</span>
+                      </label>
+                      <div className="preprocessing-operation-actions">
+                        {isReorderable ? (
+                          <span className="preprocessing-order-badge">#{enabledOperationIndex + 1}</span>
+                        ) : null}
+                        <button
+                          aria-label={isExpanded ? `Collapse ${operation.label}` : `Expand ${operation.label}`}
+                          className={`preprocessing-expand-button${isExpanded ? " expanded" : ""}`}
+                          type="button"
+                          onClick={() => toggleExpanded(operation.id)}
+                        >
+                          {isExpanded ? (
+                            <KeyboardArrowDownRoundedIcon fontSize="small" />
+                          ) : (
+                            <KeyboardArrowRightRoundedIcon fontSize="small" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                  ) : null}
-                </section>
+
+                    {isExpanded ? (
+                      <div className="preprocessing-operation-body">
+                        <p>{operation.description}</p>
+                        {isReorderable ? (
+                          <div className="preprocessing-order-row">
+                            <span className="preprocessing-control-label">
+                              <span>Order</span>
+                              <strong>Step {enabledOperationIndex + 1}</strong>
+                            </span>
+                            <div className="preprocessing-operation-order">
+                            <button
+                              aria-label={`Move ${operation.label} up`}
+                              className="preprocessing-order-button"
+                              disabled={isFirstOperation}
+                              type="button"
+                              onClick={() => onMoveOperation(operation.id, -1)}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              aria-label={`Move ${operation.label} down`}
+                              className="preprocessing-order-button"
+                              disabled={isLastOperation}
+                              type="button"
+                              onClick={() => onMoveOperation(operation.id, 1)}
+                            >
+                              ↓
+                            </button>
+                            </div>
+                          </div>
+                        ) : null}
+                        {operation.type === "median-filter" ? (
+                          <label className="preprocessing-control-block">
+                            <span className="preprocessing-control-label">
+                              <span>Kernel size</span>
+                              <strong>
+                                {draftKernelSize}x{draftKernelSize}
+                              </strong>
+                            </span>
+                            <input
+                              className="viewer-fps-slider"
+                              disabled={!operation.enabled}
+                              max="15"
+                              min="3"
+                              step="2"
+                              type="range"
+                              value={draftKernelSize}
+                              onChange={(event) => handleDraftValueChange(operation.id, "kernelSize", Number(event.target.value))}
+                              onMouseUp={() => commitDraftValue(operation.id, "kernelSize")}
+                              onTouchEnd={() => commitDraftValue(operation.id, "kernelSize")}
+                              onKeyUp={(event) => {
+                                if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+                                  commitDraftValue(operation.id, "kernelSize");
+                                }
+                              }}
+                            />
+                          </label>
+                        ) : null}
+                        {operation.type === "clahe" ? (
+                          <label className="preprocessing-control-block">
+                            <span className="preprocessing-control-label">
+                              <span>Clip limit</span>
+                              <strong>{draftClipLimit.toFixed(1)}</strong>
+                            </span>
+                            <input
+                              className="viewer-fps-slider"
+                              disabled={!operation.enabled}
+                              max="8"
+                              min="1"
+                              step="0.5"
+                              type="range"
+                              value={draftClipLimit}
+                              onChange={(event) => handleDraftValueChange(operation.id, "clipLimit", Number(event.target.value))}
+                              onMouseUp={() => commitDraftValue(operation.id, "clipLimit")}
+                              onTouchEnd={() => commitDraftValue(operation.id, "clipLimit")}
+                              onKeyUp={(event) => {
+                                if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+                                  commitDraftValue(operation.id, "clipLimit");
+                                }
+                              }}
+                            />
+                          </label>
+                        ) : null}
+                        {operation.type === "sharpen" ? (
+                          <label className="preprocessing-control-block">
+                            <span className="preprocessing-control-label">
+                              <span>Strength</span>
+                              <strong>{draftStrength.toFixed(1)}x</strong>
+                            </span>
+                            <input
+                              className="viewer-fps-slider"
+                              disabled={!operation.enabled}
+                              max="4"
+                              min="1"
+                              step="0.5"
+                              type="range"
+                              value={draftStrength}
+                              onChange={(event) => handleDraftValueChange(operation.id, "strength", Number(event.target.value))}
+                              onMouseUp={() => commitDraftValue(operation.id, "strength")}
+                              onTouchEnd={() => commitDraftValue(operation.id, "strength")}
+                              onKeyUp={(event) => {
+                                if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+                                  commitDraftValue(operation.id, "strength");
+                                }
+                              }}
+                            />
+                          </label>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </section>
+                </div>
               );
             })}
           </div>

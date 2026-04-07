@@ -126,6 +126,31 @@ export async function applySharpen(src, strength = 1) {
   }
 }
 
+export async function applyGrayscale(src) {
+  if (!src) {
+    return src;
+  }
+
+  ensureOpenCvReady();
+
+  const image = await loadImage(src);
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  const sourceMat = loadMatFromSourceCanvas(image, width, height);
+  const grayMat = new window.cv.Mat();
+  const outputMat = new window.cv.Mat();
+
+  try {
+    window.cv.cvtColor(sourceMat, grayMat, window.cv.COLOR_RGBA2GRAY);
+    window.cv.cvtColor(grayMat, outputMat, window.cv.COLOR_GRAY2RGBA);
+    return matToDataUrl(outputMat);
+  } finally {
+    sourceMat.delete();
+    grayMat.delete();
+    outputMat.delete();
+  }
+}
+
 export async function applyOperationsToFrame(src, operations) {
   let currentSrc = src;
 
@@ -140,6 +165,10 @@ export async function applyOperationsToFrame(src, operations) {
 
     if (operation.type === "clahe") {
       currentSrc = await applyClahe(currentSrc, operation.clipLimit);
+    }
+
+    if (operation.type === "grayscale") {
+      currentSrc = await applyGrayscale(currentSrc);
     }
 
     if (operation.type === "sharpen") {
