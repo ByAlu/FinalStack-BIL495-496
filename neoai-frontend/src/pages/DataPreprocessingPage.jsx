@@ -8,7 +8,7 @@ import { useSelectionSession } from "../hooks/useSelectionSession";
 import { useViewerHold } from "../hooks/useViewerHold";
 import { useVideoFrameExtraction } from "../hooks/useVideoFrameExtraction";
 import { useViewerZoom } from "../hooks/useViewerZoom";
-import { createDefaultPreprocessingOperations } from "../config/preprocessingOperations";
+import { createDefaultPreprocessingOperations, hydratePreprocessingOperations } from "../config/preprocessingOperations";
 import { getExaminationByIds } from "../services/mockApi";
 import { applyOperationsToFrame } from "../utils/imageProcessing";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
@@ -22,6 +22,10 @@ const OPENCV_READY_EVENT = "opencv-ready";
 
 function getExaminationCacheKey(patientId, examinationId) {
   return `neoai-cache:${patientId}:${examinationId}`;
+}
+
+function getPreprocessingStateCacheKey(patientId, examinationId) {
+  return `neoai-preprocessing:${patientId}:${examinationId}`;
 }
 
 function normalizeRotation(nextRotation) {
@@ -54,10 +58,33 @@ export function DataPreprocessingPage() {
   const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
   const initialRegion = examination?.videos[0]?.region || "r1";
   const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
+  const preprocessingStateCacheKey = getPreprocessingStateCacheKey(patientId, examinationId);
   const magnifierPopoverRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
-  const [operations, setOperations] = useState(() => createDefaultPreprocessingOperations());
+  const [operations, setOperations] = useState(() => {
+    const routeOperations = location.state?.preprocessingOperations;
+
+    if (Array.isArray(routeOperations) && routeOperations.length > 0) {
+      return hydratePreprocessingOperations(routeOperations);
+    }
+
+    try {
+      const savedState = window.sessionStorage.getItem(preprocessingStateCacheKey);
+
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+
+        if (Array.isArray(parsedState?.operations) && parsedState.operations.length > 0) {
+          return hydratePreprocessingOperations(parsedState.operations);
+        }
+      }
+    } catch {
+      return createDefaultPreprocessingOperations();
+    }
+
+    return createDefaultPreprocessingOperations();
+  });
   const [previewOperations, setPreviewOperations] = useState(() => createDefaultPreprocessingOperations());
   const [showOptionsMenu, setShowOptionsMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
@@ -132,7 +159,29 @@ export function DataPreprocessingPage() {
       ? location.state.selectedFrames
       : selectedFrames;
   const selectedRegions = useMemo(() => regions.filter((region) => selectedFrameMap[region]), [selectedFrameMap]);
-  const [activeRegion, setActiveRegion] = useState(selectedRegions[0] || initialRegion);
+  const [activeRegion, setActiveRegion] = useState(() => {
+    const routeRegion = location.state?.activePreprocessingRegion;
+
+    if (routeRegion) {
+      return routeRegion;
+    }
+
+    try {
+      const savedState = window.sessionStorage.getItem(preprocessingStateCacheKey);
+
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+
+        if (parsedState?.activeRegion) {
+          return parsedState.activeRegion;
+        }
+      }
+    } catch {
+      return selectedRegions[0] || initialRegion;
+    }
+
+    return selectedRegions[0] || initialRegion;
+  });
 
   useEffect(() => {
     if (selectedRegions.length > 0 && !selectedFrameMap[activeRegion]) {
@@ -214,6 +263,20 @@ export function DataPreprocessingPage() {
       window.clearTimeout(timeoutId);
     };
   }, [operations]);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        preprocessingStateCacheKey,
+        JSON.stringify({
+          operations,
+          activeRegion
+        })
+      );
+    } catch {
+      // Ignore session storage failures and keep the page functional.
+    }
+  }, [activeRegion, operations, preprocessingStateCacheKey]);
 
   useEffect(() => {
     let ignore = false;
@@ -453,6 +516,7 @@ export function DataPreprocessingPage() {
       resetWorkflowAfterStep(patientId, examinationId, 3);
       navigate(`/ai-module/${patientId}/${examinationId}`, {
         state: {
+          activePreprocessingRegion: activeRegion,
           patientId,
           examinationId,
           selectedFrames: selectedFrameMap,

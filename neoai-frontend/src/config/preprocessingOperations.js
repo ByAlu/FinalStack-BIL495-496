@@ -142,3 +142,27 @@ export function createDefaultPreprocessingOperations() {
 export function getPreprocessingOperationDefinition(operationType) {
   return PREPROCESSING_OPERATION_DEFINITIONS.find((definition) => definition.type === operationType) || null;
 }
+
+export function hydratePreprocessingOperations(savedOperations) {
+  const savedByType = new Map(
+    Array.isArray(savedOperations)
+      ? savedOperations
+          .filter((operation) => operation?.type)
+          .map((operation) => [operation.type, operation])
+      : []
+  );
+
+  return PREPROCESSING_OPERATION_DEFINITIONS.map((definition) => {
+    const savedOperation = savedByType.get(definition.type);
+
+    return {
+      id: definition.id,
+      type: definition.type,
+      label: definition.label,
+      description: definition.description,
+      enabled: savedOperation?.enabled ?? definition.enabledByDefault,
+      ...definition.parameters,
+      ...(savedOperation || {})
+    };
+  });
+}
