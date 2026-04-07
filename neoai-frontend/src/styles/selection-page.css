@@ -192,13 +192,7 @@
 }
 
 .preprocessing-operation-card.dragging {
-  opacity: 0.72;
-}
-
-.preprocessing-operation-card.drop-target {
-  border-color: rgba(125, 211, 252, 0.38);
-  background: rgba(56, 189, 248, 0.08);
-  transform: translateY(-2px);
+  opacity: 0.35;
 }
 
 .preprocessing-operation-top {
@@ -231,9 +225,9 @@
 
 .preprocessing-operation-toggle {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-columns: auto 16px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   width: 100%;
   color: var(--text);
   font-weight: 700;
@@ -245,11 +239,13 @@
 
 .preprocessing-operation-toggle span {
   display: block;
+  min-width: 0;
 }
 
-.preprocessing-operation-order {
-  display: inline-flex;
-  gap: 6px;
+.preprocessing-drag-spacer {
+  display: inline-block;
+  width: 18px;
+  height: 20px;
 }
 
 .preprocessing-operation-actions {
@@ -267,45 +263,47 @@
   box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.08);
 }
 
+.preprocessing-drop-slot {
+  min-height: 44px;
+  margin: 2px 0;
+  border: 2px solid rgba(148, 197, 255, 0.55);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
 .preprocessing-order-badge {
-  min-width: 30px;
-  height: 30px;
-  padding: 0 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 197, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
+  min-width: 18px;
+  height: 20px;
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 0.78rem;
   font-weight: 700;
+  line-height: 1;
+  transform: translateY(1px);
 }
 
-.preprocessing-order-button {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 197, 255, 0.16);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 700;
+.preprocessing-order-drag-handle {
+  cursor: grab;
+  user-select: none;
 }
 
-.preprocessing-order-button:disabled {
-  opacity: 0.38;
-  cursor: default;
+.preprocessing-order-drag-handle:hover {
+  color: #cfe9fb;
 }
 
-.preprocessing-order-row {
-  display: grid;
-  gap: 8px;
+.preprocessing-order-drag-handle:focus-visible {
+  outline: none;
+  color: #cfe9fb;
+}
+
+.preprocessing-order-drag-handle:active {
+  cursor: grabbing;
 }
 
 .preprocessing-toggle-row {
@@ -320,8 +318,8 @@
   height: 30px;
   padding: 0;
   border-radius: 10px;
-  border: 1px solid rgba(148, 197, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
+  border: 0;
+  background: transparent;
   color: var(--text);
   display: inline-flex;
   align-items: center;

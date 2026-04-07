@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 
@@ -10,12 +10,12 @@ export function PreprocessingOptionsSidebar({
   onToggleOperation,
   onKernelSizeChange,
   onOperationParameterChange,
-  onMoveOperation,
   onReorderOperation
 }) {
   const [expandedOperationId, setExpandedOperationId] = useState(operations[0]?.id || "");
   const [draggedOperationId, setDraggedOperationId] = useState("");
-  const [dropTargetOperationId, setDropTargetOperationId] = useState("");
+  const [dropIndicator, setDropIndicator] = useState(null);
+  const draggedOperationIdRef = useRef("");
   const [draftValues, setDraftValues] = useState(() =>
     Object.fromEntries(
       operations.map((operation) => [
@@ -80,39 +80,46 @@ export function PreprocessingOptionsSidebar({
       return;
     }
 
+    draggedOperationIdRef.current = operationId;
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", operationId);
     setDraggedOperationId(operationId);
-    setDropTargetOperationId(operationId);
+    setDropIndicator({ operationId, placement: "before" });
   }
 
   function handleDragOver(event, operationId, isReorderable) {
-    if (!draggedOperationId || !isReorderable || draggedOperationId === operationId) {
+    const activeDraggedOperationId = draggedOperationIdRef.current;
+
+    if (!activeDraggedOperationId || !isReorderable || activeDraggedOperationId === operationId) {
       return;
     }
 
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-    setDropTargetOperationId(operationId);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const placement = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
+    setDropIndicator({ operationId, placement });
   }
 
-  function handleDrop(event, operationId, isReorderable) {
+  function handleDrop(event, operationId, isReorderable, explicitPlacement) {
     event.preventDefault();
+    const activeDraggedOperationId = draggedOperationIdRef.current;
 
-    if (!draggedOperationId || !isReorderable || draggedOperationId === operationId) {
-      setDraggedOperationId("");
-      setDropTargetOperationId("");
+    if (!activeDraggedOperationId || !isReorderable || activeDraggedOperationId === operationId) {
+      resetDragState();
       return;
     }
 
-    onReorderOperation(draggedOperationId, operationId);
-    setDraggedOperationId("");
-    setDropTargetOperationId("");
+    const placement =
+      explicitPlacement || (dropIndicator?.operationId === operationId ? dropIndicator.placement : "before");
+    onReorderOperation(activeDraggedOperationId, operationId, placement);
+    resetDragState();
   }
 
   function resetDragState() {
+    draggedOperationIdRef.current = "";
     setDraggedOperationId("");
-    setDropTargetOperationId("");
+    setDropIndicator(null);
   }
 
   return (
@@ -136,42 +143,70 @@ export function PreprocessingOptionsSidebar({
               const enabledOperations = operations.filter((item) => item.enabled);
               const enabledOperationIndex = enabledOperations.findIndex((item) => item.id === operation.id);
               const firstDisabledIndex = operations.findIndex((item) => !item.enabled);
-              const shouldRenderDivider =
-                firstDisabledIndex > 0 && operationIndex === firstDisabledIndex;
+              const shouldRenderDivider = firstDisabledIndex > 0 && operationIndex === firstDisabledIndex;
               const isReorderable = operation.enabled && enabledOperations.length > 0;
-              const isFirstOperation = enabledOperationIndex === 0;
-              const isLastOperation = enabledOperationIndex === enabledOperations.length - 1;
               const isDragged = draggedOperationId === operation.id;
-              const isDropTarget =
-                dropTargetOperationId === operation.id && draggedOperationId && draggedOperationId !== operation.id;
+              const showDropBefore =
+                dropIndicator?.operationId === operation.id &&
+                dropIndicator.placement === "before" &&
+                draggedOperationId &&
+                draggedOperationId !== operation.id;
+              const showDropAfter =
+                dropIndicator?.operationId === operation.id &&
+                dropIndicator.placement === "after" &&
+                draggedOperationId &&
+                draggedOperationId !== operation.id;
               const draftKernelSize = draftValues[operation.id]?.kernelSize ?? operation.kernelSize;
               const draftClipLimit = draftValues[operation.id]?.clipLimit ?? operation.clipLimit;
               const draftStrength = draftValues[operation.id]?.strength ?? operation.strength;
 
               return (
                 <div key={operation.id}>
+                  {showDropBefore ? (
+                    <div
+                      aria-hidden="true"
+                      className="preprocessing-drop-slot"
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                        setDropIndicator({ operationId: operation.id, placement: "before" });
+                      }}
+                      onDrop={(event) => handleDrop(event, operation.id, isReorderable, "before")}
+                    />
+                  ) : null}
                   {shouldRenderDivider ? <div className="preprocessing-operation-divider" aria-hidden="true" /> : null}
                   <section
-                    className={`preprocessing-operation-card${isDragged ? " dragging" : ""}${isDropTarget ? " drop-target" : ""}`}
-                    draggable={isReorderable}
+                    className={`preprocessing-operation-card${isDragged ? " dragging" : ""}`}
                     onDragEnd={resetDragState}
                     onDragOver={(event) => handleDragOver(event, operation.id, isReorderable)}
-                    onDragStart={(event) => handleDragStart(event, operation.id, isReorderable)}
                     onDrop={(event) => handleDrop(event, operation.id, isReorderable)}
                   >
                     <div className="preprocessing-operation-top preprocessing-operation-top-compact">
-                      <label className="preprocessing-operation-toggle">
+                      <div className="preprocessing-operation-toggle">
+                        {isReorderable ? (
+                          <button
+                            aria-label={`Drag to reorder ${operation.label}`}
+                            className="preprocessing-order-badge preprocessing-order-drag-handle"
+                            draggable
+                            title={`Drag to reorder ${operation.label}`}
+                            type="button"
+                            onDragEnd={resetDragState}
+                            onDragStart={(event) => handleDragStart(event, operation.id, isReorderable)}
+                          >
+                            #{enabledOperationIndex + 1}
+                          </button>
+                        ) : (
+                          <span className="preprocessing-drag-spacer" aria-hidden="true" />
+                        )}
                         <input
+                          aria-label={`Enable ${operation.label}`}
                           checked={operation.enabled}
                           type="checkbox"
                           onChange={(event) => onToggleOperation(operation.id, event.target.checked)}
                         />
                         <span>{operation.label}</span>
-                      </label>
+                      </div>
                       <div className="preprocessing-operation-actions">
-                        {isReorderable ? (
-                          <span className="preprocessing-order-badge">#{enabledOperationIndex + 1}</span>
-                        ) : null}
                         <button
                           aria-label={isExpanded ? `Collapse ${operation.label}` : `Expand ${operation.label}`}
                           className={`preprocessing-expand-button${isExpanded ? " expanded" : ""}`}
@@ -190,34 +225,6 @@ export function PreprocessingOptionsSidebar({
                     {isExpanded ? (
                       <div className="preprocessing-operation-body">
                         <p>{operation.description}</p>
-                        {isReorderable ? (
-                          <div className="preprocessing-order-row">
-                            <span className="preprocessing-control-label">
-                              <span>Order</span>
-                              <strong>Step {enabledOperationIndex + 1}</strong>
-                            </span>
-                            <div className="preprocessing-operation-order">
-                            <button
-                              aria-label={`Move ${operation.label} up`}
-                              className="preprocessing-order-button"
-                              disabled={isFirstOperation}
-                              type="button"
-                              onClick={() => onMoveOperation(operation.id, -1)}
-                            >
-                              ↑
-                            </button>
-                            <button
-                              aria-label={`Move ${operation.label} down`}
-                              className="preprocessing-order-button"
-                              disabled={isLastOperation}
-                              type="button"
-                              onClick={() => onMoveOperation(operation.id, 1)}
-                            >
-                              ↓
-                            </button>
-                            </div>
-                          </div>
-                        ) : null}
                         {operation.type === "median-filter" ? (
                           <label className="preprocessing-control-block">
                             <span className="preprocessing-control-label">
@@ -298,6 +305,18 @@ export function PreprocessingOptionsSidebar({
                       </div>
                     ) : null}
                   </section>
+                  {showDropAfter ? (
+                    <div
+                      aria-hidden="true"
+                      className="preprocessing-drop-slot"
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                        setDropIndicator({ operationId: operation.id, placement: "after" });
+                      }}
+                      onDrop={(event) => handleDrop(event, operation.id, isReorderable, "after")}
+                    />
+                  ) : null}
                 </div>
               );
             })}

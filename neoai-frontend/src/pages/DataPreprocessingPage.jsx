@@ -426,38 +426,8 @@ export function DataPreprocessingPage() {
     updateOperation(operationId, () => ({ [parameterName]: value }));
   }
 
-  function handleMoveOperation(operationId, direction) {
-    setOperations((current) => {
-      const currentIndex = current.findIndex((operation) => operation.id === operationId);
-
-      if (currentIndex === -1 || !current[currentIndex].enabled) {
-        return current;
-      }
-
-      const enabledIndexes = current.reduce((indexes, operation, index) => {
-        if (operation.enabled) {
-          indexes.push(index);
-        }
-
-        return indexes;
-      }, []);
-      const enabledPosition = enabledIndexes.indexOf(currentIndex);
-      const targetEnabledPosition = enabledPosition + direction;
-
-      if (targetEnabledPosition < 0 || targetEnabledPosition >= enabledIndexes.length) {
-        return current;
-      }
-
-      const targetIndex = enabledIndexes[targetEnabledPosition];
-      const next = [...current];
-
-      [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
-      return next;
-    });
-  }
-
-  function handleReorderOperation(sourceOperationId, targetOperationId) {
-    if (sourceOperationId === targetOperationId) {
+  function handleReorderOperation(sourceOperationId, targetOperationId, placement = "before") {
+    if (sourceOperationId === targetOperationId && placement === "before") {
       return;
     }
 
@@ -475,7 +445,12 @@ export function DataPreprocessingPage() {
 
       const next = [...current];
       const [movedOperation] = next.splice(sourceIndex, 1);
-      const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+      let adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+
+      if (placement === "after") {
+        adjustedTargetIndex += 1;
+      }
+
       next.splice(adjustedTargetIndex, 0, movedOperation);
       return next;
     });
@@ -619,7 +594,6 @@ export function DataPreprocessingPage() {
           onToggleOperation={handleToggleOperation}
           onKernelSizeChange={handleKernelSizeChange}
           onOperationParameterChange={handleOperationParameterChange}
-          onMoveOperation={handleMoveOperation}
           onReorderOperation={handleReorderOperation}
         />
 
