@@ -1,7 +1,8 @@
-﻿import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 import { getPreprocessingOperationDefinition } from "../config/preprocessingOperations";
+import { useOperationReorderDrag } from "../hooks/useOperationReorderDrag";
 
 export function PreprocessingOptionsSidebar({
   operations,
@@ -14,9 +15,6 @@ export function PreprocessingOptionsSidebar({
   onReorderOperation
 }) {
   const [expandedOperationId, setExpandedOperationId] = useState(operations[0]?.id || "");
-  const [draggedOperationId, setDraggedOperationId] = useState("");
-  const [dropIndicator, setDropIndicator] = useState(null);
-  const draggedOperationIdRef = useRef("");
   const [draftValues, setDraftValues] = useState(() =>
     Object.fromEntries(
       operations.map((operation) => [
@@ -31,6 +29,15 @@ export function PreprocessingOptionsSidebar({
       ])
     )
   );
+  const {
+    draggedOperationId,
+    dropIndicator,
+    handleDragStart,
+    handleDragOver,
+    handleSlotDragOver,
+    handleDrop,
+    resetDragState
+  } = useOperationReorderDrag({ onReorderOperation });
 
   useEffect(() => {
     setDraftValues(
@@ -77,54 +84,6 @@ export function PreprocessingOptionsSidebar({
     }
 
     onOperationParameterChange(operationId, fieldName, nextValue);
-  }
-
-  function handleDragStart(event, operationId, isReorderable) {
-    if (!isReorderable) {
-      event.preventDefault();
-      return;
-    }
-
-    draggedOperationIdRef.current = operationId;
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", operationId);
-    setDraggedOperationId(operationId);
-    setDropIndicator({ operationId, placement: "before" });
-  }
-
-  function handleDragOver(event, operationId, isReorderable) {
-    const activeDraggedOperationId = draggedOperationIdRef.current;
-
-    if (!activeDraggedOperationId || !isReorderable || activeDraggedOperationId === operationId) {
-      return;
-    }
-
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const placement = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
-    setDropIndicator({ operationId, placement });
-  }
-
-  function handleDrop(event, operationId, isReorderable, explicitPlacement) {
-    event.preventDefault();
-    const activeDraggedOperationId = draggedOperationIdRef.current;
-
-    if (!activeDraggedOperationId || !isReorderable || activeDraggedOperationId === operationId) {
-      resetDragState();
-      return;
-    }
-
-    const placement =
-      explicitPlacement || (dropIndicator?.operationId === operationId ? dropIndicator.placement : "before");
-    onReorderOperation(activeDraggedOperationId, operationId, placement);
-    resetDragState();
-  }
-
-  function resetDragState() {
-    draggedOperationIdRef.current = "";
-    setDraggedOperationId("");
-    setDropIndicator(null);
   }
 
   function renderControl(operation, control) {
@@ -200,11 +159,7 @@ export function PreprocessingOptionsSidebar({
                     <div
                       aria-hidden="true"
                       className="preprocessing-drop-slot"
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = "move";
-                        setDropIndicator({ operationId: operation.id, placement: "before" });
-                      }}
+                      onDragOver={(event) => handleSlotDragOver(event, operation.id, "before")}
                       onDrop={(event) => handleDrop(event, operation.id, isReorderable, "before")}
                     />
                   ) : null}
@@ -267,11 +222,7 @@ export function PreprocessingOptionsSidebar({
                     <div
                       aria-hidden="true"
                       className="preprocessing-drop-slot"
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = "move";
-                        setDropIndicator({ operationId: operation.id, placement: "after" });
-                      }}
+                      onDragOver={(event) => handleSlotDragOver(event, operation.id, "after")}
                       onDrop={(event) => handleDrop(event, operation.id, isReorderable, "after")}
                     />
                   ) : null}
