@@ -597,6 +597,7 @@ export function DataSelectionPage() {
           onSelectFrame={handleSelectedFrameClick}
           regions={regions}
           selectedCount={selectedCount}
+          totalCount={regions.length}
           selectedFrameRegion={selectedFrameRegion}
           selectedFrames={selectedFrames}
           showSelectedMenu={showSelectedMenu}

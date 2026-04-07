@@ -6,7 +6,9 @@
   showSelectedMenu,
   onClose,
   onOpen,
-  onSelectFrame
+  onSelectFrame,
+  selectedCount,
+  totalCount
 }) {
   return (
     <aside className={`selected-frames-sidebar panel${showSelectedMenu ? "" : " collapsed"}`}>
@@ -21,6 +23,11 @@
                 <span className="selection-toolbar-kicker">Selected</span>
                 <strong>Frames</strong>
               </div>
+              {typeof selectedCount === "number" && typeof totalCount === "number" ? (
+                <span className="selected-frames-count">
+                  {selectedCount}/{totalCount}
+                </span>
+              ) : null}
             </div>
 
             <div className="selected-frames-column">

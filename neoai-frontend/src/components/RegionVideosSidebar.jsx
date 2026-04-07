@@ -1,4 +1,4 @@
-export function RegionVideosSidebar({
+﻿export function RegionVideosSidebar({
   examinationId,
   examinationVideos,
   regions,
@@ -13,13 +13,13 @@ export function RegionVideosSidebar({
     <aside className={`selection-sidebar panel${showVideoMenu ? "" : " collapsed"}`}>
       {showVideoMenu ? (
         <>
-          <div className="panel-heading">
-            <div>
-              <p className="panel-kicker">Region videos</p>
-              <h3>{examinationId}</h3>
+          <div className="region-videos-sidebar-header">
+            <div className="region-videos-sidebar-copy">
+              <span className="selection-toolbar-kicker">Region Videos</span>
+              <strong>{examinationId}</strong>
             </div>
             <button className="panel-arrow-toggle" type="button" onClick={onClose}>
-              ←
+              ‹
             </button>
           </div>
 
@@ -55,7 +55,7 @@ export function RegionVideosSidebar({
         </>
       ) : (
         <button className="panel-edge-toggle" type="button" onClick={onOpen}>
-          →
+          ›
         </button>
       )}
     </aside>
