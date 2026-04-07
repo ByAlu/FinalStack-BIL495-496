@@ -21,6 +21,7 @@ export function AiModuleSelectionPage() {
   const selectedRegions = useMemo(() => regions.filter((region) => selectedFrameMap[region]), [selectedFrameMap]);
   const [showOptionsMenu, setShowOptionsMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
+  const [disabledActionMessage, setDisabledActionMessage] = useState("");
   const [selectedModuleIds, setSelectedModuleIds] = useState(() => {
     if (Array.isArray(location.state?.selectedModuleIds) && location.state.selectedModuleIds.length > 0) {
       return location.state.selectedModuleIds;
@@ -69,9 +70,18 @@ export function AiModuleSelectionPage() {
     : "No module selected";
 
   function handleToggleModule(moduleId) {
+    setDisabledActionMessage("");
     setSelectedModuleIds((current) =>
       current.includes(moduleId) ? current.filter((item) => item !== moduleId) : [...current, moduleId]
     );
+  }
+
+  function showDisabledActionMessage(message) {
+    setDisabledActionMessage(message);
+  }
+
+  function clearDisabledActionMessage() {
+    setDisabledActionMessage("");
   }
 
   function handleContinue() {
@@ -103,11 +113,7 @@ export function AiModuleSelectionPage() {
         <section className="selection-main panel">
           <div className="selection-viewer-header ai-module-viewer-header">
             <div className="viewer-header-actions">
-              <div className="viewer-header-side viewer-header-side-left">
-                <Link className="secondary-button" to={`/preprocessing/${patientId}/${examinationId}`} state={location.state}>
-                  Back
-                </Link>
-              </div>
+              <div className="viewer-header-side viewer-header-side-left" />
 
               <div className="viewer-header-center">
                 <div className="viewer-control-cluster preprocessing-center-chip ai-module-center-chip">
@@ -117,9 +123,23 @@ export function AiModuleSelectionPage() {
 
               <div className="viewer-header-side viewer-header-side-right">
                 <div className="viewer-primary-actions">
-                  <button className="primary-button" type="button" onClick={handleContinue} disabled={selectedModuleIds.length === 0}>
-                    Continue
-                  </button>
+                  <span
+                    onMouseEnter={() => {
+                      if (selectedModuleIds.length === 0) {
+                        showDisabledActionMessage("Select at least one AI module before continuing.");
+                      }
+                    }}
+                    onMouseLeave={clearDisabledActionMessage}
+                  >
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={handleContinue}
+                      disabled={selectedModuleIds.length === 0}
+                    >
+                      Continue
+                    </button>
+                  </span>
                 </div>
               </div>
             </div>
@@ -133,7 +153,7 @@ export function AiModuleSelectionPage() {
             activeVideoFrames={[]}
             className="viewer-stage"
             currentFrame={0}
-            disabledActionMessage=""
+            disabledActionMessage={disabledActionMessage}
             handleRailMouseDown={() => {}}
             handleRailPointerMove={() => {}}
             handleViewerPointerDown={() => {}}
