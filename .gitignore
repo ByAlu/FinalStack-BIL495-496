@@ -12,4 +12,8 @@ mvnw
 mvnw.cmd
 .mvn/
 
+#Python
+.venv
+__pycache__
+
 gcp-key.json
