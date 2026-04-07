@@ -16,6 +16,8 @@ const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
 const DEFAULT_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
 const MAX_MAGNIFIER_CONFIG = { size: 500, zoomFactor: 8 };
 const MIN_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
+const PREVIEW_PROCESSING_DEBOUNCE_MS = 180;
+const OPENCV_READY_EVENT = "opencv-ready";
 const DEFAULT_OPERATIONS = [
   {
     id: "median-filter",
@@ -65,6 +67,7 @@ export function DataPreprocessingPage() {
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
   const [operations, setOperations] = useState(DEFAULT_OPERATIONS);
+  const [previewOperations, setPreviewOperations] = useState(DEFAULT_OPERATIONS);
   const [showOptionsMenu, setShowOptionsMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
   const [isMagnifierMode, setIsMagnifierMode] = useState(false);
@@ -83,11 +86,48 @@ export function DataPreprocessingPage() {
   const [processedPreviewSrc, setProcessedPreviewSrc] = useState("");
   const [processedFrames, setProcessedFrames] = useState({});
   const [isApplyPending, setIsApplyPending] = useState(false);
+  const [openCvStatus, setOpenCvStatus] = useState("loading");
   const { selectedFrames, setSelectedFrames } = useSelectionSession({
     patientId,
     examinationId,
     initialRegion
   });
+
+  useEffect(() => {
+    function handleOpenCvReady() {
+      setOpenCvStatus("ready");
+    }
+
+    if (window.cv) {
+      setOpenCvStatus("ready");
+      return undefined;
+    }
+
+    const handleReadyEvent = () => handleOpenCvReady();
+    const handleScriptError = (event) => {
+      const target = event.target;
+
+      if (target instanceof HTMLScriptElement && target.src.includes("opencv.js")) {
+        setOpenCvStatus("error");
+      }
+    };
+
+    window.addEventListener(OPENCV_READY_EVENT, handleReadyEvent);
+    window.addEventListener("error", handleScriptError);
+
+    return () => {
+      window.removeEventListener(OPENCV_READY_EVENT, handleReadyEvent);
+      window.removeEventListener("error", handleScriptError);
+    };
+  }, []);
+
+  const isOpenCvReady = openCvStatus === "ready";
+  const viewerOverlayMessage =
+    openCvStatus === "loading"
+      ? "Loading OpenCV for preprocessing..."
+      : openCvStatus === "error"
+        ? "OpenCV failed to load. Please refresh the page."
+        : "";
 
   useEffect(() => {
     if (location.state?.selectedFrames && Object.keys(location.state.selectedFrames).length > 0) {
@@ -174,6 +214,16 @@ export function DataPreprocessingPage() {
   }, []);
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setPreviewOperations(operations);
+    }, PREVIEW_PROCESSING_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [operations]);
+
+  useEffect(() => {
     let ignore = false;
 
     async function buildPreview() {
@@ -182,10 +232,22 @@ export function DataPreprocessingPage() {
         return;
       }
 
-      const nextPreview = await applyOperationsToFrame(previewSource, operations);
+      if (!isOpenCvReady) {
+        setProcessedPreviewSrc("");
+        return;
+      }
 
-      if (!ignore) {
-        setProcessedPreviewSrc(nextPreview);
+      try {
+        const nextPreview = await applyOperationsToFrame(previewSource, previewOperations);
+
+        if (!ignore) {
+          setProcessedPreviewSrc(nextPreview);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setProcessedPreviewSrc("");
+          setOpenCvStatus("error");
+        }
       }
     }
 
@@ -194,7 +256,7 @@ export function DataPreprocessingPage() {
     return () => {
       ignore = true;
     };
-  }, [operations, previewSource]);
+  }, [isOpenCvReady, previewOperations, previewSource]);
 
   if (!examination) {
     return (
@@ -322,6 +384,10 @@ export function DataPreprocessingPage() {
   }
 
   async function handleContinue() {
+    if (!isOpenCvReady) {
+      return;
+    }
+
     setIsApplyPending(true);
 
     try {
@@ -446,7 +512,7 @@ export function DataPreprocessingPage() {
 
         <section className="selection-main panel">
           <ProcessingViewerHeader
-            canContinue={selectedRegions.length > 0}
+            canContinue={selectedRegions.length > 0 && isOpenCvReady}
             enabledOperationCount={enabledOperationCount}
             handleMagnifierSizeChange={handleMagnifierSizeChange}
             handleMagnifierZoomChange={handleMagnifierZoomChange}
@@ -498,6 +564,7 @@ export function DataPreprocessingPage() {
             viewRotation={viewRotation}
             viewerStageRef={viewerStageRef}
             framePlaceholderMessage="Preparing selected frame..."
+            viewerOverlayMessage={viewerOverlayMessage}
             zoomOrigin={zoomOrigin}
             zoomScale={zoomScale}
           />

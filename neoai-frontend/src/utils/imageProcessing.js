@@ -7,14 +7,13 @@ function loadImage(src) {
   });
 }
 
-function getMedian(values) {
-  const sorted = [...values].sort((left, right) => left - right);
-  return sorted[Math.floor(sorted.length / 2)];
-}
-
 export async function applyMedianFilter(src, kernelSize = 3) {
   if (!src || kernelSize <= 1) {
     return src;
+  }
+
+  if (!window.cv?.medianBlur) {
+    throw new Error("OpenCV is not ready yet.");
   }
 
   const image = await loadImage(src);
@@ -23,44 +22,23 @@ export async function applyMedianFilter(src, kernelSize = 3) {
   const sourceCanvas = document.createElement("canvas");
   sourceCanvas.width = width;
   sourceCanvas.height = height;
-  const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  const sourceContext = sourceCanvas.getContext("2d");
   sourceContext.drawImage(image, 0, 0, width, height);
+  const targetCanvas = document.createElement("canvas");
+  targetCanvas.width = width;
+  targetCanvas.height = height;
 
-  const sourceData = sourceContext.getImageData(0, 0, width, height);
-  const targetData = sourceContext.createImageData(width, height);
-  const radius = Math.floor(kernelSize / 2);
-  const bufferR = [];
-  const bufferG = [];
-  const bufferB = [];
+  const sourceMat = window.cv.imread(sourceCanvas);
+  const targetMat = new window.cv.Mat();
 
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      bufferR.length = 0;
-      bufferG.length = 0;
-      bufferB.length = 0;
-
-      for (let offsetY = -radius; offsetY <= radius; offsetY += 1) {
-        const sampleY = Math.min(height - 1, Math.max(0, y + offsetY));
-
-        for (let offsetX = -radius; offsetX <= radius; offsetX += 1) {
-          const sampleX = Math.min(width - 1, Math.max(0, x + offsetX));
-          const sampleIndex = (sampleY * width + sampleX) * 4;
-          bufferR.push(sourceData.data[sampleIndex]);
-          bufferG.push(sourceData.data[sampleIndex + 1]);
-          bufferB.push(sourceData.data[sampleIndex + 2]);
-        }
-      }
-
-      const pixelIndex = (y * width + x) * 4;
-      targetData.data[pixelIndex] = getMedian(bufferR);
-      targetData.data[pixelIndex + 1] = getMedian(bufferG);
-      targetData.data[pixelIndex + 2] = getMedian(bufferB);
-      targetData.data[pixelIndex + 3] = sourceData.data[pixelIndex + 3];
-    }
+  try {
+    window.cv.medianBlur(sourceMat, targetMat, kernelSize);
+    window.cv.imshow(targetCanvas, targetMat);
+    return targetCanvas.toDataURL("image/png");
+  } finally {
+    sourceMat.delete();
+    targetMat.delete();
   }
-
-  sourceContext.putImageData(targetData, 0, 0);
-  return sourceCanvas.toDataURL("image/png");
 }
 
 export async function applyOperationsToFrame(src, operations) {

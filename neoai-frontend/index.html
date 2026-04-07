@@ -7,6 +7,12 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      window.onOpenCvReady = function onOpenCvReady() {
+        window.dispatchEvent(new Event("opencv-ready"));
+      };
+    </script>
+    <script async src="opencv.js" onload="onOpenCvReady()"></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

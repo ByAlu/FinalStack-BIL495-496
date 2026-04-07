@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 
@@ -12,9 +12,34 @@ export function PreprocessingOptionsSidebar({
   selectedCount
 }) {
   const [expandedOperationId, setExpandedOperationId] = useState(operations[0]?.id || "");
+  const [draftKernelSizes, setDraftKernelSizes] = useState(() =>
+    Object.fromEntries(operations.map((operation) => [operation.id, operation.kernelSize]))
+  );
+
+  useEffect(() => {
+    setDraftKernelSizes(Object.fromEntries(operations.map((operation) => [operation.id, operation.kernelSize])));
+  }, [operations]);
 
   function toggleExpanded(operationId) {
     setExpandedOperationId((current) => (current === operationId ? "" : operationId));
+  }
+
+  function handleKernelSizeInput(operationId, kernelSize) {
+    setDraftKernelSizes((current) => ({
+      ...current,
+      [operationId]: kernelSize
+    }));
+  }
+
+  function commitKernelSize(operationId) {
+    const nextKernelSize = draftKernelSizes[operationId];
+    const operation = operations.find((item) => item.id === operationId);
+
+    if (!operation || nextKernelSize === operation.kernelSize) {
+      return;
+    }
+
+    onKernelSizeChange(operationId, nextKernelSize);
   }
 
   return (
@@ -35,6 +60,7 @@ export function PreprocessingOptionsSidebar({
           <div className="preprocessing-operation-list">
             {operations.map((operation) => {
               const isExpanded = expandedOperationId === operation.id;
+              const draftKernelSize = draftKernelSizes[operation.id] ?? operation.kernelSize;
 
               return (
                 <section className="preprocessing-operation-card" key={operation.id}>
@@ -68,7 +94,7 @@ export function PreprocessingOptionsSidebar({
                         <span className="preprocessing-control-label">
                           <span>Kernel size</span>
                           <strong>
-                            {operation.kernelSize}x{operation.kernelSize}
+                            {draftKernelSize}x{draftKernelSize}
                           </strong>
                         </span>
                         <input
@@ -78,8 +104,15 @@ export function PreprocessingOptionsSidebar({
                           min="3"
                           step="2"
                           type="range"
-                          value={operation.kernelSize}
-                          onChange={(event) => onKernelSizeChange(operation.id, Number(event.target.value))}
+                          value={draftKernelSize}
+                          onChange={(event) => handleKernelSizeInput(operation.id, Number(event.target.value))}
+                          onMouseUp={() => commitKernelSize(operation.id)}
+                          onTouchEnd={() => commitKernelSize(operation.id)}
+                          onKeyUp={(event) => {
+                            if (event.key.startsWith("Arrow") || event.key === "Home" || event.key === "End") {
+                              commitKernelSize(operation.id);
+                            }
+                          }}
                         />
                       </label>
                     </div>

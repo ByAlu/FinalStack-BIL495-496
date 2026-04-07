@@ -27,6 +27,7 @@ export function ViewerStage({
   viewerMode,
   viewerStageRef,
   framePlaceholderMessage = "Preparing frame...",
+  viewerOverlayMessage = "",
   viewRotation,
   zoomOrigin,
   zoomScale
@@ -56,6 +57,7 @@ export function ViewerStage({
   const disabledMessageOverlay = disabledActionMessage ? (
     <div className="viewer-disabled-action-message">{disabledActionMessage}</div>
   ) : null;
+  const viewerMessageOverlay = viewerOverlayMessage ? <div className="viewer-overlay-message">{viewerOverlayMessage}</div> : null;
 
   return (
     <div className="viewer-shell">
@@ -85,6 +87,7 @@ export function ViewerStage({
               />
               {magnifierOverlay}
               {disabledMessageOverlay}
+              {viewerMessageOverlay}
             </>
           ) : (
             <div className="viewer-placeholder viewer-loading-state">{framePlaceholderMessage}</div>
@@ -133,6 +136,7 @@ export function ViewerStage({
             </div>
             {magnifierOverlay}
             {disabledMessageOverlay}
+            {viewerMessageOverlay}
           </>
         ) : (
           <div className="viewer-placeholder">No video selected</div>

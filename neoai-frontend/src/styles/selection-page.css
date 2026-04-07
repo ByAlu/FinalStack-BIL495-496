@@ -712,6 +712,22 @@
   color: #f8fcff;
 }
 
+.viewer-overlay-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(7, 17, 31, 0.58);
+  color: #f8fcff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: center;
+  backdrop-filter: blur(8px);
+  z-index: 5;
+  pointer-events: none;
+}
+
 .viewer-play-button {
   min-width: 28px;
   min-height: 28px;
