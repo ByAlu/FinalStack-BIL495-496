@@ -13,3 +13,5 @@ mvnw.cmd
 .mvn/
 
 gcp-key.json
+
+.venv
