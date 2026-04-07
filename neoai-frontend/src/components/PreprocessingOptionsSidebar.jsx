@@ -1,7 +1,8 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useState } from "react";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 import { getPreprocessingOperationDefinition } from "../config/preprocessingOperations";
+import { useOperationDraftValues } from "../hooks/useOperationDraftValues";
 import { useOperationReorderDrag } from "../hooks/useOperationReorderDrag";
 
 export function PreprocessingOptionsSidebar({
@@ -15,20 +16,15 @@ export function PreprocessingOptionsSidebar({
   onReorderOperation
 }) {
   const [expandedOperationId, setExpandedOperationId] = useState(operations[0]?.id || "");
-  const [draftValues, setDraftValues] = useState(() =>
-    Object.fromEntries(
-      operations.map((operation) => [
-        operation.id,
-        {
-          kernelSize: operation.kernelSize,
-          clipLimit: operation.clipLimit,
-          strength: operation.strength,
-          sigmaX: operation.sigmaX,
-          sigmaY: operation.sigmaY
-        }
-      ])
-    )
-  );
+  const {
+    commitDraftValue,
+    getDraftValue,
+    handleDraftValueChange
+  } = useOperationDraftValues({
+    operations,
+    onKernelSizeChange,
+    onOperationParameterChange
+  });
   const {
     draggedOperationId,
     dropIndicator,
@@ -39,55 +35,12 @@ export function PreprocessingOptionsSidebar({
     resetDragState
   } = useOperationReorderDrag({ onReorderOperation });
 
-  useEffect(() => {
-    setDraftValues(
-      Object.fromEntries(
-        operations.map((operation) => [
-          operation.id,
-          {
-            kernelSize: operation.kernelSize,
-            clipLimit: operation.clipLimit,
-            strength: operation.strength,
-            sigmaX: operation.sigmaX,
-            sigmaY: operation.sigmaY
-          }
-        ])
-      )
-    );
-  }, [operations]);
-
   function toggleExpanded(operationId) {
     setExpandedOperationId((current) => (current === operationId ? "" : operationId));
   }
 
-  function handleDraftValueChange(operationId, fieldName, value) {
-    setDraftValues((current) => ({
-      ...current,
-      [operationId]: {
-        ...current[operationId],
-        [fieldName]: value
-      }
-    }));
-  }
-
-  function commitDraftValue(operationId, fieldName) {
-    const operation = operations.find((item) => item.id === operationId);
-    const nextValue = draftValues[operationId]?.[fieldName];
-
-    if (!operation || nextValue === undefined || nextValue === operation[fieldName]) {
-      return;
-    }
-
-    if (fieldName === "kernelSize") {
-      onKernelSizeChange(operationId, nextValue);
-      return;
-    }
-
-    onOperationParameterChange(operationId, fieldName, nextValue);
-  }
-
   function renderControl(operation, control) {
-    const draftValue = draftValues[operation.id]?.[control.fieldName] ?? operation[control.fieldName];
+    const draftValue = getDraftValue(operation.id, control.fieldName, operation[control.fieldName]);
     const formattedValue = control.formatValue ? control.formatValue(draftValue) : draftValue;
 
     return (
