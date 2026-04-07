@@ -121,12 +121,14 @@ export function DataPreprocessingPage() {
     try {
       const savedCommittedState = window.sessionStorage.getItem(committedPreprocessingStateCacheKey);
 
-      if (savedCommittedState) {
-        const parsedCommittedState = JSON.parse(savedCommittedState);
+      if (!savedCommittedState) {
+        return null;
+      }
 
-        if (Array.isArray(parsedCommittedState?.operations) && parsedCommittedState.operations.length > 0) {
-          return JSON.stringify(hydratePreprocessingOperations(parsedCommittedState.operations));
-        }
+      const parsedCommittedState = JSON.parse(savedCommittedState);
+
+      if (Array.isArray(parsedCommittedState?.operations) && parsedCommittedState.operations.length > 0) {
+        return JSON.stringify(hydratePreprocessingOperations(parsedCommittedState.operations));
       }
     } catch {
       return null;
@@ -307,14 +309,8 @@ export function DataPreprocessingPage() {
   }, [activeRegion, operations, preprocessingStateCacheKey]);
 
   useEffect(() => {
-    const currentOperationsSignature = JSON.stringify(operations);
-
-    if (!committedOperationsSignature || currentOperationsSignature === committedOperationsSignature) {
-      return;
-    }
-
-    resetWorkflowAfterStep(patientId, examinationId, 2);
-  }, [committedOperationsSignature, examinationId, operations, patientId]);
+    setProcessedFrames({});
+  }, [previewOperations]);
 
   useEffect(() => {
     let ignore = false;
@@ -337,6 +333,15 @@ export function DataPreprocessingPage() {
 
         if (!ignore) {
           setProcessedPreviewSrc(nextPreview);
+          if (activeRegion && activeSelectedFrame) {
+            setProcessedFrames((current) => ({
+              ...current,
+              [activeRegion]: {
+                ...activeSelectedFrame,
+                thumbnail: nextPreview
+              }
+            }));
+          }
           setProcessingErrorMessage("");
         }
       } catch (error) {
@@ -352,7 +357,7 @@ export function DataPreprocessingPage() {
     return () => {
       ignore = true;
     };
-  }, [isOpenCvReady, previewOperations, previewSource]);
+  }, [activeRegion, activeSelectedFrame, isOpenCvReady, previewOperations, previewSource]);
 
   if (!examination) {
     return (
@@ -528,6 +533,10 @@ export function DataPreprocessingPage() {
   async function processAllSelectedFrames() {
     const nextEntries = await Promise.all(
       selectedRegions.map(async (region) => {
+        if (processedFrames[region]) {
+          return [region, processedFrames[region]];
+        }
+
         const frame = selectedFrameMap[region];
         const sourceFrame = getSelectedFrameSource(frame);
         const thumbnail = await applyOperationsToFrame(sourceFrame, operations);
@@ -548,25 +557,27 @@ export function DataPreprocessingPage() {
     try {
       const nextProcessedFrames =
         Object.keys(processedFrames).length === selectedRegions.length ? processedFrames : await processAllSelectedFrames();
+      const nextOperationsSignature = JSON.stringify(operations);
 
       setProcessedFrames(nextProcessedFrames);
-      const nextCommittedOperationsSignature = JSON.stringify(operations);
+      setActiveWorkflowContext({ patientId, examinationId });
 
-      setCommittedOperationsSignature(nextCommittedOperationsSignature);
+      if (committedOperationsSignature !== nextOperationsSignature) {
+        resetWorkflowAfterStep(patientId, examinationId, 3);
+        setCommittedOperationsSignature(nextOperationsSignature);
 
-      try {
-        window.sessionStorage.setItem(
-          committedPreprocessingStateCacheKey,
-          JSON.stringify({
-            operations
-          })
-        );
-      } catch {
-        // Ignore session storage failures and keep the page functional.
+        try {
+          window.sessionStorage.setItem(
+            committedPreprocessingStateCacheKey,
+            JSON.stringify({
+              operations
+            })
+          );
+        } catch {
+          // Ignore session storage failures and keep the page functional.
+        }
       }
 
-      setActiveWorkflowContext({ patientId, examinationId });
-      resetWorkflowAfterStep(patientId, examinationId, 3);
       navigate(`/ai-module/${patientId}/${examinationId}`, {
         state: {
           activePreprocessingRegion: activeRegion,

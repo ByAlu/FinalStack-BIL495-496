@@ -22,6 +22,10 @@ function getExaminationCacheKey(patientId, examinationId) {
   return `neoai-cache:${patientId}:${examinationId}`;
 }
 
+function getCommittedSelectionStateCacheKey(patientId, examinationId) {
+  return `neoai-selection-committed:${patientId}:${examinationId}`;
+}
+
 function normalizeRotation(nextRotation) {
   const normalized = nextRotation % 360;
   return normalized < 0 ? normalized + 360 : normalized;
@@ -51,6 +55,7 @@ export function DataSelectionPage() {
   const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
   const initialRegion = examination?.videos[0]?.region || "r1";
   const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
+  const committedSelectionStateCacheKey = getCommittedSelectionStateCacheKey(patientId, examinationId);
   const fpsPopoverRef = useRef(null);
   const magnifierPopoverRef = useRef(null);
   const pendingFrameJumpRef = useRef(null);
@@ -75,6 +80,25 @@ export function DataSelectionPage() {
   });
   const [isMagnifierActive, setIsMagnifierActive] = useState(false);
   const [viewRotation, setViewRotation] = useState(0);
+  const [committedSelectionSignature, setCommittedSelectionSignature] = useState(() => {
+    try {
+      const savedCommittedState = window.sessionStorage.getItem(committedSelectionStateCacheKey);
+
+      if (!savedCommittedState) {
+        return null;
+      }
+
+      const parsedCommittedState = JSON.parse(savedCommittedState);
+
+      if (parsedCommittedState?.selectedFrames && typeof parsedCommittedState.selectedFrames === "object") {
+        return JSON.stringify(parsedCommittedState.selectedFrames);
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  });
   const { activeRegion, setActiveRegion, lastViewedFrames, setLastViewedFrames, selectedFrames, setSelectedFrames } = useSelectionSession({
     patientId,
     examinationId,
@@ -335,8 +359,25 @@ export function DataSelectionPage() {
   }
 
   function handleApprove() {
+    const nextSelectionSignature = JSON.stringify(selectedFrames);
+
+    if (committedSelectionSignature !== nextSelectionSignature) {
+      resetWorkflowAfterStep(patientId, examinationId, 2);
+      setCommittedSelectionSignature(nextSelectionSignature);
+
+      try {
+        window.sessionStorage.setItem(
+          committedSelectionStateCacheKey,
+          JSON.stringify({
+            selectedFrames
+          })
+        );
+      } catch {
+        // Ignore session storage failures and keep the page functional.
+      }
+    }
+
     setActiveWorkflowContext({ patientId, examinationId });
-    resetWorkflowAfterStep(patientId, examinationId, 2);
     navigate(`/preprocessing/${patientId}/${examinationId}`, {
       state: {
         patientId,
