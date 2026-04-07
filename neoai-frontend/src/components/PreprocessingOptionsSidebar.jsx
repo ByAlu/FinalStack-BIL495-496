@@ -1,6 +1,5 @@
 ﻿import { useState } from "react";
-import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
-import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
+import { PreprocessingOperationCard } from "./PreprocessingOperationCard";
 import { getPreprocessingOperationDefinition } from "../config/preprocessingOperations";
 import { useOperationDraftValues } from "../hooks/useOperationDraftValues";
 import { useOperationReorderDrag } from "../hooks/useOperationReorderDrag";
@@ -16,11 +15,7 @@ export function PreprocessingOptionsSidebar({
   onReorderOperation
 }) {
   const [expandedOperationId, setExpandedOperationId] = useState(operations[0]?.id || "");
-  const {
-    commitDraftValue,
-    getDraftValue,
-    handleDraftValueChange
-  } = useOperationDraftValues({
+  const { commitDraftValue, getDraftValue, handleDraftValueChange } = useOperationDraftValues({
     operations,
     onKernelSizeChange,
     onOperationParameterChange
@@ -117,60 +112,20 @@ export function PreprocessingOptionsSidebar({
                     />
                   ) : null}
                   {shouldRenderDivider ? <div className="preprocessing-operation-divider" aria-hidden="true" /> : null}
-                  <section
-                    className={`preprocessing-operation-card${isDragged ? " dragging" : ""}`}
+                  <PreprocessingOperationCard
+                    enabledOperationIndex={enabledOperationIndex}
+                    isDragged={isDragged}
+                    isExpanded={isExpanded}
+                    isReorderable={isReorderable}
+                    operation={operation}
                     onDragEnd={resetDragState}
                     onDragOver={(event) => handleDragOver(event, operation.id, isReorderable)}
+                    onDragStart={(event) => handleDragStart(event, operation.id, isReorderable)}
                     onDrop={(event) => handleDrop(event, operation.id, isReorderable)}
-                  >
-                    <div className="preprocessing-operation-top preprocessing-operation-top-compact">
-                      <div className="preprocessing-operation-toggle">
-                        {isReorderable ? (
-                          <button
-                            aria-label={`Drag to reorder ${operation.label}`}
-                            className="preprocessing-order-badge preprocessing-order-drag-handle"
-                            draggable
-                            title={`Drag to reorder ${operation.label}`}
-                            type="button"
-                            onDragEnd={resetDragState}
-                            onDragStart={(event) => handleDragStart(event, operation.id, isReorderable)}
-                          >
-                            #{enabledOperationIndex + 1}
-                          </button>
-                        ) : (
-                          <span className="preprocessing-drag-spacer" aria-hidden="true" />
-                        )}
-                        <input
-                          aria-label={`Enable ${operation.label}`}
-                          checked={operation.enabled}
-                          type="checkbox"
-                          onChange={(event) => onToggleOperation(operation.id, event.target.checked)}
-                        />
-                        <span>{operation.label}</span>
-                      </div>
-                      <div className="preprocessing-operation-actions">
-                        <button
-                          aria-label={isExpanded ? `Collapse ${operation.label}` : `Expand ${operation.label}`}
-                          className={`preprocessing-expand-button${isExpanded ? " expanded" : ""}`}
-                          type="button"
-                          onClick={() => toggleExpanded(operation.id)}
-                        >
-                          {isExpanded ? (
-                            <KeyboardArrowDownRoundedIcon fontSize="small" />
-                          ) : (
-                            <KeyboardArrowRightRoundedIcon fontSize="small" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {isExpanded ? (
-                      <div className="preprocessing-operation-body">
-                        <p>{operation.description}</p>
-                        {operationDefinition?.controls.map((control) => renderControl(operation, control))}
-                      </div>
-                    ) : null}
-                  </section>
+                    onToggleExpanded={() => toggleExpanded(operation.id)}
+                    onToggleOperation={onToggleOperation}
+                    renderControls={() => operationDefinition?.controls.map((control) => renderControl(operation, control))}
+                  />
                   {showDropAfter ? (
                     <div
                       aria-hidden="true"
