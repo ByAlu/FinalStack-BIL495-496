@@ -1,6 +1,23 @@
 import axios from "axios";
 //TODO:remove
-import { auditEntries, demoUsers, patients, reportTemplates } from "../data/mockData";
+import { auditEntries, demoUsers, patients } from "../data/mockData";
+
+const mockReports = [
+  {
+    id: "REP-2001",
+    patientId: "PT-1001",
+    examinationId: "Exam_1001",
+    title: "AI Diagnostic Report",
+    summary: "Suspicious nodule detected in region r3. Recommend specialist confirmation.",
+    findings: [
+      "Selected 6 representative frames, one per region.",
+      "Applied denoise and contrast normalization before inference.",
+      "Highest anomaly probability observed in region r3."
+    ],
+    confidence: "%89",
+    exportedFormats: ["PDF", "DOCX"]
+  }
+];
 
   
 //TODO:connect to patient db
@@ -50,7 +67,7 @@ export function getExaminationByIds(patientId, examinationId) {
 }
 
 export function getReportById(reportId) {
-  return reportTemplates.find((report) => report.id === reportId) || null;
+  return mockReports.find((report) => report.id === reportId) || null;
 }
 
 export function getAuditEntries() {

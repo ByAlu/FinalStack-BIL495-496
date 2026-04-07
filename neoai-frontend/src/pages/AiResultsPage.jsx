@@ -48,6 +48,7 @@ export function AiResultsPage() {
   const magnifierPopoverRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
+  const resultImageRef = useRef(null);
   const report = useMemo(() => getReportById(reportId), [reportId]);
   const selectedFrameMap = location.state?.processedFrames || location.state?.selectedFrames || {};
   const selectedRegions = useMemo(() => regions.filter((region) => selectedFrameMap[region]), [selectedFrameMap]);
@@ -376,6 +377,7 @@ export function AiResultsPage() {
                   <img
                     alt={`${activeRegion} AI result`}
                     className="ai-results-image"
+                    draggable={false}
                     onLoad={(event) => {
                       const { naturalWidth, naturalHeight } = event.currentTarget;
 
@@ -383,6 +385,7 @@ export function AiResultsPage() {
                         setImageAspectRatio(naturalWidth / naturalHeight);
                       }
                     }}
+                    ref={resultImageRef}
                     src={activeSelectedFrame.thumbnail}
                   />
                   {isRdsScoreEnabled && rdsScoreResult?.explainability?.heatmap_available ? (

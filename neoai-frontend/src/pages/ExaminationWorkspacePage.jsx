@@ -1,9 +1,47 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { aiModels, preprocessingOptions } from "../data/mockData";
 import { getExaminationByIds } from "../services/mockApi";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
+const preprocessingOptions = [
+  {
+    key: "denoise",
+    label: "Noise reduction",
+    description: "Smooth the selected ultrasound frames before diagnosis.",
+    enabled: true,
+    intensity: 45
+  },
+  {
+    key: "contrast",
+    label: "Contrast normalization",
+    description: "Standardize intensity distribution between regions.",
+    enabled: true,
+    intensity: 60
+  },
+  {
+    key: "crop",
+    label: "Region focused crop",
+    description: "Trim unused borders before sending images to the AI module.",
+    enabled: false,
+    intensity: 30
+  }
+];
+const aiModels = [
+  {
+    id: "thyroid-v2",
+    name: "Thyroid Insight v2",
+    specialty: "Ultrasound lesion classification",
+    turnaround: "25 sec",
+    confidence: "High"
+  },
+  {
+    id: "nodex-lite",
+    name: "Nodex Lite",
+    specialty: "Fast screening",
+    turnaround: "12 sec",
+    confidence: "Medium"
+  }
+];
 
 function buildInitialSelection(examination) {
   return regions.reduce((accumulator, region) => {
