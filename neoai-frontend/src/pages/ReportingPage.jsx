@@ -1,10 +1,180 @@
-import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getReportById } from "../services/mockApi";
+import { useMemo, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
+import { aiRegionResults } from "../data/mockData";
+import { useAuth } from "../context/AuthContext";
+import { findPatientById, getExaminationByIds, getReportById } from "../services/mockApi";
+
+const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
+const moduleLabelMap = {
+  "rds-score": "RDS-SCORE",
+  "b-line": "B-LINE"
+};
+const clinicalIndicationOptions = [
+  { id: "respiratory-distress", label: "Respiratory distress" },
+  { id: "suspected-rds", label: "Suspected RDS" },
+  { id: "ttn-differential", label: "TTN differential" },
+  { id: "suspected-pneumonia", label: "Suspected pneumonia" },
+  { id: "follow-up", label: "Follow-up / serial evaluation" }
+];
+
+function formatPercent(value) {
+  return `%${Math.round(value * 100)}`;
+}
+
+function formatSeverityLabel(value) {
+  return value.split("_").join(" ");
+}
+
+function toHeadlineCase(value) {
+  return value.replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getFrameImageSource(frameValue) {
+  if (!frameValue) {
+    return "";
+  }
+
+  if (typeof frameValue === "string") {
+    return frameValue;
+  }
+
+  return frameValue.thumbnail || "";
+}
+
+function getOverallSeverity(totalScore) {
+  if (totalScore <= 3) {
+    return {
+      label: "Minimal Loss of Aeration",
+      summary: "Only limited regional involvement is visible on the selected clips."
+    };
+  }
+
+  if (totalScore <= 8) {
+    return {
+      label: "Mild to Moderate Disease Burden",
+      summary: "Regional abnormalities are present but not yet diffuse across all selected fields."
+    };
+  }
+
+  if (totalScore <= 13) {
+    return {
+      label: "Moderate Diffuse Disease Burden",
+      summary: "Multi-region aeration loss is present and should be correlated with bedside respiratory status."
+    };
+  }
+
+  return {
+    label: "Severe Diffuse Disease Burden",
+    summary: "The regional score distribution suggests advanced diffuse lung involvement."
+  };
+}
+
+function getDiagnosisProbabilities(totalScore) {
+  const scores = [
+    {
+      label: "Normal akciger paterni",
+      probability: totalScore <= 3 ? 0.58 : 0.08
+    },
+    {
+      label: "Respiratory Distress Syndrome (RDS)",
+      probability: totalScore >= 9 ? 0.74 : totalScore >= 5 ? 0.46 : 0.18
+    },
+    {
+      label: "Transient Tachypnea of the Newborn (TTN)",
+      probability: totalScore >= 4 && totalScore <= 10 ? 0.49 : 0.22
+    },
+    {
+      label: "Neonatal pneumonia",
+      probability: highlightedProbability(totalScore, 7, 0.37, 0.16)
+    },
+    {
+      label: "Diger",
+      probability: 0.09
+    }
+  ];
+
+  return scores;
+}
+
+function highlightedProbability(totalScore, threshold, highValue, lowValue) {
+  return totalScore >= threshold ? highValue : lowValue;
+}
 
 export function ReportingPage() {
   const { reportId } = useParams();
+  const location = useLocation();
+  const { token: user } = useAuth();
   const report = useMemo(() => getReportById(reportId), [reportId]);
+  const patientId = location.state?.patientId || report?.patientId;
+  const examinationId = location.state?.examinationId || report?.examinationId;
+  const patient = useMemo(() => findPatientById(patientId), [patientId]);
+  const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [examinationId, patientId]);
+  const [finalDiagnosis, setFinalDiagnosis] = useState("");
+  const [treatmentRecommendation, setTreatmentRecommendation] = useState("");
+  const [followUpRecommendation, setFollowUpRecommendation] = useState("");
+  const [selectedClinicalIndications, setSelectedClinicalIndications] = useState([
+    "respiratory-distress",
+    "suspected-rds"
+  ]);
+  const [otherClinicalIndication, setOtherClinicalIndication] = useState("");
+
+  const selectedFrameMap = location.state?.processedFrames || location.state?.selectedFrames || {};
+  const selectedModuleIds = useMemo(() => {
+    if (Array.isArray(location.state?.selectedModuleIds) && location.state.selectedModuleIds.length > 0) {
+      return location.state.selectedModuleIds;
+    }
+
+    return ["rds-score", "b-line"];
+  }, [location.state]);
+
+  const selectedRegions = useMemo(() => {
+    const stateRegions = regions.filter((region) => selectedFrameMap[region]);
+
+    if (stateRegions.length > 0) {
+      return stateRegions;
+    }
+
+    return examination?.videos?.map((video) => video.region) || [];
+  }, [examination?.videos, selectedFrameMap]);
+
+  const regionReportRows = useMemo(
+    () =>
+      selectedRegions.map((region) => {
+        const regionResult = aiRegionResults[region];
+        const matchingVideo = examination?.videos?.find((video) => video.region === region);
+
+        return {
+          region,
+          image: getFrameImageSource(selectedFrameMap[region]) || matchingVideo?.thumbnail || "",
+          videoName: matchingVideo?.name || "-",
+          comment: matchingVideo?.comment || "-",
+          imageQuality: regionResult?.image_quality || "unknown",
+          bLineCount: regionResult?.b_line_module?.b_line_count ?? 0,
+          pattern: regionResult?.b_line_module?.pattern || "-",
+          pleuralLine: regionResult?.b_line_module?.pleural_line?.status || "-",
+          whiteLung: regionResult?.b_line_module?.white_lung ? "Present" : "Absent",
+          regionScore: regionResult?.rds_score_module?.region_score ?? 0,
+          severity: regionResult?.rds_score_module?.severity_label || "normal_aeration",
+          confidence: regionResult?.rds_score_module?.confidence ?? 0,
+          findings: regionResult?.rds_score_module?.findings || []
+        };
+      }),
+    [examination?.videos, selectedFrameMap, selectedRegions]
+  );
+
+  const totalScore = regionReportRows.reduce((sum, row) => sum + row.regionScore, 0);
+  const overallSeverity = getOverallSeverity(totalScore);
+  const diagnosisProbabilities = getDiagnosisProbabilities(totalScore);
+  const highlightedRegions = regionReportRows
+    .filter((row) => row.regionScore >= 2 || row.whiteLung === "Present")
+    .map((row) => row.region.toUpperCase());
+  const signedBy = user?.fullName || report?.reviewedBy || "Dr. Elif Kaya";
+
+  function handleClinicalIndicationToggle(optionId) {
+    setSelectedClinicalIndications((current) =>
+      current.includes(optionId) ? current.filter((item) => item !== optionId) : [...current, optionId]
+    );
+  }
 
   if (!report) {
     return (
@@ -17,5 +187,285 @@ export function ReportingPage() {
     );
   }
 
-  return <div className="page-stack" />;
+  return (
+    <div className="report-page">
+      <div className="report-shell">
+        <article className="report-document">
+          <header className="report-hero">
+            <div>
+              <h1 className="report-title">{report.title}</h1>
+            </div>
+          </header>
+
+          <section className="report-section-grid">
+            <section className="report-card">
+              <h2 className="report-card-title">1. Patient Information</h2>
+              <div className="report-field-list">
+                <div className="report-field-row">
+                  <span className="report-field-label">Patient ID:</span>
+                  <span className="report-field-value">{report.patientId}</span>
+                </div>
+                <div className="report-field-row">
+                  <span className="report-field-label">Full Name:</span>
+                  <span className="report-field-value">{patient?.name || "-"}</span>
+                </div>
+                <div className="report-field-row">
+                  <span className="report-field-label">Date of Birth:</span>
+                  <span className="report-field-value">{report.dateOfBirth || "-"}</span>
+                </div>
+                <div className="report-field-row">
+                  <span className="report-field-label">Gestational Age:</span>
+                  <span className="report-field-value">{report.gestationalAge || "-"}</span>
+                </div>
+                <div className="report-field-row">
+                  <span className="report-field-label">Birth Weight:</span>
+                  <span className="report-field-value">{report.birthWeight || "-"}</span>
+                </div>
+                <div className="report-field-row">
+                  <span className="report-field-label">Postnatal Age:</span>
+                  <span className="report-field-value">{report.postnatalAge || "-"}</span>
+                </div>
+                <div className="report-field-row">
+                  <span className="report-field-label">Clinic (NICU):</span>
+                  <span className="report-field-value">{report.clinic || "-"}</span>
+                </div>
+                <div className="report-field-row">
+                  <span className="report-field-label">Bed Number:</span>
+                  <span className="report-field-value">{report.bedNumber || "-"}</span>
+                </div>
+                <div className="report-field-row">
+                  <span className="report-field-label">Scan Date / Time:</span>
+                  <span className="report-field-value">{report.reportDate}</span>
+                </div>
+                <div className="report-field-row">
+                  <span className="report-field-label">AI Software Version (NeoAI LUS Assistant):</span>
+                  <span className="report-field-value">{report.softwareVersion || "-"}</span>
+                </div>
+              </div>
+            </section>
+
+            <section className="report-card">
+              <h2 className="report-card-title">2. Clinical Indication</h2>
+              <div className="report-indication-line">
+                {clinicalIndicationOptions.map((option) => (
+                  <label className="report-check-option" key={option.id}>
+                    <input
+                      checked={selectedClinicalIndications.includes(option.id)}
+                      onChange={() => handleClinicalIndicationToggle(option.id)}
+                      type="checkbox"
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+                <div className="report-check-option report-other-option">
+                  <label className="report-check-toggle">
+                    <input
+                      checked={otherClinicalIndication.trim().length > 0}
+                      onChange={(event) => {
+                        if (!event.target.checked) {
+                          setOtherClinicalIndication("");
+                        }
+                      }}
+                      type="checkbox"
+                    />
+                    <span>Other:</span>
+                  </label>
+                  <input
+                    className="report-other-input"
+                    onChange={(event) => setOtherClinicalIndication(event.target.value)}
+                    placeholder="Write here"
+                    type="text"
+                    value={otherClinicalIndication}
+                  />
+                </div>
+              </div>
+            </section>
+          </section>
+
+          <section className="report-region-grid">
+            {regionReportRows.map((row) => (
+              <article className="report-region-card" key={row.region}>
+                <div className="report-region-frame">
+                  <img alt={`${row.region.toUpperCase()} selected frame`} src={row.image} />
+                  <span className="report-region-overlay-label">{row.region.toUpperCase()}</span>
+                </div>
+              </article>
+            ))}
+          </section>
+
+          <section className="report-table-card">
+            <div className="report-card" style={{ background: "transparent", border: "none", paddingBottom: 0 }}>
+              <h2 className="report-card-title">4. Ultrasound Findings (AI Detection)</h2>
+            </div>
+            <div className="report-table-wrap">
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Region</th>
+                    <th>Image Quality</th>
+                    <th>B-Line Count</th>
+                    <th>Pattern</th>
+                    <th>Pleural Line</th>
+                    <th>White Lung</th>
+                    <th>Key Findings</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {regionReportRows.map((row) => (
+                    <tr key={row.region}>
+                      <td>{row.region.toUpperCase()}</td>
+                      <td>{toHeadlineCase(row.imageQuality)}</td>
+                      <td>{row.bLineCount}</td>
+                      <td>{toHeadlineCase(row.pattern)}</td>
+                      <td>{toHeadlineCase(row.pleuralLine)}</td>
+                      <td>{row.whiteLung}</td>
+                      <td>{row.findings.join(", ")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="report-table-card">
+            <div className="report-card" style={{ background: "transparent", border: "none", paddingBottom: 0 }}>
+              <h2 className="report-card-title">5. LUS Scoring</h2>
+            </div>
+            <div className="report-table-wrap">
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Region</th>
+                    <th>RDS Score</th>
+                    <th>Severity Label</th>
+                    <th>AI Confidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {regionReportRows.map((row) => (
+                    <tr key={row.region}>
+                      <td>{row.region.toUpperCase()}</td>
+                      <td>{row.regionScore}</td>
+                      <td>{toHeadlineCase(formatSeverityLabel(row.severity))}</td>
+                      <td>{formatPercent(row.confidence)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="report-table-card">
+            <div className="report-card" style={{ background: "transparent", border: "none", paddingBottom: 0 }}>
+              <h2 className="report-card-title">6. AI Disease Classification</h2>
+            </div>
+            <div className="report-table-wrap">
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Diagnosis</th>
+                    <th>Probability</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {diagnosisProbabilities.map((item) => (
+                    <tr key={item.label}>
+                      <td>{item.label}</td>
+                      <td>{formatPercent(item.probability)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="report-classification-note">
+              <span className="report-badge">Total LUS score {totalScore} / 18</span>
+              <span className="report-badge">{overallSeverity.label}</span>
+              {highlightedRegions.length > 0 ? (
+                <span className="report-badge">Highlighted regions {highlightedRegions.join(", ")}</span>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="report-section-grid">
+            <section className="report-card">
+              <h2 className="report-card-title">7. AI Clinical Report</h2>
+            </section>
+          </section>
+
+          <section className="report-footer-grid">
+            <section className="report-card">
+              <h2 className="report-card-title">8. Clinical Assessment (Physician)</h2>
+              <div className="report-assessment-block">
+                <label className="report-assessment-row">
+                  <span className="report-assessment-label">Final Diagnosis</span>
+                  <textarea
+                    className="report-assessment-input report-assessment-textarea"
+                    onChange={(event) => setFinalDiagnosis(event.target.value)}
+                    placeholder="Write final diagnosis"
+                    rows="3"
+                    value={finalDiagnosis}
+                  />
+                </label>
+                <label className="report-assessment-row">
+                  <span className="report-assessment-label">Treatment / Recommendation</span>
+                  <textarea
+                    className="report-assessment-input report-assessment-textarea"
+                    onChange={(event) => setTreatmentRecommendation(event.target.value)}
+                    placeholder="Write treatment or recommendation"
+                    rows="3"
+                    value={treatmentRecommendation}
+                  />
+                </label>
+                <label className="report-assessment-row">
+                  <span className="report-assessment-label">Follow-up Recommendation</span>
+                  <textarea
+                    className="report-assessment-input report-assessment-textarea"
+                    onChange={(event) => setFollowUpRecommendation(event.target.value)}
+                    placeholder="Write follow-up recommendation"
+                    rows="3"
+                    value={followUpRecommendation}
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section className="report-card report-approval">
+              <h2 className="report-card-title">9. Approval</h2>
+              <div className="report-table-wrap">
+                <table className="report-table report-approval-table">
+                  <thead>
+                    <tr>
+                      <th>Role</th>
+                      <th>Name</th>
+                      <th>Signature</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Reporting Physician</td>
+                      <td>{signedBy}</td>
+                      <td className="report-signature-cell">________________</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="report-approval-note">
+                Note: This report contains AI analysis generated by NeoAI LUS Assistant. Clinical decisions should be
+                made based on physician evaluation.
+              </p>
+            </section>
+          </section>
+
+          <div className="report-actions report-actions-bottom">
+            <button className="report-button primary" type="button">
+              Export PDF
+            </button>
+            <button className="report-button" type="button">
+              Export DOCX
+            </button>
+          </div>
+        </article>
+      </div>
+    </div>
+  );
 }
