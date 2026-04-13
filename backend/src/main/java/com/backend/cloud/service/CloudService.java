@@ -2,7 +2,7 @@ package com.backend.cloud.service;
 
 import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.UploadUrlResponseDTO;
-import com.backend.model.entity.ExaminationRegion;
+import com.backend.model.entity.UsExaminationRegion;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import org.springframework.data.domain.Page;
@@ -13,7 +13,7 @@ import java.util.List;
 public interface CloudService {
     Page<ExaminationVideoDTO> getExaminationVideoDTO(String url, Pageable pageable);
 
-    UploadUrlResponseDTO generateBulkUploadUrls(Long patientId, String examName, List<ExaminationRegion> regions);
+    UploadUrlResponseDTO generateBulkUploadUrls(Long patientId, String examName, List<UsExaminationRegion> regions);
 
     com.google.api.gax.paging.Page<Blob> listFilesWithPagination(String folder, int size, String token);
 

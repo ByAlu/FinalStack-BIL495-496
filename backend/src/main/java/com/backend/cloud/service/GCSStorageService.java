@@ -2,7 +2,7 @@ package com.backend.cloud.service;
 
 import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.UploadUrlResponseDTO;
-import com.backend.model.entity.ExaminationRegion;
+import com.backend.model.entity.UsExaminationRegion;
 import com.google.cloud.storage.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,11 +33,11 @@ public class GCSStorageService implements CloudService {
     }
 
     @Override
-    public UploadUrlResponseDTO generateBulkUploadUrls(Long patientId, String examName, List<ExaminationRegion> regions) {
+    public UploadUrlResponseDTO generateBulkUploadUrls(Long patientId, String examName, List<UsExaminationRegion> regions) {
         List<UploadUrlResponseDTO.UploadTarget> targets = new ArrayList<>();
 
         // 3. Her bir bölge (R1, R2 vb.) için döngüye giriyoruz
-        for (ExaminationRegion region : regions) {
+        for (UsExaminationRegion region : regions) {
             // Profesyonel yol formatımız: ai/PT_1001/EX_123/R1.mp4
             String cloudPath = String.format("ai/PT_%d/%s/%s.jpg", patientId, examName, region.name());
 
@@ -117,13 +117,13 @@ public class GCSStorageService implements CloudService {
                 String signedUrl = this.generateV4GetObjectSignedUrl(blob.getName());
 
                 // DTO'yu doldur
-                ExaminationVideoDTO dto = new ExaminationVideoDTO(patientId, ExaminationRegion.valueOf(regionStr));
+                ExaminationVideoDTO dto = new ExaminationVideoDTO(patientId, UsExaminationRegion.valueOf(regionStr));
                 dto.setPatientId(patientId);
                 dto.setExaminationName(examName);
                 dto.setUrl(signedUrl);
                 dto.setFileSize(blob.getSize());
                 dto.setUploadDate(blob.getUpdateTimeOffsetDateTime().toLocalDateTime());
-                dto.setRegion(ExaminationRegion.valueOf(regionStr));
+                dto.setRegion(UsExaminationRegion.valueOf(regionStr));
 
                 dtoList.add(dto);
             }

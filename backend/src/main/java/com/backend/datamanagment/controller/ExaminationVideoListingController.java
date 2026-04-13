@@ -5,7 +5,7 @@ import com.backend.datamanagment.service.ExaminationVideoListingService;
 import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.GCSPage;
 import com.backend.model.dto.UploadUrlResponseDTO;
-import com.backend.model.entity.ExaminationRegion;
+import com.backend.model.entity.UsExaminationRegion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,7 +45,7 @@ public class ExaminationVideoListingController {
     @PostMapping("/{patientId}/{examName}/upload-urls")
     public ResponseEntity<UploadUrlResponseDTO> generateBulkUploadUrls(@PathVariable Long patientId,
                                                                        @PathVariable String examName,
-                                                                       @RequestBody List<ExaminationRegion> regions) {
+                                                                       @RequestBody List<UsExaminationRegion> regions) {
         return ResponseEntity.ok(cloudService.generateBulkUploadUrls(patientId,examName, regions));
     }
 
