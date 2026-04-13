@@ -2,18 +2,18 @@ package com.backend.ai.analysis.service;
 
 import com.backend.ai.analysis.model.dto.AiAnalysisDTO;
 import com.backend.ai.analysis.model.dto.DoctorSuggestionRequest;
-import com.backend.ai.analysis.model.entity.AiAnalysis;
 import com.backend.ai.analysis.model.entity.AnalysisStatus;
-import com.backend.ai.analysis.model.entity.DoctorSuggestion;
-import com.backend.ai.analysis.repository.AiAnalysisRepository;
+import com.backend.ai.analysis.model.entity.UsAiAnalysis;
+import com.backend.ai.analysis.repository.UsAiAnalysisRepository;
 import com.backend.model.dto.AnalysisInitiatedDTO;
-import com.backend.model.entity.ExaminationRegion;
+import com.backend.model.entity.UsExamination;
+import com.backend.model.entity.UsExaminationRegion;
+import com.backend.model.repository.UsExaminationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -22,7 +22,9 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     @Autowired
     private AiModuleIntegrationService aiModuleService;
     @Autowired
-    private AiAnalysisRepository aiAnalysisRepository;
+    private UsAiAnalysisRepository aiAnalysisRepository;
+    @Autowired
+    private UsExaminationRepository usExaminationRepository;
 
     private final String videoBaseUrl;
 
@@ -33,23 +35,14 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     @Override
     @Transactional
     public AnalysisInitiatedDTO startAnalysis(DoctorSuggestionRequest request) {
-        AiAnalysis aiAnalysis = new AiAnalysis();
+        UsExamination examination = usExaminationRepository.findByExternalExaminationId(request.getExaminationId())
+                .orElseThrow(() -> new IllegalArgumentException("Examination not found: " + request.getExaminationId()));
+
+        UsAiAnalysis aiAnalysis = new UsAiAnalysis();
+        aiAnalysis.setExamination(examination);
         aiAnalysis.setPatientId(request.getPatientId());
         aiAnalysis.setStatus(AnalysisStatus.PENDING);
-        aiAnalysis.setExaminationName(request.getExaminationName());
-
-        List<DoctorSuggestion> doctorSuggestions= request.getDoctorSuggestions().stream().map(dto->{
-            DoctorSuggestion suggestion = new DoctorSuggestion();
-            suggestion.setExaminationRegion(dto.getRegion());
-            suggestion.setUrl(this.getImageUrl(request.getPatientId(), request.getExaminationName(), dto.getRegion()));
-            suggestion.setRdScore(dto.getRdScore());
-            suggestion.setBLines(dto.getBLines());
-            suggestion.setAiAnalysis(aiAnalysis);
-            return suggestion;
-        }).toList();
-
-        aiAnalysis.setSuggestions(doctorSuggestions);
-        AiAnalysis saved = aiAnalysisRepository.save(aiAnalysis);
+        UsAiAnalysis saved = aiAnalysisRepository.save(aiAnalysis);
         UUID analysisUuid = saved.getAnalysisUuid();
         CompletableFuture.runAsync(() -> {
             aiModuleService.analyze(analysisUuid);
@@ -66,7 +59,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
      */
     private String getImageUrl(Long patientId,
                                String examinationName,
-                               ExaminationRegion region) {
+                               UsExaminationRegion region) {
         return this.videoBaseUrl+"/ai/"+patientId+"/"+examinationName+"/"+region.name()+".png";
     }
 }

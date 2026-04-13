@@ -1,8 +1,5 @@
 package com.backend.ai.analysis.model.entity;
 
-import com.backend.model.entity.ExaminationRegion;
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,23 +10,22 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter @Setter
+// Report-owned doctor input for a specific examination region.
 public class DoctorSuggestion{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    private ExaminationRegion examinationRegion;
+    @Column(length = 4096)
+    private String finalDiagnosis;
 
-    private Long bLines;
-    private Long rdScore;
+    @Column(length = 4096)
+    private String treatmentRecommendation;
 
-    private String url;
+    @Column(length = 4096)
+    private String followUpRecommendation;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ai_analysis_id")
-    @JsonBackReference
-    private AiAnalysis aiAnalysis;
-
-
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "analysis_report_id", unique = true)
+    private UsAnalysisReport analysisReport;
 }

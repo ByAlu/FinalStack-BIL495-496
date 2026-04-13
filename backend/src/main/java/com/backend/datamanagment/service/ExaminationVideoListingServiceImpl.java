@@ -3,7 +3,7 @@ package com.backend.datamanagment.service;
 import com.backend.cloud.service.CloudService;
 import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.GCSPage;
-import com.backend.model.entity.ExaminationRegion;
+import com.backend.model.entity.UsExaminationRegion;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ public class ExaminationVideoListingServiceImpl implements ExaminationVideoListi
     @Override
     public GCSPage<ExaminationVideoDTO> getExaminationVideosByPatientId(Long patientId, String pageToken, Pageable pageable) {
         String prefix = String.format("ai/PT_%d/", patientId);
-        int targetSize = pageable.getPageSize()*ExaminationRegion.values().length;
+        int targetSize = pageable.getPageSize()* UsExaminationRegion.values().length;
         if(pageToken == null) pageToken = "";
         List<ExaminationVideoDTO> dtos = new ArrayList<>();
         do{
@@ -47,7 +47,7 @@ public class ExaminationVideoListingServiceImpl implements ExaminationVideoListi
 
                 try {
                     String regionPart = parts[3].split("\\.")[0]; // "R1"
-                    ExaminationVideoDTO dto = new ExaminationVideoDTO(patientId, ExaminationRegion.valueOf(regionPart));
+                    ExaminationVideoDTO dto = new ExaminationVideoDTO(patientId, UsExaminationRegion.valueOf(regionPart));
                     dto.setExaminationName(parts[2]); // "EX_123"
                     dto.setUrl(cloudService.generateV4GetObjectSignedUrl(path));
                     dto.setFileSize(blob.getSize());

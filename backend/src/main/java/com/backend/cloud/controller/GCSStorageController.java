@@ -3,7 +3,7 @@ package com.backend.cloud.controller;
 import com.backend.cloud.service.CloudService;
 import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.UploadUrlResponseDTO;
-import com.backend.model.entity.ExaminationRegion;
+import com.backend.model.entity.UsExaminationRegion;
 import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.Blob;
 import org.springframework.beans.factory.annotation.Autowired;
