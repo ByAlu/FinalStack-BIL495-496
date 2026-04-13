@@ -402,9 +402,6 @@ export function AiResultsPage() {
                     ref={resultImageRef}
                     src={activeSelectedFrame.thumbnail}
                   />
-                  {isRdsScoreEnabled && rdsScoreResult?.explainability?.heatmap_available ? (
-                    <div className={`ai-results-heatmap-overlay region-${activeRegion}`} aria-hidden="true" />
-                  ) : null}
                   {isBLineEnabled && bLineResult
                     ? bLineResult.bounding_boxes.map((box, index) => (
                         <div

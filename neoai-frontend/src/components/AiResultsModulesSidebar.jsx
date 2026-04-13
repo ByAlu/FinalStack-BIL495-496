@@ -1,7 +1,7 @@
 const MODULE_LABELS = {
   "rds-score": {
     title: "RDS-SCORE",
-    description: "Show aeration score, severity, and explainability overlay."
+    description: "Show aeration score and confidence."
   },
   "b-line": {
     title: "B-LINE",

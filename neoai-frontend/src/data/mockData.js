@@ -138,10 +138,7 @@ export const aiRegionResults = {
       region_score: 2,
       severity_label: "moderate_loss_of_aeration",
       findings: ["multiple B-lines", "irregular pleural line"],
-      confidence: 0.89,
-      explainability: {
-        heatmap_available: true
-      }
+      confidence: 0.89
     }
   },
   r2: {
@@ -165,10 +162,7 @@ export const aiRegionResults = {
       region_score: 1,
       severity_label: "mild_loss_of_aeration",
       findings: ["focal B-lines"],
-      confidence: 0.85,
-      explainability: {
-        heatmap_available: true
-      }
+      confidence: 0.85
     }
   },
   r3: {
@@ -194,10 +188,7 @@ export const aiRegionResults = {
       region_score: 3,
       severity_label: "severe_loss_of_aeration",
       findings: ["confluent B-lines", "white lung pattern", "irregular pleural line"],
-      confidence: 0.94,
-      explainability: {
-        heatmap_available: true
-      }
+      confidence: 0.94
     }
   },
   r4: {
@@ -221,10 +212,7 @@ export const aiRegionResults = {
       region_score: 1,
       severity_label: "mild_loss_of_aeration",
       findings: ["limited focal B-lines"],
-      confidence: 0.81,
-      explainability: {
-        heatmap_available: true
-      }
+      confidence: 0.81
     }
   },
   r5: {
@@ -249,10 +237,7 @@ export const aiRegionResults = {
       region_score: 2,
       severity_label: "moderate_loss_of_aeration",
       findings: ["multiple B-lines", "reduced image quality"],
-      confidence: 0.83,
-      explainability: {
-        heatmap_available: true
-      }
+      confidence: 0.83
     }
   },
   r6: {
@@ -276,10 +261,7 @@ export const aiRegionResults = {
       region_score: 0,
       severity_label: "normal_aeration",
       findings: ["isolated B-lines within normal limits"],
-      confidence: 0.76,
-      explainability: {
-        heatmap_available: true
-      }
+      confidence: 0.76
     }
   }
 };
