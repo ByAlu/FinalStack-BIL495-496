@@ -28,6 +28,10 @@ function getPreprocessingStateCacheKey(patientId, examinationId) {
   return `neoai-preprocessing:${patientId}:${examinationId}`;
 }
 
+function getCommittedPreprocessingStateCacheKey(patientId, examinationId) {
+  return `neoai-preprocessing-committed:${patientId}:${examinationId}`;
+}
+
 function normalizeRotation(nextRotation) {
   const normalized = nextRotation % 360;
   return normalized < 0 ? normalized + 360 : normalized;
@@ -59,6 +63,7 @@ export function DataPreprocessingPage() {
   const initialRegion = examination?.videos[0]?.region || "r1";
   const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
   const preprocessingStateCacheKey = getPreprocessingStateCacheKey(patientId, examinationId);
+  const committedPreprocessingStateCacheKey = getCommittedPreprocessingStateCacheKey(patientId, examinationId);
   const magnifierPopoverRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
@@ -106,6 +111,31 @@ export function DataPreprocessingPage() {
   const [isApplyPending, setIsApplyPending] = useState(false);
   const [openCvStatus, setOpenCvStatus] = useState("loading");
   const [processingErrorMessage, setProcessingErrorMessage] = useState("");
+  const [committedOperationsSignature, setCommittedOperationsSignature] = useState(() => {
+    const routeOperations = location.state?.preprocessingOperations;
+
+    if (Array.isArray(routeOperations) && routeOperations.length > 0) {
+      return JSON.stringify(hydratePreprocessingOperations(routeOperations));
+    }
+
+    try {
+      const savedCommittedState = window.sessionStorage.getItem(committedPreprocessingStateCacheKey);
+
+      if (!savedCommittedState) {
+        return null;
+      }
+
+      const parsedCommittedState = JSON.parse(savedCommittedState);
+
+      if (Array.isArray(parsedCommittedState?.operations) && parsedCommittedState.operations.length > 0) {
+        return JSON.stringify(hydratePreprocessingOperations(parsedCommittedState.operations));
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  });
   const { selectedFrames, setSelectedFrames } = useSelectionSession({
     patientId,
     examinationId,
@@ -279,6 +309,10 @@ export function DataPreprocessingPage() {
   }, [activeRegion, operations, preprocessingStateCacheKey]);
 
   useEffect(() => {
+    setProcessedFrames({});
+  }, [previewOperations]);
+
+  useEffect(() => {
     let ignore = false;
 
     async function buildPreview() {
@@ -299,6 +333,15 @@ export function DataPreprocessingPage() {
 
         if (!ignore) {
           setProcessedPreviewSrc(nextPreview);
+          if (activeRegion && activeSelectedFrame) {
+            setProcessedFrames((current) => ({
+              ...current,
+              [activeRegion]: {
+                ...activeSelectedFrame,
+                thumbnail: nextPreview
+              }
+            }));
+          }
           setProcessingErrorMessage("");
         }
       } catch (error) {
@@ -314,7 +357,7 @@ export function DataPreprocessingPage() {
     return () => {
       ignore = true;
     };
-  }, [isOpenCvReady, previewOperations, previewSource]);
+  }, [activeRegion, activeSelectedFrame, isOpenCvReady, previewOperations, previewSource]);
 
   if (!examination) {
     return (
@@ -490,6 +533,10 @@ export function DataPreprocessingPage() {
   async function processAllSelectedFrames() {
     const nextEntries = await Promise.all(
       selectedRegions.map(async (region) => {
+        if (processedFrames[region]) {
+          return [region, processedFrames[region]];
+        }
+
         const frame = selectedFrameMap[region];
         const sourceFrame = getSelectedFrameSource(frame);
         const thumbnail = await applyOperationsToFrame(sourceFrame, operations);
@@ -510,10 +557,27 @@ export function DataPreprocessingPage() {
     try {
       const nextProcessedFrames =
         Object.keys(processedFrames).length === selectedRegions.length ? processedFrames : await processAllSelectedFrames();
+      const nextOperationsSignature = JSON.stringify(operations);
 
       setProcessedFrames(nextProcessedFrames);
       setActiveWorkflowContext({ patientId, examinationId });
-      resetWorkflowAfterStep(patientId, examinationId, 3);
+
+      if (committedOperationsSignature !== nextOperationsSignature) {
+        resetWorkflowAfterStep(patientId, examinationId, 3);
+        setCommittedOperationsSignature(nextOperationsSignature);
+
+        try {
+          window.sessionStorage.setItem(
+            committedPreprocessingStateCacheKey,
+            JSON.stringify({
+              operations
+            })
+          );
+        } catch {
+          // Ignore session storage failures and keep the page functional.
+        }
+      }
+
       navigate(`/ai-module/${patientId}/${examinationId}`, {
         state: {
           activePreprocessingRegion: activeRegion,

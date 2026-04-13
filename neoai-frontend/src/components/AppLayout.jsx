@@ -7,7 +7,10 @@ export function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const isWorkspaceRoute =
-    location.pathname.startsWith("/selection/") || location.pathname.startsWith("/preprocessing/");
+    location.pathname.startsWith("/selection/") ||
+    location.pathname.startsWith("/preprocessing/") ||
+    location.pathname.startsWith("/ai-module/") ||
+    location.pathname.startsWith("/results/");
   const isWorkflowRoute = [
     "/query",
     "/selection/",

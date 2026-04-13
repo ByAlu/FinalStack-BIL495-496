@@ -130,7 +130,7 @@ export function ViewerStage({
               <div className="viewer-frame-rail-thumb" style={{ top: `${scrubberThumbTop}%` }} />
             </div>
             <div className="viewer-stage-status">
-              {showCacheProgress ? <span className="viewer-cache-status">Caching {activeProgressPercent}%</span> : null}
+              {showCacheProgress ? <span className="viewer-cache-status">Loading {activeProgressPercent}%</span> : null}
               <span className="viewer-frame-status">
                 Frame {isActiveVideoReady ? Math.min(currentFrame + 1, Math.max(activeVideoFrames.length, 1)) : 0} /{" "}
                 {Math.max(activeVideoFrames.length, 0)}

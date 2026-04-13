@@ -1,5 +1,10 @@
 import sampleThumbnail from "./lus_sample_thumbnail.jpg";
-import sampleVideo from "./lus_sample_video.mp4";
+import r1 from "./r1.mp4";
+import r2 from "./r2.mp4";
+import r3 from "./r3.mp4";
+import r4 from "./r4.mp4";
+import r5 from "./r5.mp4";
+import r6 from "./r6.mp4";
 
 export const demoUsers = [
   {
@@ -44,7 +49,7 @@ function createVideoSet(seed) {
       region: "r1",
       duration: "00:18",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r1,
       comment: "Left lobe sweep"
     },
     {
@@ -52,7 +57,7 @@ function createVideoSet(seed) {
       region: "r2",
       duration: "00:22",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r2,
       comment: "Upper pole focus"
     },
     {
@@ -60,7 +65,7 @@ function createVideoSet(seed) {
       region: "r3",
       duration: "00:20",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r3,
       comment: "Suspicious nodule view"
     },
     {
@@ -68,7 +73,7 @@ function createVideoSet(seed) {
       region: "r4",
       duration: "00:25",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r4,
       comment: "Transverse section"
     },
     {
@@ -76,7 +81,7 @@ function createVideoSet(seed) {
       region: "r5",
       duration: "00:17",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r5,
       comment: "Lower margin pass"
     },
     {
@@ -84,7 +89,7 @@ function createVideoSet(seed) {
       region: "r6",
       duration: "00:21",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r6,
       comment: "Right lobe close-up"
     }
   ];
@@ -114,63 +119,97 @@ export const patients = [
   }
 ];
 
-export const preprocessingOptions = [
-  {
-    key: "denoise",
-    label: "Noise reduction",
-    description: "Smooth the selected ultrasound frames before diagnosis.",
-    enabled: true,
-    intensity: 45
-  },
-  {
-    key: "contrast",
-    label: "Contrast normalization",
-    description: "Standardize intensity distribution between regions.",
-    enabled: true,
-    intensity: 60
-  },
-  {
-    key: "crop",
-    label: "Region focused crop",
-    description: "Trim unused borders before sending images to the AI module.",
-    enabled: false,
-    intensity: 30
-  }
-];
 
-export const aiModels = [
-  {
-    id: "thyroid-v2",
-    name: "Thyroid Insight v2",
-    specialty: "Ultrasound lesion classification",
-    turnaround: "25 sec",
-    confidence: "High"
+export const aiRegionResults = {
+  r1: {
+    region: "R1",
+    image_quality: "acceptable",
+    b_line_module: {
+      count: 6,
+      bounding_boxes: [
+        { x: 110, y: 75, width: 40, height: 245, confidence: 0.94 },
+        { x: 180, y: 80, width: 40, height: 230, confidence: 0.91 },
+        { x: 250, y: 85, width: 40, height: 215, confidence: 0.9 }
+      ]
+    },
+    rds_score_module: {
+      score: 3
+    }
   },
-  {
-    id: "nodex-lite",
-    name: "Nodex Lite",
-    specialty: "Fast screening",
-    turnaround: "12 sec",
-    confidence: "Medium"
+  r2: {
+    region: "R2",
+    image_quality: "acceptable",
+    b_line_module: {
+      count: 4,
+      bounding_boxes: [
+        { x: 90, y: 88, width: 36, height: 214, confidence: 0.9 },
+        { x: 190, y: 78, width: 36, height: 236, confidence: 0.88 }
+      ]
+    },
+    rds_score_module: {
+      score: 2
+    }
+  },
+  r3: {
+    region: "R3",
+    image_quality: "acceptable",
+    b_line_module: {
+      count: 8,
+      bounding_boxes: [
+        { x: 72, y: 80, width: 38, height: 235, confidence: 0.95 },
+        { x: 130, y: 82, width: 40, height: 240, confidence: 0.94 },
+        { x: 205, y: 76, width: 41, height: 242, confidence: 0.92 },
+        { x: 278, y: 84, width: 38, height: 224, confidence: 0.91 }
+      ]
+    },
+    rds_score_module: {
+      score: 3
+    }
+  },
+  r4: {
+    region: "R4",
+    image_quality: "acceptable",
+    b_line_module: {
+      count: 3,
+      bounding_boxes: [
+        { x: 118, y: 92, width: 36, height: 194, confidence: 0.86 },
+        { x: 234, y: 88, width: 36, height: 207, confidence: 0.84 }
+      ]
+    },
+    rds_score_module: {
+      score: 2
+    }
+  },
+  r5: {
+    region: "R5",
+    image_quality: "suboptimal",
+    b_line_module: {
+      count: 5,
+      bounding_boxes: [
+        { x: 96, y: 94, width: 39, height: 212, confidence: 0.89 },
+        { x: 164, y: 91, width: 38, height: 207, confidence: 0.87 },
+        { x: 258, y: 96, width: 38, height: 194, confidence: 0.85 }
+      ]
+    },
+    rds_score_module: {
+      score: 2
+    }
+  },
+  r6: {
+    region: "R6",
+    image_quality: "acceptable",
+    b_line_module: {
+      count: 2,
+      bounding_boxes: [
+        { x: 140, y: 86, width: 38, height: 190, confidence: 0.8 },
+        { x: 232, y: 94, width: 36, height: 188, confidence: 0.79 }
+      ]
+    },
+    rds_score_module: {
+      score: 1
+    }
   }
-];
-
-export const reportTemplates = [
-  {
-    id: "REP-2001",
-    patientId: "PT-1001",
-    examinationId: "Exam_1001",
-    title: "AI Diagnostic Report",
-    summary: "Suspicious nodule detected in region r3. Recommend specialist confirmation.",
-    findings: [
-      "Selected 6 representative frames, one per region.",
-      "Applied denoise and contrast normalization before inference.",
-      "Highest anomaly probability observed in region r3."
-    ],
-    confidence: "89%",
-    exportedFormats: ["PDF", "DOCX"]
-  }
-];
+};
 
 export const auditEntries = [
   {
