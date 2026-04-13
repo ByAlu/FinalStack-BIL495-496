@@ -1,5 +1,10 @@
 import sampleThumbnail from "./lus_sample_thumbnail.jpg";
-import sampleVideo from "./lus_sample_video.mp4";
+import r1 from "./r1.mp4";
+import r2 from "./r2.mp4";
+import r3 from "./r3.mp4";
+import r4 from "./r4.mp4";
+import r5 from "./r5.mp4";
+import r6 from "./r6.mp4";
 
 export const demoUsers = [
   {
@@ -44,7 +49,7 @@ function createVideoSet(seed) {
       region: "r1",
       duration: "00:18",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r1,
       comment: "Left lobe sweep"
     },
     {
@@ -52,7 +57,7 @@ function createVideoSet(seed) {
       region: "r2",
       duration: "00:22",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r2,
       comment: "Upper pole focus"
     },
     {
@@ -60,7 +65,7 @@ function createVideoSet(seed) {
       region: "r3",
       duration: "00:20",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r3,
       comment: "Suspicious nodule view"
     },
     {
@@ -68,7 +73,7 @@ function createVideoSet(seed) {
       region: "r4",
       duration: "00:25",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r4,
       comment: "Transverse section"
     },
     {
@@ -76,7 +81,7 @@ function createVideoSet(seed) {
       region: "r5",
       duration: "00:17",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r5,
       comment: "Lower margin pass"
     },
     {
@@ -84,7 +89,7 @@ function createVideoSet(seed) {
       region: "r6",
       duration: "00:21",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r6,
       comment: "Right lobe close-up"
     }
   ];
