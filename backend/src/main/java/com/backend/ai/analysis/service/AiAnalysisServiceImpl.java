@@ -40,7 +40,6 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
 
         UsAiAnalysis aiAnalysis = new UsAiAnalysis();
         aiAnalysis.setExamination(examination);
-        aiAnalysis.setPatientId(request.getPatientId());
         aiAnalysis.setStatus(AnalysisStatus.PENDING);
         UsAiAnalysis saved = aiAnalysisRepository.save(aiAnalysis);
         UUID analysisUuid = saved.getAnalysisUuid();

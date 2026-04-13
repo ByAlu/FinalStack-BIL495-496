@@ -8,8 +8,6 @@ import java.util.UUID;
 public interface AiAnalysis {
     UUID getAnalysisUuid();
 
-    Long getPatientId();
-
     AnalysisStatus getStatus();
 
     HealthDataType getDataType();
