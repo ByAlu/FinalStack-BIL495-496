@@ -119,10 +119,6 @@ CREATE TABLE IF NOT EXISTS us_analysis_reports (
 
 CREATE TABLE IF NOT EXISTS doctor_suggestion (
     id BIGSERIAL PRIMARY KEY,
-    examination_region VARCHAR(32),
-    b_lines BIGINT,
-    rd_score BIGINT,
-    url VARCHAR(255),
     final_diagnosis VARCHAR(4096),
     treatment_recommendation VARCHAR(4096),
     follow_up_recommendation VARCHAR(4096),

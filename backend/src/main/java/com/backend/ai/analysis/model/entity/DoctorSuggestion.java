@@ -1,6 +1,5 @@
 package com.backend.ai.analysis.model.entity;
 
-import com.backend.model.entity.UsExaminationRegion;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,14 +15,6 @@ public class DoctorSuggestion{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Enumerated(EnumType.STRING)
-    private UsExaminationRegion examinationRegion;
-
-    private Long bLines;
-    private Long rdScore;
-
-    private String url;
 
     @Column(length = 4096)
     private String finalDiagnosis;
