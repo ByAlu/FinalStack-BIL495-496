@@ -1,8 +1,20 @@
 .app-frame {
-  min-height: 100vh;
-  padding: 28px;
+  --app-header-height: 94px;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.app-frame.app-frame-selection {
+  padding: 0;
+}
+
+.app-header-shell {
+  flex: 0 0 var(--app-header-height);
+  min-height: var(--app-header-height);
+  padding: 18px 28px 0;
+  overflow: hidden;
 }
 
 .topbar {
@@ -99,14 +111,29 @@
   padding: 0;
 }
 
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  padding: 0 28px 28px;
+}
+
 .content-centered {
   max-width: 1200px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .content-full {
   max-width: none;
-  flex: 1;
+}
+
+.content-selection-shell {
+  padding: 0;
+  overflow: hidden;
+  scrollbar-gutter: auto;
 }
 
 .page-stack {
@@ -456,7 +483,11 @@
   }
 
   .app-frame {
-    padding: 20px;
+    --app-header-height: 86px;
+  }
+
+  .app-header-shell {
+    padding: 20px 20px 0;
   }
 
   .page-hero h2,
