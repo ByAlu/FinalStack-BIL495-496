@@ -15,6 +15,29 @@ const clinicalIndicationOptions = [
   { id: "follow-up", label: "Follow-up / serial evaluation" }
 ];
 
+function getSelectionStateCacheKey(patientId, examinationId) {
+  return `neoai-selection:${patientId}:${examinationId}`;
+}
+
+function readSelectedFramesFromSession(patientId, examinationId) {
+  if (!patientId || !examinationId) {
+    return {};
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(getSelectionStateCacheKey(patientId, examinationId));
+
+    if (!rawValue) {
+      return {};
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    return parsedValue?.selectedFrames || {};
+  } catch {
+    return {};
+  }
+}
+
 function formatPercent(value) {
   return `%${Math.round(value * 100)}`;
 }
@@ -70,7 +93,7 @@ function getOverallSeverity(totalScore) {
 function getDiagnosisProbabilities(totalScore) {
   const scores = [
     {
-      label: "Normal akciger paterni",
+      label: "Normal lung pattern",
       probability: totalScore <= 3 ? 0.58 : 0.08
     },
     {
@@ -86,7 +109,7 @@ function getDiagnosisProbabilities(totalScore) {
       probability: highlightedProbability(totalScore, 7, 0.37, 0.16)
     },
     {
-      label: "Diger",
+      label: "Other",
       probability: 0.09
     }
   ];
@@ -117,8 +140,11 @@ export function ReportingPage() {
   const [otherClinicalIndication, setOtherClinicalIndication] = useState("");
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportFormat, setExportFormat] = useState("pdf");
-
-  const selectedFrameMap = location.state?.processedFrames || location.state?.selectedFrames || {};
+  const sessionSelectedFrameMap = useMemo(
+    () => readSelectedFramesFromSession(patientId, examinationId),
+    [examinationId, patientId]
+  );
+  const selectedFrameMap = location.state?.processedFrames || location.state?.selectedFrames || sessionSelectedFrameMap;
 
   const selectedRegions = useMemo(() => {
     const stateRegions = regions.filter((region) => selectedFrameMap[region]);
