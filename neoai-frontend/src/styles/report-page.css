@@ -256,6 +256,36 @@
   padding: 14px 18px 18px;
 }
 
+.report-region-results {
+  display: grid;
+  gap: 14px;
+  padding: 18px 18px 20px;
+  background: rgba(8, 18, 33, 0.88);
+}
+
+.report-module-block {
+  border: 1px solid rgba(86, 133, 197, 0.18);
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(6, 14, 28, 0.84);
+}
+
+.report-module-title {
+  margin: 0;
+  padding: 14px 16px 10px;
+  color: #8fb4db;
+  font-size: 0.88rem;
+  letter-spacing: 0.12em;
+}
+
+.report-module-table th {
+  width: 42%;
+}
+
+.report-module-table td {
+  width: 58%;
+}
+
 .report-region-overlay-label {
   position: absolute;
   left: 16px;
@@ -440,6 +470,11 @@
   margin: 18px 0 0;
   color: #d7e6f7;
   line-height: 1.7;
+}
+
+.report-approval-note strong {
+  color: #f6fbff;
+  font-weight: 700;
 }
 
 .report-chip-row {

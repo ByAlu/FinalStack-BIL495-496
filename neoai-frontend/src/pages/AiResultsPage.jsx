@@ -15,10 +15,6 @@ const DEFAULT_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
 const MAX_MAGNIFIER_CONFIG = { size: 500, zoomFactor: 8 };
 const MIN_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
 
-function formatSeverityLabel(value) {
-  return value.split("_").join(" ");
-}
-
 function normalizeRotation(nextRotation) {
   const normalized = nextRotation % 360;
   return normalized < 0 ? normalized + 360 : normalized;
@@ -40,6 +36,19 @@ function getMagnifierState(stageRect, imageRect, clientX, clientY, magnifierConf
     backgroundOffsetX: -(localX * zoomFactor) + lensSize / 2,
     backgroundOffsetY: -(localY * zoomFactor) + lensSize / 2
   };
+}
+
+function formatPercentFromScore(value) {
+  return `%${Math.round(value * 100)}`;
+}
+
+function getAverageConfidence(boxes) {
+  if (!Array.isArray(boxes) || boxes.length === 0) {
+    return null;
+  }
+
+  const total = boxes.reduce((sum, box) => sum + (box.confidence || 0), 0);
+  return total / boxes.length;
 }
 
 export function AiResultsPage() {
@@ -117,14 +126,13 @@ export function AiResultsPage() {
   const rdsScoreResult = activeRegionResult?.rds_score_module || null;
   const isBLineEnabled = enabledModuleIds.includes("b-line");
   const isRdsScoreEnabled = enabledModuleIds.includes("rds-score");
+  const bLineAverageConfidence = getAverageConfidence(bLineResult?.bounding_boxes);
   const visibleSummaryLines = [
-    `Region ${activeRegionResult?.region || activeRegion.toUpperCase()} · image quality ${activeRegionResult?.image_quality || "unknown"}`,
+    `Region ${activeRegionResult?.region || activeRegion.toUpperCase()}`,
     isBLineEnabled && bLineResult
-      ? `B-LINE: ${bLineResult.b_line_count} lines, ${bLineResult.pattern} pattern, pleural line ${bLineResult.pleural_line.status}`
+      ? `B-LINE: ${bLineResult.count} detections, ${bLineResult.bounding_boxes.length} bounding boxes shown${bLineAverageConfidence !== null ? `, avg confidence ${formatPercentFromScore(bLineAverageConfidence)}` : ""}`
       : null,
-    isRdsScoreEnabled && rdsScoreResult
-      ? `RDS-SCORE: ${rdsScoreResult.region_score} (${formatSeverityLabel(rdsScoreResult.severity_label)}), confidence %${Math.round(rdsScoreResult.confidence * 100)}`
-      : null
+    isRdsScoreEnabled && rdsScoreResult ? `RDS-SCORE: ${rdsScoreResult.score}` : null
   ].filter(Boolean);
   const isViewChanged = zoomScale !== 1 || panOffset.x !== 0 || panOffset.y !== 0 || viewRotation !== 0;
 
@@ -408,10 +416,10 @@ export function AiResultsPage() {
                           key={`${activeRegion}-bbox-${index}`}
                           className="ai-results-bounding-box"
                           style={{
-                            left: `${(box.x_min / RESULT_IMAGE_WIDTH) * 100}%`,
-                            top: `${(box.y_min / RESULT_IMAGE_HEIGHT) * 100}%`,
-                            width: `${((box.x_max - box.x_min) / RESULT_IMAGE_WIDTH) * 100}%`,
-                            height: `${((box.y_max - box.y_min) / RESULT_IMAGE_HEIGHT) * 100}%`
+                            left: `${(box.x / RESULT_IMAGE_WIDTH) * 100}%`,
+                            top: `${(box.y / RESULT_IMAGE_HEIGHT) * 100}%`,
+                            width: `${(box.width / RESULT_IMAGE_WIDTH) * 100}%`,
+                            height: `${(box.height / RESULT_IMAGE_HEIGHT) * 100}%`
                           }}
                         >
                           <span>%{Math.round(box.confidence * 100)}</span>

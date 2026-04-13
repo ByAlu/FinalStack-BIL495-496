@@ -7,6 +7,10 @@ import { useAuth } from "../context/AuthContext";
 import { findPatientById, getExaminationByIds, getReportById } from "../services/mockApi";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
+const moduleLabelMap = {
+  "rds-score": "RDS-SCORE",
+  "b-line": "B-LINE"
+};
 const clinicalIndicationOptions = [
   { id: "respiratory-distress", label: "Respiratory distress" },
   { id: "suspected-rds", label: "Suspected RDS" },
@@ -38,16 +42,31 @@ function readSelectedFramesFromSession(patientId, examinationId) {
   }
 }
 
+function getCommittedAiModuleStateCacheKey(patientId, examinationId) {
+  return `neoai-ai-module-committed:${patientId}:${examinationId}`;
+}
+
+function readSelectedModulesFromSession(patientId, examinationId) {
+  if (!patientId || !examinationId) {
+    return [];
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(getCommittedAiModuleStateCacheKey(patientId, examinationId));
+
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    return Array.isArray(parsedValue?.selectedModuleIds) ? parsedValue.selectedModuleIds : [];
+  } catch {
+    return [];
+  }
+}
+
 function formatPercent(value) {
   return `%${Math.round(value * 100)}`;
-}
-
-function formatSeverityLabel(value) {
-  return value.split("_").join(" ");
-}
-
-function toHeadlineCase(value) {
-  return value.replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function getFrameImageSource(frameValue) {
@@ -144,7 +163,26 @@ export function ReportingPage() {
     () => readSelectedFramesFromSession(patientId, examinationId),
     [examinationId, patientId]
   );
+  const sessionSelectedModuleIds = useMemo(
+    () => readSelectedModulesFromSession(patientId, examinationId),
+    [examinationId, patientId]
+  );
   const selectedFrameMap = location.state?.processedFrames || location.state?.selectedFrames || sessionSelectedFrameMap;
+  const selectedModuleIds = useMemo(() => {
+    if (Array.isArray(location.state?.selectedModuleIds) && location.state.selectedModuleIds.length > 0) {
+      return location.state.selectedModuleIds;
+    }
+
+    if (location.state?.selectedModuleId) {
+      return [location.state.selectedModuleId];
+    }
+
+    if (sessionSelectedModuleIds.length > 0) {
+      return sessionSelectedModuleIds;
+    }
+
+    return ["rds-score", "b-line"];
+  }, [location.state, sessionSelectedModuleIds]);
 
   const selectedRegions = useMemo(() => {
     const stateRegions = regions.filter((region) => selectedFrameMap[region]);
@@ -168,24 +206,20 @@ export function ReportingPage() {
           videoName: matchingVideo?.name || "-",
           comment: matchingVideo?.comment || "-",
           imageQuality: regionResult?.image_quality || "unknown",
-          bLineCount: regionResult?.b_line_module?.b_line_count ?? 0,
-          pattern: regionResult?.b_line_module?.pattern || "-",
-          pleuralLine: regionResult?.b_line_module?.pleural_line?.status || "-",
-          whiteLung: regionResult?.b_line_module?.white_lung ? "Present" : "Absent",
-          regionScore: regionResult?.rds_score_module?.region_score ?? 0,
-          severityLabel: toHeadlineCase(formatSeverityLabel(regionResult?.rds_score_module?.severity_label || "normal_aeration")),
-          confidence: formatPercent(regionResult?.rds_score_module?.confidence ?? 0),
-          findings: regionResult?.rds_score_module?.findings || []
+          bLineCount: regionResult?.b_line_module?.count ?? 0,
+          regionScore: regionResult?.rds_score_module?.score ?? 0
         };
       }),
     [examination?.videos, selectedFrameMap, selectedRegions]
   );
 
   const totalScore = regionReportRows.reduce((sum, row) => sum + row.regionScore, 0);
+  const isRdsSelected = selectedModuleIds.includes("rds-score");
+  const isBLineSelected = selectedModuleIds.includes("b-line");
   const overallSeverity = getOverallSeverity(totalScore);
   const diagnosisProbabilities = getDiagnosisProbabilities(totalScore);
   const highlightedRegions = regionReportRows
-    .filter((row) => row.regionScore >= 2 || row.whiteLung === "Present")
+    .filter((row) => row.regionScore >= 2 || row.bLineCount >= 3)
     .map((row) => row.region.toUpperCase());
   const signedBy = user?.fullName || report?.reviewedBy || "Dr. Elif Kaya";
   const patientFields = useMemo(
@@ -217,6 +251,7 @@ export function ReportingPage() {
         checked: otherClinicalIndication.trim().length > 0,
         value: otherClinicalIndication
       },
+      selectedModuleIds,
       regionRows: regionReportRows,
       diagnosisProbabilities: diagnosisProbabilities.map((item) => ({
         label: item.label,
@@ -238,6 +273,7 @@ export function ReportingPage() {
       otherClinicalIndication,
       overallSeverity.label,
       patientFields,
+      selectedModuleIds,
       regionReportRows,
       report?.title,
       selectedIndicationLabels,
@@ -382,7 +418,7 @@ export function ReportingPage() {
 
           <section className="report-section-grid">
             <section className="report-card">
-              <h2 className="report-card-title">3. Lung Regions and Images</h2>
+              <h2 className="report-card-title">3. Selected Module Results by Frame</h2>
               <div className="report-region-grid report-region-grid-inline">
                 {regionReportRows.map((row) => (
                   <article className="report-region-card" key={row.region}>
@@ -390,77 +426,57 @@ export function ReportingPage() {
                       <img alt={`${row.region.toUpperCase()} selected frame`} src={row.image} />
                       <span className="report-region-overlay-label">{row.region.toUpperCase()}</span>
                     </div>
+                    <div className="report-region-results">
+                      {isBLineSelected ? (
+                        <div className="report-module-block">
+                          <h3 className="report-module-title">{moduleLabelMap["b-line"]}</h3>
+                          <div className="report-table-wrap">
+                            <table className="report-table report-module-table">
+                              <tbody>
+                                <tr>
+                                  <th>Metric</th>
+                                  <th>Value</th>
+                                </tr>
+                                <tr>
+                                  <td>Count</td>
+                                  <td>{row.bLineCount}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {isRdsSelected ? (
+                        <div className="report-module-block">
+                          <h3 className="report-module-title">{moduleLabelMap["rds-score"]}</h3>
+                          <div className="report-table-wrap">
+                            <table className="report-table report-module-table">
+                              <tbody>
+                                <tr>
+                                  <th>Metric</th>
+                                  <th>Value</th>
+                                </tr>
+                                <tr>
+                                  <td>Score</td>
+                                  <td>{row.regionScore}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </article>
                 ))}
               </div>
             </section>
           </section>
 
+          {isRdsSelected ? (
           <section className="report-table-card">
             <div className="report-card" style={{ background: "transparent", border: "none", paddingBottom: 0 }}>
-              <h2 className="report-card-title">4. Ultrasound Findings (AI Detection)</h2>
-            </div>
-            <div className="report-table-wrap">
-              <table className="report-table">
-                <thead>
-                  <tr>
-                    <th>Region</th>
-                    <th>Image Quality</th>
-                    <th>B-Line Count</th>
-                    <th>Pattern</th>
-                    <th>Pleural Line</th>
-                    <th>White Lung</th>
-                    <th>Key Findings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {regionReportRows.map((row) => (
-                    <tr key={row.region}>
-                      <td>{row.region.toUpperCase()}</td>
-                      <td>{toHeadlineCase(row.imageQuality)}</td>
-                      <td>{row.bLineCount}</td>
-                      <td>{toHeadlineCase(row.pattern)}</td>
-                      <td>{toHeadlineCase(row.pleuralLine)}</td>
-                      <td>{row.whiteLung}</td>
-                      <td>{row.findings.join(", ")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="report-table-card">
-            <div className="report-card" style={{ background: "transparent", border: "none", paddingBottom: 0 }}>
-              <h2 className="report-card-title">5. LUS Scoring</h2>
-            </div>
-            <div className="report-table-wrap">
-              <table className="report-table">
-                <thead>
-                  <tr>
-                    <th>Region</th>
-                    <th>RDS Score</th>
-                    <th>Severity Label</th>
-                    <th>AI Confidence</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {regionReportRows.map((row) => (
-                    <tr key={row.region}>
-                      <td>{row.region.toUpperCase()}</td>
-                      <td>{row.regionScore}</td>
-                      <td>{row.severityLabel}</td>
-                      <td>{row.confidence}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="report-table-card">
-            <div className="report-card" style={{ background: "transparent", border: "none", paddingBottom: 0 }}>
-              <h2 className="report-card-title">6. AI Disease Classification</h2>
+              <h2 className="report-card-title">4. AI Disease Classification</h2>
             </div>
             <div className="report-table-wrap">
               <table className="report-table">
@@ -481,10 +497,11 @@ export function ReportingPage() {
               </table>
             </div>
           </section>
+          ) : null}
 
           <section className="report-section-grid">
             <section className="report-card">
-              <h2 className="report-card-title">7. AI Clinical Report</h2>
+              <h2 className="report-card-title">{isRdsSelected ? "5. AI Clinical Report" : "4. AI Clinical Report"}</h2>
               <p className="report-section-copy">
                 Automatic clinical assessment generated by NeoAI LUS Assistant:
               </p>
@@ -493,7 +510,7 @@ export function ReportingPage() {
 
           <section className="report-footer-grid">
             <section className="report-card">
-              <h2 className="report-card-title">8. Clinical Assessment (Physician)</h2>
+              <h2 className="report-card-title">{isRdsSelected ? "6. Clinical Assessment (Physician)" : "5. Clinical Assessment (Physician)"}</h2>
               <div className="report-assessment-block">
                 <label className="report-assessment-row">
                   <span className="report-assessment-label">Final Diagnosis</span>
@@ -529,7 +546,7 @@ export function ReportingPage() {
             </section>
 
             <section className="report-card report-approval">
-              <h2 className="report-card-title">9. Approval</h2>
+              <h2 className="report-card-title">{isRdsSelected ? "7. Approval" : "6. Approval"}</h2>
               <div className="report-table-wrap">
                 <table className="report-table report-approval-table">
                   <thead>
@@ -549,7 +566,7 @@ export function ReportingPage() {
                 </table>
               </div>
               <p className="report-approval-note">
-                Note: This report contains AI analysis generated by NeoAI LUS Assistant. Clinical decisions should be
+                <strong>Note:</strong> This report contains AI analysis generated by NeoAI LUS Assistant. Clinical decisions should be
                 made based on physician evaluation.
               </p>
             </section>

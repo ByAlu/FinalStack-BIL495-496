@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     marginBottom: 6
   },
   frameBlock: {
-    marginBottom: 12,
+    marginBottom: 16,
     width: 535
   },
   frameLabel: {
@@ -56,6 +56,13 @@ const styles = StyleSheet.create({
   frameImage: {
     width: 535,
     border: "1 solid #d4d8de"
+  },
+  moduleHeading: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#4b7fc0",
+    marginTop: 8,
+    marginBottom: 4
   },
   table: {
     borderWidth: 1,
@@ -140,16 +147,16 @@ export function ReportPdfDocument({ reportData }) {
     patientFields,
     selectedIndications,
     otherIndication,
+    selectedModuleIds,
     regionRows,
     diagnosisProbabilities,
-    totalScore,
-    overallSeverityLabel,
-    highlightedRegions,
     finalDiagnosis,
     treatmentRecommendation,
     followUpRecommendation,
     signedBy
   } = reportData;
+  const isRdsSelected = selectedModuleIds.includes("rds-score");
+  const isBLineSelected = selectedModuleIds.includes("b-line");
 
   return (
     <Document title={title}>
@@ -181,63 +188,52 @@ export function ReportPdfDocument({ reportData }) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>3. Lung Regions and Images</Text>
+          <Text style={styles.sectionTitle}>3. Selected Module Results by Frame</Text>
           {regionRows.map((row) => (
             <View key={row.region} style={styles.frameBlock} wrap={false}>
               <Text style={styles.frameLabel}>{row.region.toUpperCase()}</Text>
               {row.image ? <Image src={row.image} style={styles.frameImage} /> : null}
+              {isBLineSelected ? (
+                <>
+                  <Text style={styles.moduleHeading}>B-LINE</Text>
+                  <View style={styles.table}>
+                  <View style={styles.tableRow}>
+                    {renderCell("B-LINE Metric", "50%", true)}
+                    {renderCell("Value", "50%", true, true)}
+                  </View>
+                  <View style={styles.tableRow}>
+                    {renderCell("Count", "50%")}
+                    {renderCell(String(row.bLineCount), "50%", false, true, true)}
+                  </View>
+                  </View>
+                </>
+              ) : null}
+              {isRdsSelected ? (
+                <>
+                  <Text style={styles.moduleHeading}>RDS-SCORE</Text>
+                  <View style={styles.table}>
+                  <View style={styles.tableRow}>
+                    {renderCell("RDS-SCORE Metric", "50%", true)}
+                    {renderCell("Value", "50%", true, true)}
+                  </View>
+                  <View style={styles.tableRow}>
+                    {renderCell("Score", "50%")}
+                    {renderCell(String(row.regionScore), "50%", false, true)}
+                  </View>
+                  <View style={styles.tableRow}>
+                    {renderCell("Returned value", "50%", false, false, true)}
+                    {renderCell("Integer score", "50%", false, true, true)}
+                  </View>
+                  </View>
+                </>
+              ) : null}
             </View>
           ))}
         </View>
 
+        {isRdsSelected ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>4. Ultrasound Findings (AI Detection)</Text>
-          <View style={styles.table}>
-            <View style={styles.tableRow}>
-              {renderCell("Region", "12%", true)}
-              {renderCell("Image Quality", "16%", true)}
-              {renderCell("B-Line Count", "14%", true)}
-              {renderCell("Pattern", "14%", true)}
-              {renderCell("Pleural Line", "14%", true)}
-              {renderCell("White Lung", "12%", true)}
-              {renderCell("Key Findings", "18%", true, true)}
-            </View>
-            {regionRows.map((row, index) => (
-              <View key={row.region} style={styles.tableRow}>
-                {renderCell(row.region.toUpperCase(), "12%", false, false, index === regionRows.length - 1)}
-                {renderCell(row.imageQuality, "16%", false, false, index === regionRows.length - 1)}
-                {renderCell(String(row.bLineCount), "14%", false, false, index === regionRows.length - 1)}
-                {renderCell(row.pattern, "14%", false, false, index === regionRows.length - 1)}
-                {renderCell(row.pleuralLine, "14%", false, false, index === regionRows.length - 1)}
-                {renderCell(row.whiteLung, "12%", false, false, index === regionRows.length - 1)}
-                {renderCell(row.findings.join(", "), "18%", false, true, index === regionRows.length - 1)}
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>5. LUS Scoring</Text>
-          <View style={styles.table}>
-            <View style={styles.tableRow}>
-              {renderCell("Region", "18%", true)}
-              {renderCell("RDS Score", "18%", true)}
-              {renderCell("Severity Label", "40%", true)}
-              {renderCell("AI Confidence", "24%", true, true)}
-            </View>
-            {regionRows.map((row, index) => (
-              <View key={row.region} style={styles.tableRow}>
-                {renderCell(row.region.toUpperCase(), "18%", false, false, index === regionRows.length - 1)}
-                {renderCell(String(row.regionScore), "18%", false, false, index === regionRows.length - 1)}
-                {renderCell(row.severityLabel, "40%", false, false, index === regionRows.length - 1)}
-                {renderCell(row.confidence, "24%", false, true, index === regionRows.length - 1)}
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>6. AI Disease Classification</Text>
+          <Text style={styles.sectionTitle}>4. AI Disease Classification</Text>
           <View style={styles.table}>
             <View style={styles.tableRow}>
               {renderCell("Diagnosis", "76%", true)}
@@ -251,14 +247,15 @@ export function ReportPdfDocument({ reportData }) {
             ))}
           </View>
         </View>
+        ) : null}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>7. AI Clinical Report</Text>
+          <Text style={styles.sectionTitle}>{isRdsSelected ? "5. AI Clinical Report" : "4. AI Clinical Report"}</Text>
           <Text>Automatic clinical assessment generated by NeoAI LUS Assistant:</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>8. Clinical Assessment (Physician)</Text>
+          <Text style={styles.sectionTitle}>{isRdsSelected ? "6. Clinical Assessment (Physician)" : "5. Clinical Assessment (Physician)"}</Text>
           <View style={styles.inputBlock}>
             <Text style={styles.inputLabel}>Final Diagnosis</Text>
             <Text>{finalDiagnosis || " "}</Text>
@@ -274,7 +271,7 @@ export function ReportPdfDocument({ reportData }) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>9. Approval</Text>
+          <Text style={styles.sectionTitle}>{isRdsSelected ? "7. Approval" : "6. Approval"}</Text>
           <View style={styles.table}>
             <View style={styles.tableRow}>
               {renderCell("Role", "34%", true)}
@@ -288,7 +285,7 @@ export function ReportPdfDocument({ reportData }) {
             </View>
           </View>
           <Text style={styles.approvalNote}>
-            Note: This report contains AI analysis generated by NeoAI LUS Assistant. Clinical decisions should be made
+            <Text style={{ fontWeight: 700 }}>Note:</Text> This report contains AI analysis generated by NeoAI LUS Assistant. Clinical decisions should be made
             based on physician evaluation.
           </Text>
         </View>
