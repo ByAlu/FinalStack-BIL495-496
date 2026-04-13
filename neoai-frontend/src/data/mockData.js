@@ -1,5 +1,10 @@
 import sampleThumbnail from "./lus_sample_thumbnail.jpg";
-import sampleVideo from "./lus_sample_video.mp4";
+import r1 from "./r1.mp4";
+import r2 from "./r2.mp4";
+import r3 from "./r3.mp4";
+import r4 from "./r4.mp4";
+import r5 from "./r5.mp4";
+import r6 from "./r6.mp4";
 
 export const demoUsers = [
   {
@@ -44,7 +49,7 @@ function createVideoSet(seed) {
       region: "r1",
       duration: "00:18",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r1,
       comment: "Left lobe sweep"
     },
     {
@@ -52,7 +57,7 @@ function createVideoSet(seed) {
       region: "r2",
       duration: "00:22",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r2,
       comment: "Upper pole focus"
     },
     {
@@ -60,7 +65,7 @@ function createVideoSet(seed) {
       region: "r3",
       duration: "00:20",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r3,
       comment: "Suspicious nodule view"
     },
     {
@@ -68,7 +73,7 @@ function createVideoSet(seed) {
       region: "r4",
       duration: "00:25",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r4,
       comment: "Transverse section"
     },
     {
@@ -76,7 +81,7 @@ function createVideoSet(seed) {
       region: "r5",
       duration: "00:17",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r5,
       comment: "Lower margin pass"
     },
     {
@@ -84,7 +89,7 @@ function createVideoSet(seed) {
       region: "r6",
       duration: "00:21",
       thumbnail: sampleThumbnail,
-      videoUrl: sampleVideo,
+      videoUrl: r6,
       comment: "Right lobe close-up"
     }
   ];
@@ -120,166 +125,88 @@ export const aiRegionResults = {
     region: "R1",
     image_quality: "acceptable",
     b_line_module: {
-      b_line_count: 6,
-      pattern: "multiple",
+      count: 6,
       bounding_boxes: [
-        { x_min: 110, y_min: 75, x_max: 150, y_max: 320, confidence: 0.94 },
-        { x_min: 180, y_min: 80, x_max: 220, y_max: 310, confidence: 0.91 },
-        { x_min: 250, y_min: 85, x_max: 290, y_max: 300, confidence: 0.9 }
-      ],
-      pleural_line: {
-        status: "irregular",
-        confidence: 0.88
-      },
-      white_lung: false,
-      confidence: 0.92
+        { x: 110, y: 75, width: 40, height: 245, confidence: 0.94 },
+        { x: 180, y: 80, width: 40, height: 230, confidence: 0.91 },
+        { x: 250, y: 85, width: 40, height: 215, confidence: 0.9 }
+      ]
     },
     rds_score_module: {
-      region_score: 2,
-      severity_label: "moderate_loss_of_aeration",
-      findings: ["multiple B-lines", "irregular pleural line"],
-      confidence: 0.89,
-      explainability: {
-        heatmap_available: true
-      }
+      score: 3
     }
   },
   r2: {
     region: "R2",
     image_quality: "acceptable",
     b_line_module: {
-      b_line_count: 4,
-      pattern: "focal",
+      count: 4,
       bounding_boxes: [
-        { x_min: 90, y_min: 88, x_max: 126, y_max: 302, confidence: 0.9 },
-        { x_min: 190, y_min: 78, x_max: 226, y_max: 314, confidence: 0.88 }
-      ],
-      pleural_line: {
-        status: "regular",
-        confidence: 0.82
-      },
-      white_lung: false,
-      confidence: 0.87
+        { x: 90, y: 88, width: 36, height: 214, confidence: 0.9 },
+        { x: 190, y: 78, width: 36, height: 236, confidence: 0.88 }
+      ]
     },
     rds_score_module: {
-      region_score: 1,
-      severity_label: "mild_loss_of_aeration",
-      findings: ["focal B-lines"],
-      confidence: 0.85,
-      explainability: {
-        heatmap_available: true
-      }
+      score: 2
     }
   },
   r3: {
     region: "R3",
     image_quality: "acceptable",
     b_line_module: {
-      b_line_count: 8,
-      pattern: "confluent",
+      count: 8,
       bounding_boxes: [
-        { x_min: 72, y_min: 80, x_max: 110, y_max: 315, confidence: 0.95 },
-        { x_min: 130, y_min: 82, x_max: 170, y_max: 322, confidence: 0.94 },
-        { x_min: 205, y_min: 76, x_max: 246, y_max: 318, confidence: 0.92 },
-        { x_min: 278, y_min: 84, x_max: 316, y_max: 308, confidence: 0.91 }
-      ],
-      pleural_line: {
-        status: "irregular",
-        confidence: 0.91
-      },
-      white_lung: true,
-      confidence: 0.95
+        { x: 72, y: 80, width: 38, height: 235, confidence: 0.95 },
+        { x: 130, y: 82, width: 40, height: 240, confidence: 0.94 },
+        { x: 205, y: 76, width: 41, height: 242, confidence: 0.92 },
+        { x: 278, y: 84, width: 38, height: 224, confidence: 0.91 }
+      ]
     },
     rds_score_module: {
-      region_score: 3,
-      severity_label: "severe_loss_of_aeration",
-      findings: ["confluent B-lines", "white lung pattern", "irregular pleural line"],
-      confidence: 0.94,
-      explainability: {
-        heatmap_available: true
-      }
+      score: 3
     }
   },
   r4: {
     region: "R4",
     image_quality: "acceptable",
     b_line_module: {
-      b_line_count: 3,
-      pattern: "focal",
+      count: 3,
       bounding_boxes: [
-        { x_min: 118, y_min: 92, x_max: 154, y_max: 286, confidence: 0.86 },
-        { x_min: 234, y_min: 88, x_max: 270, y_max: 295, confidence: 0.84 }
-      ],
-      pleural_line: {
-        status: "regular",
-        confidence: 0.8
-      },
-      white_lung: false,
-      confidence: 0.83
+        { x: 118, y: 92, width: 36, height: 194, confidence: 0.86 },
+        { x: 234, y: 88, width: 36, height: 207, confidence: 0.84 }
+      ]
     },
     rds_score_module: {
-      region_score: 1,
-      severity_label: "mild_loss_of_aeration",
-      findings: ["limited focal B-lines"],
-      confidence: 0.81,
-      explainability: {
-        heatmap_available: true
-      }
+      score: 2
     }
   },
   r5: {
     region: "R5",
     image_quality: "suboptimal",
     b_line_module: {
-      b_line_count: 5,
-      pattern: "multiple",
+      count: 5,
       bounding_boxes: [
-        { x_min: 96, y_min: 94, x_max: 135, y_max: 306, confidence: 0.89 },
-        { x_min: 164, y_min: 91, x_max: 202, y_max: 298, confidence: 0.87 },
-        { x_min: 258, y_min: 96, x_max: 296, y_max: 290, confidence: 0.85 }
-      ],
-      pleural_line: {
-        status: "irregular",
-        confidence: 0.84
-      },
-      white_lung: false,
-      confidence: 0.86
+        { x: 96, y: 94, width: 39, height: 212, confidence: 0.89 },
+        { x: 164, y: 91, width: 38, height: 207, confidence: 0.87 },
+        { x: 258, y: 96, width: 38, height: 194, confidence: 0.85 }
+      ]
     },
     rds_score_module: {
-      region_score: 2,
-      severity_label: "moderate_loss_of_aeration",
-      findings: ["multiple B-lines", "reduced image quality"],
-      confidence: 0.83,
-      explainability: {
-        heatmap_available: true
-      }
+      score: 2
     }
   },
   r6: {
     region: "R6",
     image_quality: "acceptable",
     b_line_module: {
-      b_line_count: 2,
-      pattern: "isolated",
+      count: 2,
       bounding_boxes: [
-        { x_min: 140, y_min: 86, x_max: 178, y_max: 276, confidence: 0.8 },
-        { x_min: 232, y_min: 94, x_max: 268, y_max: 282, confidence: 0.79 }
-      ],
-      pleural_line: {
-        status: "regular",
-        confidence: 0.77
-      },
-      white_lung: false,
-      confidence: 0.78
+        { x: 140, y: 86, width: 38, height: 190, confidence: 0.8 },
+        { x: 232, y: 94, width: 36, height: 188, confidence: 0.79 }
+      ]
     },
     rds_score_module: {
-      region_score: 0,
-      severity_label: "normal_aeration",
-      findings: ["isolated B-lines within normal limits"],
-      confidence: 0.76,
-      explainability: {
-        heatmap_available: true
-      }
+      score: 1
     }
   }
 };

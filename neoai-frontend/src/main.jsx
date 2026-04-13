@@ -7,6 +7,7 @@ import "./styles/base.css";
 import "./styles/layout.css";
 import "./styles/workflow.css";
 import "./styles/query-page.css";
+import "./styles/report-page.css";
 import "./styles/selection-page.css";
 import "./styles/auth.css";
 import { appTheme } from "./theme";

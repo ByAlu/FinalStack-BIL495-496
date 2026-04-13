@@ -1,11 +1,11 @@
 const MODULE_LABELS = {
   "rds-score": {
     title: "RDS-SCORE",
-    description: "Show aeration score, severity, and explainability overlay."
+    description: "Show the returned RDS score value."
   },
   "b-line": {
     title: "B-LINE",
-    description: "Show detected B-line boxes and pleural-line related findings."
+    description: "Show detected B-line count, bounding boxes, and box confidence."
   }
 };
 
