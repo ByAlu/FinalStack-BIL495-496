@@ -40,8 +40,6 @@ public class UsAiAnalysis implements AiAnalysis {
     @OneToOne(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
     private UsAnalysisReport report;
 
-    private Long patientId;
-
     @Enumerated(EnumType.STRING)
     private AnalysisStatus status;
 
