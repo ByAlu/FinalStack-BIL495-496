@@ -121,7 +121,16 @@ export function DashboardPage() {
             to="/admin"
             variant="outlined"
             startIcon={<AdminPanelSettingsRoundedIcon />}
-            sx={{ px: 3, minHeight: 46 }}
+            sx={{
+              px: 5,
+              minHeight: 60,
+              borderRadius: 2,
+              fontSize: "1rem",
+              fontWeight: 700,
+              "& .MuiButton-startIcon svg": {
+                fontSize: 24
+              }
+            }}
           >
             Open Admin Panel
           </Button>
