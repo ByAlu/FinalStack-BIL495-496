@@ -70,6 +70,13 @@ function buildFullName(user) {
   return [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.userName || "Unknown user";
 }
 
+function normalizeSearchValue(value) {
+  return (value ?? "")
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function toFormState(user) {
   return {
     id: user.id,
@@ -110,10 +117,15 @@ export function AdminPanelPage() {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [sortConfig, setSortConfig] = useState(initialSortConfig);
+  const [nameSearch, setNameSearch] = useState("");
   const drawerWidth = 280;
 
   const sortedUsers = useMemo(() => {
-    const sorted = sortUsers(users);
+    const normalizedSearch = normalizeSearchValue(nameSearch.trim());
+    const filteredUsers = normalizedSearch
+      ? users.filter((user) => normalizeSearchValue(buildFullName(user)).includes(normalizedSearch))
+      : users;
+    const sorted = sortUsers(filteredUsers);
 
     return sorted.sort((left, right) => {
       let comparison = 0;
@@ -132,7 +144,7 @@ export function AdminPanelPage() {
 
       return sortConfig.direction === "asc" ? comparison : -comparison;
     });
-  }, [sortConfig, users]);
+  }, [nameSearch, sortConfig, users]);
 
   function handleSort(columnKey) {
     setSortConfig((current) => {
@@ -417,7 +429,13 @@ export function AdminPanelPage() {
             </Box>
 
             <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-              <Typography color="text.secondary">Click a user row to edit that profile.</Typography>
+              <TextField
+                label="Search by name"
+                value={nameSearch}
+                onChange={(event) => setNameSearch(event.target.value)}
+                placeholder="Search user name"
+                sx={{ minWidth: { xs: "100%", md: 320 } }}
+              />
               <Button variant="contained" startIcon={<PersonAddAltRoundedIcon />} onClick={openCreateDialog}>
                 New user
               </Button>
