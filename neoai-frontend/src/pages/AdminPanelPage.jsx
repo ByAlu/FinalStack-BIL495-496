@@ -16,9 +16,13 @@ import {
   DialogTitle,
   Divider,
   Drawer,
+  FormControl,
   IconButton,
+  InputLabel,
   List,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -118,6 +122,8 @@ export function AdminPanelPage() {
   const [form, setForm] = useState(emptyForm);
   const [sortConfig, setSortConfig] = useState(initialSortConfig);
   const [nameSearch, setNameSearch] = useState("");
+  const [resultSize, setResultSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const drawerWidth = 280;
 
   const sortedUsers = useMemo(() => {
@@ -146,6 +152,13 @@ export function AdminPanelPage() {
     });
   }, [nameSearch, sortConfig, users]);
 
+  const totalResults = sortedUsers.length;
+  const totalPages = Math.max(1, Math.ceil(totalResults / resultSize));
+  const activePage = Math.min(currentPage, totalPages);
+  const paginatedUsers = sortedUsers.slice((activePage - 1) * resultSize, activePage * resultSize);
+  const showingStart = totalResults > 0 ? (activePage - 1) * resultSize + 1 : 0;
+  const showingEnd = Math.min(activePage * resultSize, totalResults);
+
   function handleSort(columnKey) {
     setSortConfig((current) => {
       if (current.key === columnKey) {
@@ -173,6 +186,16 @@ export function AdminPanelPage() {
   useEffect(() => {
     setSidebarOpen(isDesktop);
   }, [isDesktop]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [nameSearch, resultSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     let active = true;
@@ -429,13 +452,37 @@ export function AdminPanelPage() {
             </Box>
 
             <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-              <TextField
-                label="Search by name"
-                value={nameSearch}
-                onChange={(event) => setNameSearch(event.target.value)}
-                placeholder="Search user name"
-                sx={{ minWidth: { xs: "100%", md: 320 } }}
-              />
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", md: "180px minmax(320px, 420px)" },
+                  gap: 2,
+                  width: { xs: "100%", md: "auto" }
+                }}
+              >
+                <FormControl fullWidth>
+                  <InputLabel id="user-results-per-page-label">Show rows</InputLabel>
+                  <Select
+                    labelId="user-results-per-page-label"
+                    label="Show rows"
+                    value={resultSize}
+                    onChange={(event) => setResultSize(Number(event.target.value))}
+                  >
+                    <MenuItem value={10}>10</MenuItem>
+                    <MenuItem value={20}>20</MenuItem>
+                    <MenuItem value={30}>30</MenuItem>
+                    <MenuItem value={50}>50</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  label="Search by name"
+                  value={nameSearch}
+                  onChange={(event) => setNameSearch(event.target.value)}
+                  placeholder="Search user name"
+                  fullWidth
+                />
+              </Box>
               <Button variant="contained" startIcon={<PersonAddAltRoundedIcon />} onClick={openCreateDialog}>
                 New user
               </Button>
@@ -497,8 +544,8 @@ export function AdminPanelPage() {
                         </Stack>
                       </TableCell>
                     </TableRow>
-                  ) : sortedUsers.length ? (
-                    sortedUsers.map((user) => (
+                  ) : paginatedUsers.length ? (
+                    paginatedUsers.map((user) => (
                       <TableRow
                         key={user.id}
                         hover
@@ -530,6 +577,32 @@ export function AdminPanelPage() {
                 </TableBody>
               </Table>
             </TableContainer>
+
+            <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+              <Typography color="text.secondary">
+                Showing {showingStart}-{showingEnd} of {totalResults}
+              </Typography>
+
+              <Stack direction="row" spacing={1.25} alignItems="center" sx={{ ml: "auto" }}>
+                <Button
+                  variant="outlined"
+                  disabled={activePage === 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                >
+                  Previous
+                </Button>
+                <Typography color="text.secondary">
+                  Page {activePage} / {totalPages}
+                </Typography>
+                <Button
+                  variant="outlined"
+                  disabled={activePage === totalPages}
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                >
+                  Next
+                </Button>
+              </Stack>
+            </Box>
           </Stack>
         </Paper>
       </Stack>
