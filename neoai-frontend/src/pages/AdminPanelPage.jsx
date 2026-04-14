@@ -247,7 +247,11 @@ export function AdminPanelPage() {
     setDialogOpen(true);
   }
 
-  function closeDialog() {
+  function closeDialog(_, reason) {
+    if (reason === "backdropClick") {
+      return;
+    }
+
     if (saving) {
       return;
     }
