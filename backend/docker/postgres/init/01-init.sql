@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) NOT NULL UNIQUE,
     first_name VARCHAR(255),
     last_name VARCHAR(255),
+    phone_number VARCHAR(255),
     role VARCHAR(255),
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

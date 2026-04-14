@@ -62,9 +62,6 @@ export function ProfilePage() {
             <Typography variant="h3" sx={{ mt: 0.75 }}>
               {user?.fullName || "Unknown user"}
             </Typography>
-            <Typography color="text.secondary" sx={{ mt: 1 }}>
-              Review the current account details and backend access assigned to this user.
-            </Typography>
           </Box>
           <Button variant="outlined" color="inherit" startIcon={<LogoutRoundedIcon />} onClick={logout} sx={{ minHeight: 46 }}>
             Logout

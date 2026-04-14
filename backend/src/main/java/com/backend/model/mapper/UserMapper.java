@@ -14,6 +14,7 @@ public class UserMapper {
         dto.setEmail(user.getEmail());
         dto.setFirstName(user.getFirstName());
         dto.setLastName(user.getLastName());
+        dto.setPhoneNumber(user.getPhoneNumber());
         dto.setCreateTime(user.getCreateTime());
         return dto;
     }
@@ -28,6 +29,7 @@ public class UserMapper {
         user.setEmail(dto.getEmail());
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
+        user.setPhoneNumber(dto.getPhoneNumber());
         // createTime is set automatically on persist, so we don't set it here
         return user;
     }
