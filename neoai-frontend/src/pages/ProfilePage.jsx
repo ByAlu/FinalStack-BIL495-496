@@ -1,4 +1,7 @@
+import { useState } from "react";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
 import {
@@ -7,10 +10,15 @@ import {
   Button,
   Chip,
   Divider,
+  Drawer,
+  IconButton,
+  List,
   Paper,
   Stack,
-  Typography
+  Typography,
+  useMediaQuery
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { useAuth } from "../context/AuthContext";
 
 function formatRole(role) {
@@ -23,6 +31,9 @@ function formatRole(role) {
 
 export function ProfilePage() {
   const { user, logout } = useAuth();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
+  const [sidebarOpen, setSidebarOpen] = useState(isDesktop);
   const initials = user?.fullName
     ?.split(" ")
     .map((part) => part[0])
@@ -30,8 +41,95 @@ export function ProfilePage() {
     .slice(0, 2)
     .toUpperCase();
 
+  const drawerWidth = 260;
+  const sidebar = (
+    <Box
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        background:
+          "linear-gradient(180deg, rgba(6, 18, 31, 0.98), rgba(8, 20, 34, 0.96))",
+        borderRight: "1px solid rgba(148, 197, 255, 0.12)"
+      }}
+    >
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 2 }}>
+        <Typography variant="overline" sx={{ color: "rgba(186, 230, 253, 0.75)", letterSpacing: "0.12em" }}>
+          Profile
+        </Typography>
+        <IconButton onClick={() => setSidebarOpen(false)} sx={{ color: "text.primary" }}>
+          <ChevronLeftRoundedIcon />
+        </IconButton>
+      </Stack>
+      <List sx={{ px: 1.25, py: 0 }}>
+        <Box
+          sx={{
+            minHeight: 52,
+            px: 2,
+            display: "flex",
+            alignItems: "center",
+            borderLeft: "3px solid #38bdf8",
+            backgroundColor: "rgba(56, 189, 248, 0.08)"
+          }}
+        >
+          <Typography sx={{ fontWeight: 700, color: "text.primary" }}>Accound Details</Typography>
+        </Box>
+      </List>
+    </Box>
+  );
+
   return (
-    <Stack spacing={3.5} sx={{ maxWidth: 980, mx: "auto" }}>
+    <>
+      <IconButton
+        onClick={() => setSidebarOpen(true)}
+        sx={{
+          position: "fixed",
+          left: 16,
+          top: { xs: 108, md: 116 },
+          zIndex: (muiTheme) => muiTheme.zIndex.drawer + 2,
+          width: 48,
+          height: 48,
+          borderRadius: 1,
+          border: "1px solid rgba(148, 197, 255, 0.16)",
+          backgroundColor: "rgba(7, 17, 31, 0.92)",
+          color: "text.primary",
+          boxShadow: "0 18px 35px rgba(0, 0, 0, 0.28)",
+          "&:hover": {
+            backgroundColor: "rgba(11, 27, 46, 0.96)"
+          },
+          display: sidebarOpen && isDesktop ? "none" : "inline-flex"
+        }}
+      >
+        <MenuRoundedIcon />
+      </IconButton>
+
+      <Drawer
+        anchor="left"
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        variant={isDesktop ? "persistent" : "temporary"}
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          sx: {
+            width: drawerWidth,
+            top: { xs: 94, md: 94 },
+            height: "calc(100% - 94px)",
+            background: "transparent",
+            boxShadow: isDesktop ? "none" : undefined
+          }
+        }}
+      >
+        {sidebar}
+      </Drawer>
+
+      <Stack
+        spacing={3.5}
+        sx={{
+          maxWidth: 980,
+          mx: "auto",
+          transition: "none"
+        }}
+      >
       <Paper
         sx={{
           p: { xs: 3, md: 4 },
@@ -69,102 +167,101 @@ export function ProfilePage() {
         </Stack>
       </Paper>
 
-      <Stack direction={{ xs: "column", lg: "row" }} spacing={3}>
-        <Paper
-          sx={{
-            flex: 1,
-            p: 3,
-            borderRadius: 1,
-            border: "1px solid rgba(148, 197, 255, 0.12)",
-            backgroundColor: "rgba(12, 22, 37, 0.92)"
-          }}
-        >
-          <Stack spacing={2.25}>
-            <Stack direction="row" spacing={1.25} alignItems="center">
-              <PersonRoundedIcon color="primary" />
-              <Typography variant="h5">Account details</Typography>
+      <Stack spacing={3} sx={{ flex: 1 }}>
+          <Paper
+            sx={{
+              p: 3,
+              borderRadius: 1,
+              border: "1px solid rgba(148, 197, 255, 0.12)",
+              backgroundColor: "rgba(12, 22, 37, 0.92)"
+            }}
+          >
+            <Stack spacing={2.25}>
+              <Stack direction="row" spacing={1.25} alignItems="center">
+                <PersonRoundedIcon color="primary" />
+                <Typography variant="h5">Account details</Typography>
+              </Stack>
+              <Divider />
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Username
+                </Typography>
+                <Typography variant="h6">{user?.username || "-"}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Display name
+                </Typography>
+                <Typography variant="h6">{user?.fullName || "-"}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  First name
+                </Typography>
+                <Typography variant="h6">Not exposed by current API</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Last name
+                </Typography>
+                <Typography variant="h6">Not exposed by current API</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Email
+                </Typography>
+                <Typography variant="h6">Not exposed by current API</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Role
+                </Typography>
+                <Typography variant="h6">{formatRole(user?.role)}</Typography>
+              </Box>
             </Stack>
-            <Divider />
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Username
-              </Typography>
-              <Typography variant="h6">{user?.username || "-"}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Display name
-              </Typography>
-              <Typography variant="h6">{user?.fullName || "-"}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                First name
-              </Typography>
-              <Typography variant="h6">Not exposed by current API</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Last name
-              </Typography>
-              <Typography variant="h6">Not exposed by current API</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Email
-              </Typography>
-              <Typography variant="h6">Not exposed by current API</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Role
-              </Typography>
-              <Typography variant="h6">{formatRole(user?.role)}</Typography>
-            </Box>
-          </Stack>
-        </Paper>
+          </Paper>
 
-        <Paper
-          sx={{
-            flex: 1,
-            p: 3,
-            borderRadius: 1,
-            border: "1px solid rgba(148, 197, 255, 0.12)",
-            backgroundColor: "rgba(12, 22, 37, 0.92)"
-          }}
-        >
-          <Stack spacing={2.25}>
-            <Stack direction="row" spacing={1.25} alignItems="center">
-              <ShieldRoundedIcon color="primary" />
-              <Typography variant="h5">Permissions</Typography>
+          <Paper
+            sx={{
+              p: 3,
+              borderRadius: 1,
+              border: "1px solid rgba(148, 197, 255, 0.12)",
+              backgroundColor: "rgba(12, 22, 37, 0.92)"
+            }}
+          >
+            <Stack spacing={2.25}>
+              <Stack direction="row" spacing={1.25} alignItems="center">
+                <ShieldRoundedIcon color="primary" />
+                <Typography variant="h5">Permissions</Typography>
+              </Stack>
+              <Divider />
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Account status
+                </Typography>
+                <Stack direction="row" spacing={1} sx={{ mt: 1.25 }}>
+                  <Chip label="Active session user" color="success" variant="outlined" />
+                  <Chip label={formatRole(user?.role)} color="primary" />
+                </Stack>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Allowed data types
+                </Typography>
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
+                  {user?.allowedDataTypes?.length ? (
+                    user.allowedDataTypes.map((type) => (
+                      <Chip key={type} label={type.replaceAll("_", " ")} color="primary" variant="outlined" />
+                    ))
+                  ) : (
+                    <Typography color="text.secondary">No explicit data-type claims were found in the current token.</Typography>
+                  )}
+                </Stack>
+              </Box>
             </Stack>
-            <Divider />
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Account status
-              </Typography>
-              <Stack direction="row" spacing={1} sx={{ mt: 1.25 }}>
-                <Chip label="Active session user" color="success" variant="outlined" />
-                <Chip label={formatRole(user?.role)} color="primary" />
-              </Stack>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Allowed data types
-              </Typography>
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
-                {user?.allowedDataTypes?.length ? (
-                  user.allowedDataTypes.map((type) => (
-                    <Chip key={type} label={type.replaceAll("_", " ")} color="primary" variant="outlined" />
-                  ))
-                ) : (
-                  <Typography color="text.secondary">No explicit data-type claims were found in the current token.</Typography>
-                )}
-              </Stack>
-            </Box>
-          </Stack>
-        </Paper>
+          </Paper>
       </Stack>
-    </Stack>
+      </Stack>
+    </>
   );
 }
