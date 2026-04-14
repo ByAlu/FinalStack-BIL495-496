@@ -25,6 +25,8 @@ import java.util.Set;
 public class AdminUserManagementService {
     private static final String PASSWORD_RULE_MESSAGE =
             "New password must be at least 8 characters long and include both letters and numbers.";
+    private static final String PHONE_RULE_MESSAGE =
+            "Phone number must be a valid Turkish number in +90 format.";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -104,7 +106,9 @@ public class AdminUserManagementService {
         user.setEmail(email.trim());
         user.setFirstName(normalizeOptional(firstName));
         user.setLastName(normalizeOptional(lastName));
-        user.setPhoneNumber(normalizeOptional(phoneNumber));
+        String normalizedPhoneNumber = normalizeOptional(phoneNumber);
+        validatePhoneNumber(normalizedPhoneNumber);
+        user.setPhoneNumber(normalizedPhoneNumber);
         user.setRole(role);
         user.setAllowedDataTypes(resolveAllowedDataTypes(allowedDataTypes, role));
         user.setEnabled(enabled == null || enabled);
@@ -149,6 +153,17 @@ public class AdminUserManagementService {
                 throw new UserAlreadyExistsException("This email is already taken, please select new email!");
             }
         });
+    }
+
+    private void validatePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null) {
+            return;
+        }
+
+        String normalizedPhoneNumber = phoneNumber.replaceAll("[\\s()-]", "");
+        if (!normalizedPhoneNumber.matches("^\\+90\\d{10}$")) {
+            throw new IllegalArgumentException(PHONE_RULE_MESSAGE);
+        }
     }
 
     private Set<HealthDataType> resolveAllowedDataTypes(List<HealthDataType> requestedDataTypes, Role role) {

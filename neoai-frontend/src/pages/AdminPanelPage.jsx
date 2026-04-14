@@ -43,6 +43,7 @@ const ROLE_OPTIONS = [
 ];
 
 const DATA_TYPE_OPTIONS = ["ULTRASOUND", "PULSE_OXIMETER", "MRI", "ECG", "CT"];
+const PHONE_COUNTRY_CODE = "+90";
 
 const emptyForm = {
   id: null,
@@ -81,6 +82,24 @@ function normalizeSearchValue(value) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function extractTurkeyLocalPhoneNumber(phoneNumber) {
+  if (!phoneNumber) {
+    return "";
+  }
+
+  const normalizedPhoneNumber = phoneNumber.replace(/[^\d+]/g, "");
+
+  if (normalizedPhoneNumber.startsWith("+90")) {
+    return normalizedPhoneNumber.slice(3);
+  }
+
+  if (normalizedPhoneNumber.startsWith("90")) {
+    return normalizedPhoneNumber.slice(2);
+  }
+
+  return normalizedPhoneNumber.replace(/\D/g, "");
+}
+
 function toFormState(user) {
   return {
     id: user.id,
@@ -88,7 +107,7 @@ function toFormState(user) {
     email: user.email ?? "",
     firstName: user.firstName ?? "",
     lastName: user.lastName ?? "",
-    phoneNumber: user.phoneNumber ?? "",
+    phoneNumber: extractTurkeyLocalPhoneNumber(user.phoneNumber),
     role: user.role ?? "DOCTOR",
     enabled: typeof user.enabled === "boolean" ? user.enabled : true,
     allowedDataTypes: Array.isArray(user.allowedDataTypes) && user.allowedDataTypes.length
@@ -100,6 +119,18 @@ function toFormState(user) {
 
 function isStrongPassword(password) {
   return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password);
+}
+
+function normalizeTurkeyPhoneNumber(phoneNumber) {
+  return phoneNumber.replace(/\D/g, "");
+}
+
+function isValidTurkeyPhoneNumber(phoneNumber) {
+  if (!phoneNumber) {
+    return true;
+  }
+
+  return /^\d{10}$/.test(normalizeTurkeyPhoneNumber(phoneNumber));
 }
 
 function sortUsers(users) {
@@ -315,6 +346,11 @@ export function AdminPanelPage() {
       return;
     }
 
+    if (!isValidTurkeyPhoneNumber(form.phoneNumber.trim())) {
+      setSubmitError("Phone number must be a valid Turkish number with 10 digits after +90.");
+      return;
+    }
+
     if (!form.allowedDataTypes.length) {
       setSubmitError("Select at least one allowed data type.");
       return;
@@ -325,7 +361,9 @@ export function AdminPanelPage() {
       email: form.email.trim(),
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
-      phoneNumber: form.phoneNumber.trim(),
+      phoneNumber: form.phoneNumber.trim()
+        ? `${PHONE_COUNTRY_CODE}${normalizeTurkeyPhoneNumber(form.phoneNumber.trim())}`
+        : "",
       role: form.role,
       enabled: form.enabled,
       allowedDataTypes: form.allowedDataTypes,
@@ -643,9 +681,48 @@ export function AdminPanelPage() {
               <TextField label="Last name" name="lastName" value={form.lastName} onChange={handleFieldChange} fullWidth />
             </Stack>
 
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-              <TextField label="Phone number" name="phoneNumber" value={form.phoneNumber} onChange={handleFieldChange} fullWidth />
-              <TextField
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1.2fr) minmax(260px, 1fr)" },
+                gap: 2,
+                alignItems: "start"
+              }}
+            >
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "180px minmax(0, 1fr)" },
+                  gap: 2,
+                  alignItems: "start"
+                }}
+              >
+                <TextField
+                  label="Country code"
+                  value={PHONE_COUNTRY_CODE}
+                  select
+                  fullWidth
+                  SelectProps={{ native: true }}
+                  slotProps={{ input: { readOnly: true } }}
+                >
+                  <option value={PHONE_COUNTRY_CODE}>Turkey (+90)</option>
+                </TextField>
+                <TextField
+                  label="Phone number"
+                  name="phoneNumber"
+                  value={form.phoneNumber}
+                  onChange={(event) => {
+                    const numericValue = event.target.value.replace(/\D/g, "").slice(0, 10);
+                    setForm((current) => ({ ...current, phoneNumber: numericValue }));
+                  }}
+                  fullWidth
+                  placeholder="5551234567"
+                  inputProps={{ inputMode: "numeric", maxLength: 10 }}
+                />
+              </Box>
+
+            </Box>
+            <TextField
                 label="Role"
                 name="role"
                 value={form.role}
@@ -658,10 +735,8 @@ export function AdminPanelPage() {
                   <option key={role.value} value={role.value}>
                     {role.label}
                   </option>
-                  ))}
-                </TextField>
-            </Stack>
-
+                ))}
+            </TextField>
             <TextField
               label="Status"
               name="enabled"
