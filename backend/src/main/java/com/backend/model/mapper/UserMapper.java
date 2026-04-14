@@ -14,7 +14,12 @@ public class UserMapper {
         dto.setEmail(user.getEmail());
         dto.setFirstName(user.getFirstName());
         dto.setLastName(user.getLastName());
+        dto.setPhoneNumber(user.getPhoneNumber());
+        dto.setRole(user.getRole());
+        dto.setAllowedDataTypes(user.getAllowedDataTypes());
+        dto.setEnabled(user.isEnabled());
         dto.setCreateTime(user.getCreateTime());
+        dto.setUpdateTime(user.getUpdateTime());
         return dto;
     }
 
@@ -28,6 +33,10 @@ public class UserMapper {
         user.setEmail(dto.getEmail());
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
+        user.setPhoneNumber(dto.getPhoneNumber());
+        user.setRole(dto.getRole());
+        user.setAllowedDataTypes(dto.getAllowedDataTypes());
+        user.setEnabled(dto.isEnabled());
         // createTime is set automatically on persist, so we don't set it here
         return user;
     }

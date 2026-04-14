@@ -242,7 +242,14 @@ export function PatientQueryWorkflowPage() {
 
   return (
     <Stack spacing={3}>
-      <Paper sx={{ p: 3.5, borderRadius: 3.5, boxShadow: "0 24px 60px rgba(0, 0, 0, 0.2)" }}>
+      <Paper
+        sx={{
+          p: 3.5,
+          borderRadius: 1,
+          border: "1px solid rgba(148, 197, 255, 0.12)",
+          boxShadow: "0 24px 60px rgba(0, 0, 0, 0.2)"
+        }}
+      >
         <Stack spacing={2.5}>
           <Box>
             <Typography
@@ -273,7 +280,14 @@ export function PatientQueryWorkflowPage() {
       </Paper>
 
       {patient ? (
-        <Paper sx={{ p: 3.5, borderRadius: 3.5, boxShadow: "0 24px 60px rgba(0, 0, 0, 0.2)" }}>
+        <Paper
+          sx={{
+            p: 3.5,
+            borderRadius: 1,
+            border: "1px solid rgba(148, 197, 255, 0.12)",
+            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.2)"
+          }}
+        >
           <Stack spacing={2.5}>
             <Box>
               <Typography
@@ -477,7 +491,7 @@ export function PatientQueryWorkflowPage() {
                                               sx={{
                                                 width: 72,
                                                 height: 72,
-                                                borderRadius: 2,
+                                                borderRadius: 1,
                                                 objectFit: "cover",
                                                 border: "1px solid rgba(148, 197, 255, 0.12)"
                                               }}
@@ -531,7 +545,14 @@ export function PatientQueryWorkflowPage() {
           </Stack>
         </Paper>
       ) : (
-        <Paper sx={{ p: 3.5, borderRadius: 3.5, boxShadow: "0 24px 60px rgba(0, 0, 0, 0.2)" }}>
+        <Paper
+          sx={{
+            p: 3.5,
+            borderRadius: 1,
+            border: "1px solid rgba(148, 197, 255, 0.12)",
+            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.2)"
+          }}
+        >
           <Typography variant="h4" gutterBottom>
             No patient found
           </Typography>

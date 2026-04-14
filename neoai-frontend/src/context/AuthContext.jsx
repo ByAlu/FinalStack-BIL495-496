@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser, TOKEN_STORAGE_KEY } from "../services/api";
+import { loginUser, TOKEN_STORAGE_KEY } from "../services/authApi";
+import { getCurrentUserProfile } from "../services/userApi";
 
 const AuthContext = createContext(null);
 
@@ -34,6 +35,33 @@ function buildUserFromToken(token) {
   };
 }
 
+function buildUserFromProfile(profile, fallbackUser) {
+  if (!profile) {
+    return fallbackUser;
+  }
+
+  const firstName = profile.firstName?.trim();
+  const lastName = profile.lastName?.trim();
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
+  return {
+    id: profile.id,
+    username: profile.userName ?? fallbackUser?.username ?? null,
+    fullName: fullName || profile.userName || fallbackUser?.fullName || "Unknown user",
+    firstName: firstName || "",
+    lastName: lastName || "",
+    email: profile.email ?? "",
+    phoneNumber: profile.phoneNumber ?? "",
+    role: profile.role ?? fallbackUser?.role ?? null,
+    allowedDataTypes: Array.isArray(profile.allowedDataTypes)
+      ? profile.allowedDataTypes
+      : fallbackUser?.allowedDataTypes ?? [],
+    enabled: typeof profile.enabled === "boolean" ? profile.enabled : true,
+    createTime: profile.createTime ?? null,
+    updateTime: profile.updateTime ?? null
+  };
+}
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
@@ -44,19 +72,33 @@ export function AuthProvider({ children }) {
 
     if (savedToken) {
       setToken(savedToken);
-      setUser(buildUserFromToken(savedToken));
+      const tokenUser = buildUserFromToken(savedToken);
+      setUser(tokenUser);
+      hydrateUserProfile(tokenUser);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function persistJwt(jwt) {
+  async function hydrateUserProfile(fallbackUser) {
+    try {
+      const profile = await getCurrentUserProfile();
+      setUser(buildUserFromProfile(profile, fallbackUser));
+    } catch {
+      setUser((currentUser) => currentUser ?? fallbackUser ?? null);
+    }
+  }
+
+  async function persistJwt(jwt) {
+    const tokenUser = buildUserFromToken(jwt);
     setToken(jwt);
-    setUser(buildUserFromToken(jwt));
+    setUser(tokenUser);
     window.localStorage.setItem(TOKEN_STORAGE_KEY, jwt);
+    await hydrateUserProfile(tokenUser);
   }
 
   async function login(credentials) {
     const jwt = await loginUser(credentials);
-    persistJwt(jwt);
+    await persistJwt(jwt);
     navigate("/", { replace: true });
     return jwt;
   }
@@ -74,7 +116,8 @@ export function AuthProvider({ children }) {
       user,
       isAuthenticated: Boolean(token),
       login,
-      logout
+      logout,
+      refreshUserProfile: () => hydrateUserProfile(user)
     }),
     [token, user]
   );

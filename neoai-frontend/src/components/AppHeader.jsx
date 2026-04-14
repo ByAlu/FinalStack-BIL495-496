@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import {
   AppBar,
   Avatar,
@@ -106,8 +107,9 @@ export function AppHeader({ user, logout, workflowMeta }) {
                 sx: {
                   mt: 1.5,
                   minWidth: 220,
-                  borderRadius: 2.5,
-                  p: 1
+                  borderRadius: 1,
+                  p: 1,
+                  border: "1px solid rgba(148, 197, 255, 0.12)"
                 }
               }
             }}
@@ -119,11 +121,20 @@ export function AppHeader({ user, logout, workflowMeta }) {
               </Typography>
             </Box>
             <MenuItem
+              component={Link}
+              to="/profile"
+              onClick={() => setAnchorEl(null)}
+              sx={{ borderRadius: 1 }}
+            >
+              <PersonRoundedIcon fontSize="small" sx={{ mr: 1 }} />
+              Profile
+            </MenuItem>
+            <MenuItem
               onClick={() => {
                 setAnchorEl(null);
                 logout();
               }}
-              sx={{ borderRadius: 2 }}
+              sx={{ borderRadius: 1 }}
             >
               <LogoutRoundedIcon fontSize="small" sx={{ mr: 1 }} />
               Logout
