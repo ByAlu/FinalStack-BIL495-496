@@ -107,8 +107,9 @@ export function AppHeader({ user, logout, workflowMeta }) {
                 sx: {
                   mt: 1.5,
                   minWidth: 220,
-                  borderRadius: 2.5,
-                  p: 1
+                  borderRadius: 1,
+                  p: 1,
+                  border: "1px solid rgba(148, 197, 255, 0.12)"
                 }
               }
             }}
@@ -123,7 +124,7 @@ export function AppHeader({ user, logout, workflowMeta }) {
               component={Link}
               to="/profile"
               onClick={() => setAnchorEl(null)}
-              sx={{ borderRadius: 2 }}
+              sx={{ borderRadius: 1 }}
             >
               <PersonRoundedIcon fontSize="small" sx={{ mr: 1 }} />
               Profile
@@ -133,7 +134,7 @@ export function AppHeader({ user, logout, workflowMeta }) {
                 setAnchorEl(null);
                 logout();
               }}
-              sx={{ borderRadius: 2 }}
+              sx={{ borderRadius: 1 }}
             >
               <LogoutRoundedIcon fontSize="small" sx={{ mr: 1 }} />
               Logout

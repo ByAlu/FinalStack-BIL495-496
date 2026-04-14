@@ -23,7 +23,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useAuth } from "../context/AuthContext";
-import { changePassword, getCurrentUserProfile } from "../services/api";
+import { changePassword, getCurrentUserProfile } from "../services/userApi";
 
 function formatRole(role) {
   if (!role) {
