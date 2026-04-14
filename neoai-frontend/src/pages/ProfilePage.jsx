@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
@@ -9,6 +9,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
   Drawer,
   IconButton,
@@ -20,6 +21,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useAuth } from "../context/AuthContext";
+import { getCurrentUserProfile } from "../services/api";
 
 function formatRole(role) {
   if (!role) {
@@ -34,12 +36,63 @@ export function ProfilePage() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
   const [sidebarOpen, setSidebarOpen] = useState(isDesktop);
-  const initials = user?.fullName
+  const [profile, setProfile] = useState(null);
+  const [profileError, setProfileError] = useState("");
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const profileData = profile ?? user;
+  const initials = profileData?.fullName
     ?.split(" ")
     .map((part) => part[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadProfile() {
+      setLoadingProfile(true);
+      setProfileError("");
+
+      try {
+        const response = await getCurrentUserProfile();
+        if (!active) {
+          return;
+        }
+
+        const fullName = [response.firstName, response.lastName].filter(Boolean).join(" ");
+        setProfile({
+          id: response.id,
+          username: response.userName ?? user?.username ?? "",
+          fullName: fullName || response.userName || user?.fullName || "",
+          firstName: response.firstName ?? "",
+          lastName: response.lastName ?? "",
+          email: response.email ?? "",
+          phoneNumber: response.phoneNumber ?? "",
+          role: response.role ?? user?.role ?? null,
+          allowedDataTypes: Array.isArray(response.allowedDataTypes) ? response.allowedDataTypes : [],
+          enabled: typeof response.enabled === "boolean" ? response.enabled : true,
+          createTime: response.createTime ?? null,
+          updateTime: response.updateTime ?? null
+        });
+      } catch (error) {
+        if (active) {
+          setProfile(null);
+          setProfileError(error.message || "Could not load profile information.");
+        }
+      } finally {
+        if (active) {
+          setLoadingProfile(false);
+        }
+      }
+    }
+
+    loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   const drawerWidth = 260;
   const sidebar = (
@@ -158,7 +211,7 @@ export function ProfilePage() {
               User Profile
             </Typography>
             <Typography variant="h3" sx={{ mt: 0.75 }}>
-              {user?.fullName || "Unknown user"}
+              {profileData?.fullName || "Unknown user"}
             </Typography>
           </Box>
           <Button variant="outlined" color="inherit" startIcon={<LogoutRoundedIcon />} onClick={logout} sx={{ minHeight: 46 }}>
@@ -182,41 +235,54 @@ export function ProfilePage() {
                 <Typography variant="h5">Account details</Typography>
               </Stack>
               <Divider />
+              {loadingProfile ? (
+                <Stack direction="row" spacing={1.25} alignItems="center">
+                  <CircularProgress size={18} />
+                  <Typography color="text.secondary">Loading profile...</Typography>
+                </Stack>
+              ) : null}
+              {profileError ? <Typography color="error.main">{profileError}</Typography> : null}
               <Box>
                 <Typography variant="caption" color="text.secondary">
                   Username
                 </Typography>
-                <Typography variant="h6">{user?.username || "-"}</Typography>
+                <Typography variant="h6">{profileData?.username || "-"}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
                   Display name
                 </Typography>
-                <Typography variant="h6">{user?.fullName || "-"}</Typography>
+                <Typography variant="h6">{profileData?.fullName || "-"}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
                   First name
                 </Typography>
-                <Typography variant="h6">Not exposed by current API</Typography>
+                <Typography variant="h6">{profileData?.firstName || "-"}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
                   Last name
                 </Typography>
-                <Typography variant="h6">Not exposed by current API</Typography>
+                <Typography variant="h6">{profileData?.lastName || "-"}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
                   Email
                 </Typography>
-                <Typography variant="h6">Not exposed by current API</Typography>
+                <Typography variant="h6">{profileData?.email || "-"}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Phone number
+                </Typography>
+                <Typography variant="h6">{profileData?.phoneNumber || "-"}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
                   Role
                 </Typography>
-                <Typography variant="h6">{formatRole(user?.role)}</Typography>
+                <Typography variant="h6">{formatRole(profileData?.role)}</Typography>
               </Box>
             </Stack>
           </Paper>
@@ -240,8 +306,8 @@ export function ProfilePage() {
                   Account status
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ mt: 1.25 }}>
-                  <Chip label="Active session user" color="success" variant="outlined" />
-                  <Chip label={formatRole(user?.role)} color="primary" />
+                  <Chip label={profileData?.enabled === false ? "Disabled" : "Enabled"} color={profileData?.enabled === false ? "default" : "success"} variant="outlined" />
+                  <Chip label={formatRole(profileData?.role)} color="primary" />
                 </Stack>
               </Box>
               <Box>
@@ -249,8 +315,8 @@ export function ProfilePage() {
                   Allowed data types
                 </Typography>
                 <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
-                  {user?.allowedDataTypes?.length ? (
-                    user.allowedDataTypes.map((type) => (
+                  {profileData?.allowedDataTypes?.length ? (
+                    profileData.allowedDataTypes.map((type) => (
                       <Chip key={type} label={type.replaceAll("_", " ")} color="primary" variant="outlined" />
                     ))
                   ) : (

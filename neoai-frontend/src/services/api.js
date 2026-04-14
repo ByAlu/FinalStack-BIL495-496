@@ -92,3 +92,16 @@ export async function registerUser(userData) {
     throw new Error("Could not connect to the registration server.");
   }
 }
+
+export async function getCurrentUserProfile() {
+  try {
+    const response = await api.get("/api/v1/users/me");
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data?.message || "Could not load user profile.");
+    }
+
+    throw new Error("Could not reach the server.");
+  }
+}
