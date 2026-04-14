@@ -10,6 +10,7 @@ import { DataSelectionPage } from "./pages/DataSelectionPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PatientQueryWorkflowPage } from "./pages/PatientQueryWorkflowPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { ReportingPage } from "./pages/ReportingPage";
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
           }
         >
           <Route index element={<DashboardPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="query" element={<PatientQueryWorkflowPage />} />
           <Route path="selection/:patientId/:examinationId" element={<DataSelectionPage />} />
           <Route path="preprocessing/:patientId/:examinationId" element={<DataPreprocessingPage />} />
