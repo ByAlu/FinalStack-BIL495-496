@@ -25,6 +25,8 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class SecurityService {
+    private static final String PASSWORD_RULE_MESSAGE =
+            "New password must be at least 8 characters long and include both letters and numbers.";
 
     @Autowired
     private UserRepository userRepository;
@@ -83,6 +85,9 @@ public class SecurityService {
         if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
             throw new IllegalArgumentException("New password and confirmation do not match.");
         }
+        if (!isPasswordStrong(request.getNewPassword())) {
+            throw new IllegalArgumentException(PASSWORD_RULE_MESSAGE);
+        }
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getHashedSaltedPassword())) {
             throw new BadCredentialsException("Current password is incorrect.");
         }
@@ -100,5 +105,24 @@ public class SecurityService {
             return EnumSet.allOf(HealthDataType.class);
         }
         return EnumSet.of(HealthDataType.ULTRASOUND);
+    }
+
+    private boolean isPasswordStrong(String password) {
+        if (password == null || password.length() < 8) {
+            return false;
+        }
+
+        boolean hasLetter = false;
+        boolean hasDigit = false;
+
+        for (char character : password.toCharArray()) {
+            if (Character.isLetter(character)) {
+                hasLetter = true;
+            } else if (Character.isDigit(character)) {
+                hasDigit = true;
+            }
+        }
+
+        return hasLetter && hasDigit;
     }
 }

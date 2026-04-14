@@ -33,6 +33,10 @@ function formatRole(role) {
   return role === "ADMIN" ? "Administrator" : "Doctor";
 }
 
+function isStrongPassword(password) {
+  return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password);
+}
+
 export function ProfilePage() {
   const { user, logout } = useAuth();
   const theme = useTheme();
@@ -109,6 +113,12 @@ export function ProfilePage() {
     event.preventDefault();
     setPasswordError("");
     setPasswordSuccess("");
+
+    if (!isStrongPassword(passwordForm.newPassword)) {
+      setPasswordError("New password must be at least 8 characters long and include both letters and numbers.");
+      return;
+    }
+
     setPasswordSaving(true);
 
     try {
@@ -337,6 +347,7 @@ export function ProfilePage() {
                     setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
                   }
                   fullWidth
+                  helperText="At least 8 characters, including letters and numbers."
                 />
                 <TextField
                   label="Confirm new password"
