@@ -1,6 +1,7 @@
 package com.backend.auth;
 
 import com.backend.exception.auth.UserAlreadyExistsException;
+import com.backend.model.dto.ChangePasswordRequest;
 import com.backend.model.dto.LoginRequest;
 import com.backend.model.dto.RegisterRequest;
 import com.backend.model.entity.HealthDataType;
@@ -10,6 +11,7 @@ import com.backend.model.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -66,6 +68,27 @@ public class SecurityService {
 
         userRepository.save(user);
         return jwtService.generateToken(user);
+    }
+
+    public void changePassword(User user, ChangePasswordRequest request) {
+        if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
+            throw new IllegalArgumentException("Current password is required.");
+        }
+        if (request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            throw new IllegalArgumentException("New password is required.");
+        }
+        if (request.getConfirmNewPassword() == null || request.getConfirmNewPassword().isBlank()) {
+            throw new IllegalArgumentException("Password confirmation is required.");
+        }
+        if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
+            throw new IllegalArgumentException("New password and confirmation do not match.");
+        }
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getHashedSaltedPassword())) {
+            throw new BadCredentialsException("Current password is incorrect.");
+        }
+
+        user.setHashedSaltedPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     private Set<HealthDataType> resolveAllowedDataTypes(RegisterRequest request) {

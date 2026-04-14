@@ -5,6 +5,7 @@ import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
 import {
+  Alert,
   Avatar,
   Box,
   Button,
@@ -16,12 +17,13 @@ import {
   List,
   Paper,
   Stack,
+  TextField,
   Typography,
   useMediaQuery
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useAuth } from "../context/AuthContext";
-import { getCurrentUserProfile } from "../services/api";
+import { changePassword, getCurrentUserProfile } from "../services/api";
 
 function formatRole(role) {
   if (!role) {
@@ -39,6 +41,14 @@ export function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState("");
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmNewPassword: ""
+  });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
   const profileData = profile ?? user;
   const initials = profileData?.fullName
     ?.split(" ")
@@ -95,6 +105,27 @@ export function ProfilePage() {
   }, [user]);
 
   const drawerWidth = 260;
+  async function handlePasswordSubmit(event) {
+    event.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
+    setPasswordSaving(true);
+
+    try {
+      await changePassword(passwordForm);
+      setPasswordSuccess("Password changed successfully.");
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmNewPassword: ""
+      });
+    } catch (error) {
+      setPasswordError(error.message || "Could not change password.");
+    } finally {
+      setPasswordSaving(false);
+    }
+  }
+
   const sidebar = (
     <Box
       sx={{
@@ -284,6 +315,44 @@ export function ProfilePage() {
                 </Typography>
                 <Typography variant="h6">{formatRole(profileData?.role)}</Typography>
               </Box>
+              <Divider />
+              <Stack spacing={2} component="form" onSubmit={handlePasswordSubmit}>
+                <Typography variant="h6">Change password</Typography>
+                {passwordError ? <Alert severity="error">{passwordError}</Alert> : null}
+                {passwordSuccess ? <Alert severity="success">{passwordSuccess}</Alert> : null}
+                <TextField
+                  label="Current password"
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="New password"
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="Confirm new password"
+                  type="password"
+                  value={passwordForm.confirmNewPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, confirmNewPassword: event.target.value }))
+                  }
+                  fullWidth
+                />
+                <Box>
+                  <Button type="submit" variant="contained" disabled={passwordSaving}>
+                    {passwordSaving ? "Saving..." : "Update password"}
+                  </Button>
+                </Box>
+              </Stack>
             </Stack>
           </Paper>
 
