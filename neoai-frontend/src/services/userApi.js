@@ -28,3 +28,42 @@ export async function changePassword({ currentPassword, newPassword, confirmNewP
     throw new Error("Could not reach the server.");
   }
 }
+
+export async function getAllUsers() {
+  try {
+    const response = await api.get("/api/v1/users");
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data?.message || "Could not load users.");
+    }
+
+    throw new Error("Could not reach the server.");
+  }
+}
+
+export async function createUser(userData) {
+  try {
+    const response = await api.post("/api/v1/users", userData);
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data?.message || "Could not create user.");
+    }
+
+    throw new Error("Could not reach the server.");
+  }
+}
+
+export async function updateUser(userId, userData) {
+  try {
+    const response = await api.put(`/api/v1/users/${userId}`, userData);
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data?.message || "Could not update user.");
+    }
+
+    throw new Error("Could not reach the server.");
+  }
+}
