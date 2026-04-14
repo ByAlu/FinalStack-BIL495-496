@@ -122,6 +122,10 @@ export function DataSelectionPage() {
   const activeProgressPercent = Math.round(activeExtractionState.progress * 100);
   const showCacheProgress = Boolean(activeVideo) && activeExtractionState.status !== "done";
   const isActiveVideoReady = Boolean(activeVideo) && activeVideoFrames.length > 0;
+  const viewerOverlayMessage =
+    activeExtractionState.status === "error"
+      ? activeExtractionState.message || "Video frames could not be prepared."
+      : "";
   const availableFrameCount = Math.max(activeVideoFrames.length, 1);
   const totalFrames = activeExtractionState.status === "done" ? Math.max(activeVideoFrames.length, 1) : availableFrameCount;
   const {
@@ -625,6 +629,7 @@ export function DataSelectionPage() {
             showCacheProgress={showCacheProgress}
             stopRailDrag={stopRailDrag}
             viewerMode={viewerMode}
+            viewerOverlayMessage={viewerOverlayMessage}
             viewRotation={viewRotation}
             viewerStageRef={viewerStageRef}
             zoomOrigin={zoomOrigin}

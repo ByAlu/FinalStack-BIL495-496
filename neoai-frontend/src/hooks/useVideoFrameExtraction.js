@@ -62,6 +62,7 @@ export function useVideoFrameExtraction({ examination, activeRegion, examination
       const videoName = video.name;
       const existingFrames = videoFramesByNameRef.current[videoName] || [];
       const videoElement = document.createElement("video");
+      videoElement.crossOrigin = "anonymous";
       videoElement.muted = true;
       videoElement.volume = 0;
       videoElement.playsInline = true;
@@ -193,12 +194,18 @@ export function useVideoFrameExtraction({ examination, activeRegion, examination
         activeExtractionNameRef.current = video.name;
         try {
           await extractVideo(video);
-        } catch {
+        } catch (error) {
+          const message =
+            error?.name === "SecurityError"
+              ? "Cross-origin access blocked while reading video frames."
+              : error?.message || "Failed to extract video frames.";
+
           setExtractionStateByName((current) => ({
             ...current,
             [video.name]: {
               status: "error",
-              progress: 0
+              progress: 0,
+              message
             }
           }));
         }
