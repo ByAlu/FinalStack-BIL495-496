@@ -39,7 +39,7 @@ public class GCSStorageService implements CloudService {
         // 3. Her bir bölge (R1, R2 vb.) için döngüye giriyoruz
         for (ExaminationRegion region : regions) {
             // Profesyonel yol formatımız: ai/PT_1001/EX_123/R1.mp4
-            String cloudPath = String.format("ai/PT_%d/%s/%s.jpg", patientId, examName, region.name());
+            String cloudPath = String.format("ai/image/PT_%d/%s/%s.jpg", patientId, examName, region.name());
 
             // GCS'ten bu dosya yolu için 15 dakikalık YÜKLEME (PUT) izni alıyoruz
             // (Yükleme linkleri genellikle kısa süreli tutulur)

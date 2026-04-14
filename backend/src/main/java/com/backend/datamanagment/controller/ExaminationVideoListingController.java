@@ -24,11 +24,12 @@ public class ExaminationVideoListingController {
     private CloudService cloudService;
 
     /**
-     *
-     * @param patientId Patient Id to filter examination videos
-     * @param pageable Pagination information (page number, page size, sorting)
-     * @return page of Examination Video datas, containing video URL and metadata
+     * @param patientId Id of the patient whose examination videos are to be retrieved.
+     * @param pageToken Token for pagination, if there are more videos than can be returned in a single response.
+     * @param pageable Pageable object containing pagination information such as page number and size.
+     * @return A paginated list of ExaminationVideoDTO objects representing the examination videos for the specified patient.
      */
+    @CrossOrigin(origins = "http://localhost:5173")
     @GetMapping
     public ResponseEntity<GCSPage<ExaminationVideoDTO>> getExaminationVideosByPatientId(@RequestParam Long patientId,
                                                                                         @RequestParam(required = false) String pageToken,

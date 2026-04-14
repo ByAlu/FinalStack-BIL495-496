@@ -60,7 +60,6 @@ public class ExaminationVideoListingServiceImpl implements ExaminationVideoListi
             }
             pageToken = blobPage.getNextPageToken();
         }while (dtos.size() < targetSize && pageToken != null);
-
         // Spring Page yapısına uyarlıyoruz (GCS offset bilmediği için totalElements'i tahmini veririz)
         return new GCSPage<>(dtos, pageToken);
     }
