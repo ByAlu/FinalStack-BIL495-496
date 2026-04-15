@@ -17,6 +17,7 @@ public class UsAiModule implements AiModule {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    //RDS_SCORING and B_LINE_DETECTION
     @Column(nullable = false, unique = true, length = 64)
     private String moduleCode;
 

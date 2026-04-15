@@ -20,6 +20,10 @@ public class UsAnalysisModuleRun implements AnalysisModuleRun {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    //TODO:Change docker init file
+    @Column(name = "external_job_id")
+    private String externalJobId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "analysis_uuid", nullable = false)
     private UsAiAnalysis analysis;

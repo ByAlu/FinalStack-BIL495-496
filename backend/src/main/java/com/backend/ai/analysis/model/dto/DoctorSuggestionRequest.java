@@ -1,36 +1,36 @@
 package com.backend.ai.analysis.model.dto;
 
 import com.backend.model.entity.UsExaminationRegion;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.backend.ai.analysis.model.entity.AnalysisTarget;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
 public class DoctorSuggestionRequest {
     @NotBlank(message = "Examination id cannot be blank")
     private String examinationId;
+
     @NotNull(message = "Patient ID cannot be blank")
-    private Long patientId;
-    private List<DoctorSuggestionOfRegion> doctorSuggestions;
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    public static class DoctorSuggestionOfRegion {
-        @NotNull(message = "Examination region is not set")
-        private UsExaminationRegion region;
+    private String patientId;
 
-        private Long bLines;
-        private Long rdScore;
+    @NotNull(message = "Selected frames can not be empty")
+    Map<UsExaminationRegion, Integer> selectedFrameIndices;
 
-        @JsonIgnore
-        private String imageUrl; // this will be set by backend after doctor suggestion is generated
+    @NotNull(message = "Analysis target must be specified")
+    private AnalysisTarget analysisTarget;
 
-        private String videourl; //whole image video url for doctor suggestion
+    @Override
+    public String toString() {
+        return "DoctorSuggestionRequest{" +
+                "examinationId='" + examinationId + '\'' +
+                ", patientId='" + patientId + '\'' +
+                ", selectedFrameIndices=" + selectedFrameIndices +
+                ", targets=" + analysisTarget +
+                '}';
     }
 }
