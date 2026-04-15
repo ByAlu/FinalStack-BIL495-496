@@ -63,14 +63,14 @@ public class GCSStorageService implements CloudService {
     }
     public String generateV4PutObjectSignedUrl(String cloudPath) {
         BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(bucketName, cloudPath))
-                        .setContentType("image/jpeg") // İçerik türünü belirtmek önemlidir
+                        .setContentType("image/jpeg")
                         .build();
 
         // Dikkat: HttpMethod.PUT ve yazma izni!
         URL url = storage.signUrl(blobInfo, 15, TimeUnit.MINUTES,
                 Storage.SignUrlOption.httpMethod(HttpMethod.PUT),
                 Storage.SignUrlOption.withV4Signature(),
-                Storage.SignUrlOption.withContentType()); // Header desteği önemli
+                Storage.SignUrlOption.withContentType());
 
         return url.toString();
     }

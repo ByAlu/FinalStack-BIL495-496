@@ -27,6 +27,8 @@ If you need a fresh local database with the current seed data, run:
 docker compose down -v
 docker compose up -d
 ```
+## Using Postgre From Docker Terminal
+psql -U postgres -d neoai_db
 
 ## Run the backend
 

@@ -14,6 +14,9 @@ import com.backend.model.dto.AnalysisInitiatedDTO;
 import com.backend.model.entity.UsExamination;
 import com.backend.model.entity.UsExaminationRegion;
 import com.backend.model.repository.UsExaminationRepository;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -26,6 +29,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Service
+@Slf4j
 public class AiAnalysisServiceImpl implements AiAnalysisService {
     @Autowired
     private AiModuleIntegrationService aiModuleService;
@@ -87,9 +91,18 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         UUID analysisUuid = saved.getAnalysisUuid();
 
         //Call python backend
+        /* 
         CompletableFuture.runAsync(() -> {
             aiModuleService.analyze(analysisUuid,request.getAnalysisTarget());
-        });
+        });*/
+
+        try {
+            log.error("[AI-ENTRY] analyze starting for analysisUuid={}", analysisUuid);
+            aiModuleService.analyze(analysisUuid, request.getAnalysisTarget());
+            log.error("[AI-ENTRY] analyze finished for analysisUuid={}", analysisUuid);
+        } catch (Exception e) {
+            log.error("[AI-ENTRY] analyze failed for analysisUuid={}: {}", analysisUuid, e.getMessage(), e);
+        }
 
         return new AnalysisInitiatedDTO(
                 saved.getAnalysisUuid(),
@@ -106,7 +119,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         }
 
         if (target.isRds_score()) {
-            codes.add("RDS_SCORE");
+            codes.add("RDS_SCORING");
         }
         /* For now we assume bboxes are always requested
         if (target.isBounding_boxes()) {

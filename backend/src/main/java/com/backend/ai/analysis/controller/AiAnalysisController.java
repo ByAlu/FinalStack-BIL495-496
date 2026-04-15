@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -29,5 +30,11 @@ public class AiAnalysisController {
     @GetMapping("/{uuid}")
     public ResponseEntity<AiAnalysisResultDTO> getAnalysis(@PathVariable UUID uuid) {
         return ResponseEntity.ok(aiModuleIntegrationService.getAnalysis(uuid));
+    }
+
+    @PostMapping("/callback")
+    public ResponseEntity<Void> handleAiCallback(@RequestBody Map<String, Object> callbackPayload) {
+        aiModuleIntegrationService.processCallBack(callbackPayload);
+        return ResponseEntity.ok().build();
     }
 }
