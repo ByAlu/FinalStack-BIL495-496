@@ -1,4 +1,4 @@
-import sampleThumbnail from "./lus_sample_thumbnail.jpg";
+import sampleThumbnail from "./black_thumbnail.jpg";
 import r2 from "./r2.mp4";
 import r3 from "./r3.mp4";
 import r4 from "./r4.mp4";
@@ -7,7 +7,7 @@ import r6 from "./r6.mp4";
 
 // video URL for R1. test ederken yenilemek gerekebilir.
 const r1 =
-  "https://storage.googleapis.com/neoai-storage-v1/ai/PT_1001/EX_123/R1.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=neoai-web-storage%40neoai-web-492100.iam.gserviceaccount.com%2F20260415%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260415T201909Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&X-Goog-Signature=949c2586ffbf7a2c0a190714252951333aa14ffbc77a933e1fa60552ae245d36a84806a22a30151f554bb3ad5674c9628a868610a5b8268a2f1ebdc32e597a88f94d621995a660822ace5ad74d0470a0ce5d7deb39372924ebb52c19931ce8354ef570061f33b417656c763dc5eee0fa99af0ca8ea341b9637c8b220563f90745c61f0fadc321384f4c5d442b1a8f7075b86c28afdbbf1351a63b17b84ad00c0cec48a4cc2b1e6b2e6b3e72ac7cb2be010918ccb6a0c83f004ab9797eca2142797fdc6d23a52fcec13d64a4a2a56b3ee94defab8b3fc578bd6311a381d039d49685ebc6c08f0cda4c700be759622edbe848c7eabc7b86e6dc341f34d1b1d3a5c";
+  "https://storage.googleapis.com/neoai-storage-v1/ai/PT_1001/EX_123/R1.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=neoai-web-storage%40neoai-web-492100.iam.gserviceaccount.com%2F20260415%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260415T212044Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&X-Goog-Signature=5740cc1cb07a0adbe165b2ca285df33fc3cef5ad17f6cf2ddbbfd9c3006d5ad31dc35ea8d8c5a8eb49e13f22ab4cbb696d328761067b4e77f160e574930418f135e94e7aac3d20a8a5ee2e3fedd0a474b38bf937253c722e56b6e9863e48dcbe2a0119f76b8d8bc4f23c2a038ce004f5402cce510cbf15f4e9ae1d84ecd5db5afd33f2ab381ba0fc728d7403ac1896e09f269a29dfe8527ba9274d535adf15a548699f5862d945ff3f16c680dbd36e71652c5c26975a31807a43bc2a191c1ef3ea5ec5acfe0f264c95bc2349a2ba035dfecb417e3e826d660a79fb59fab96fea7299350e361f22d3548aa4d5ad366b0aab43edd56c4febc8b14ae94ddf82b8fb";
 
 export const demoUsers = [
   {
