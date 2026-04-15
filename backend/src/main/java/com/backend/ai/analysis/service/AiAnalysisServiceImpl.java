@@ -92,14 +92,10 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
 
         //Call python backend
         /* 
-        CompletableFuture.runAsync(() -> {
-            aiModuleService.analyze(analysisUuid,request.getAnalysisTarget());
-        });*/
+        */
 
         try {
-            log.error("[AI-ENTRY] analyze starting for analysisUuid={}", analysisUuid);
             aiModuleService.analyze(analysisUuid, request.getAnalysisTarget());
-            log.error("[AI-ENTRY] analyze finished for analysisUuid={}", analysisUuid);
         } catch (Exception e) {
             log.error("[AI-ENTRY] analyze failed for analysisUuid={}: {}", analysisUuid, e.getMessage(), e);
         }

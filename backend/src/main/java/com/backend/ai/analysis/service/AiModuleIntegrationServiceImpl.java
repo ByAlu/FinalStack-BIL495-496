@@ -81,11 +81,10 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
                 continue;
             }
 
-            AnalysisRequest req = new AnalysisRequest();
 
             //TODO: Get the url from gcs
             //String imageUrl = createFrameImageAndGetSignedUrl(analysis);
-            String imageUrl = "temp";
+            String imageUrl = "https://i.imgur.com/rA5DjnD.jpeg";
             Map<String, Object> fastApiRequestBody = buildFastApiRequestBody(imageUrl, target);
 
             try {
