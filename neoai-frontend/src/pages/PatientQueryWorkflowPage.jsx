@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
@@ -21,7 +21,8 @@ import {
   Typography,
   Collapse
 } from "@mui/material";
-import { findPatientById } from "../services/mockApi";
+//import { findPatientById } from "../services/mockApi";
+import { getPatientExaminations } from "../services/examinationApi";
 import { resetExaminationWorkflowSession } from "../utils/resetExaminationWorkflowSession";
 import { getActiveWorkflowContext, resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
@@ -117,7 +118,10 @@ function getInitialPageState() {
 export function PatientQueryWorkflowPage() {
   const savedPageState = getInitialPageState();
   const [query, setQuery] = useState(savedPageState?.query || "PT-1001");
-  const [patient, setPatient] = useState(() => findPatientById(savedPageState?.query || "PT-1001"));
+  //const [patient, setPatient] = useState(() => findPatientById(savedPageState?.query || "PT-1001"));
+  const [patient , setPatient] = useState(null);
+  const [isLoadingPatient , setisLoadingPatient] = useState(false);
+  const [queryError, setQueryError] = useState("");
   const [expandedExaminationId, setExpandedExaminationId] = useState(savedPageState?.expandedExaminationId || "");
   const [resultSize, setResultSize] = useState(savedPageState?.resultSize || 10);
   const [currentPage, setCurrentPage] = useState(savedPageState?.currentPage || 1);
@@ -141,9 +145,31 @@ export function PatientQueryWorkflowPage() {
     })
   );
 
-  function handleSubmit(event) {
+  useEffect(()=>{
+    fetchPatient(savedPageState?.query || "PT-1001");
+  },[])
+
+  async function fetchPatient(patientQuery) {
+      setisLoadingPatient(true);
+      setQueryError("");
+
+      try {
+        const result = await getPatientExaminations(patientQuery);
+        setPatient(result);
+        
+      } catch (error) {
+        setPatient(null);
+        setQueryError(error.message || "Could not fetch patient data.")
+      } finally {
+        setisLoadingPatient(false)
+      }
+  }
+
+  async function handleSubmit(event) {
+    
     event.preventDefault();
-    setPatient(findPatientById(query));
+    //setPatient(findPatientById(query));
+    await fetchPatient(query);
     setExpandedExaminationId("");
     setCurrentPage(1);
   }
@@ -279,7 +305,19 @@ export function PatientQueryWorkflowPage() {
         </Stack>
       </Paper>
 
-      {patient ? (
+      {isLoadingPatient ?(
+          <Paper
+          sx={{
+            p: 3.5,
+            borderRadius: 1,
+            border: "1px solid rgba(148, 197, 255, 0.12)",
+            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.2)"
+          }}
+        >
+          <Typography>Loading patient examinations...</Typography>
+        </Paper>
+        )
+        : patient ? (
         <Paper
           sx={{
             p: 3.5,
@@ -421,11 +459,12 @@ export function PatientQueryWorkflowPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {paginatedExaminations.map((examination) => {
+                  {paginatedExaminations.map((examination, examinationIndex) => {
                     const isExpanded = expandedExaminationId === examination.id;
+                    const examinationRowKey = `${examination.id}-${examination.date}-${examinationIndex}`;
 
                     return (
-                      <Fragment key={examination.id}>
+                      <Fragment key={examinationRowKey}>
                         <TableRow 
                           hover  
                           sx={{ '& > *': { borderBottom: 'unset' } }}
@@ -481,8 +520,8 @@ export function PatientQueryWorkflowPage() {
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                      {examination.videos.map((video) => (
-                                        <TableRow key={video.id}>
+                                      {examination.videos.map((video, videoIndex) => (
+                                        <TableRow key={`${video.id}-${videoIndex}`}>
                                           <TableCell>
                                             <Box
                                               component="img"
@@ -556,7 +595,10 @@ export function PatientQueryWorkflowPage() {
           <Typography variant="h4" gutterBottom>
             No patient found
           </Typography>
-          <Typography color="text.secondary">Use the sample ids `PT-1001` or `PT-1002` to explore the workflow.</Typography>
+          {/*<Typography color="text.secondary">Use the sample ids `PT-1001` or `PT-1002` to explore the workflow.</Typography>*/}
+          <Typography color="text.secondary">
+            {queryError || "No records found for this patient id."}
+          </Typography>
         </Paper>
       )}
     </Stack>

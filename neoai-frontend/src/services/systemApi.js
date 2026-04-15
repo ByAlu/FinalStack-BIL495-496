@@ -73,7 +73,7 @@ export async function getBackendStatus() {
 
     return {
       connected: false,
-      message: "Could not reach the Spring Boot server at http://localhost:8080."
+      message: "Could not reach the Spring Boot server at http://localhost:9090."
     };
   }
 }
