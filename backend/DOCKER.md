@@ -1,12 +1,17 @@
 # Backend Docker Setup
 
-Start PostgreSQL for local backend development from the `backend` directory:
+Start PostgreSQL and the AI module from the `backend` directory:
 
 ```powershell
-docker compose up -d
+docker compose up --build postgres ai-module
 ```
 
-This starts PostgreSQL on `localhost:5432` with:
+This starts:
+
+- PostgreSQL on `localhost:5432`
+- AI module on `localhost:8000`
+
+Database settings:
 
 - database: `neoai_db`
 - user: `postgres`
@@ -33,5 +38,5 @@ The seed SQL only runs when the Postgres volume is created for the first time. I
 
 ```powershell
 docker compose down -v
-docker compose up -d
+docker compose up --build postgres ai-module
 ```

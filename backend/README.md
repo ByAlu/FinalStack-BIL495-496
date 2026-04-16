@@ -7,15 +7,20 @@ This backend is a Spring Boot application and uses Java SDK 21.
 - Java SDK 21
 - Docker Desktop
 
-## Start PostgreSQL with Docker
+## Start PostgreSQL and AI Module with Docker
 
 From the `backend` directory run:
 
 ```powershell
-docker compose up -d
+docker compose up --build postgres ai-module
 ```
 
-This starts PostgreSQL with:
+This starts:
+
+- PostgreSQL on `localhost:5432`
+- ai_module on `localhost:8000`
+
+Database settings:
 
 - database: `neoai_db`
 - user: `postgres`
@@ -25,14 +30,14 @@ If you need a fresh local database with the current seed data, run:
 
 ```powershell
 docker compose down -v
-docker compose up -d
+docker compose up --build postgres ai-module
 ```
 ## Using Postgre From Docker Terminal
 psql -U postgres -d neoai_db
 
-## Run the backend
+## Run the backend separately
 
-After PostgreSQL is up, start the Spring Boot application from IntelliJ or with Maven.
+After PostgreSQL is up, start the Spring Boot backend on the host from IntelliJ or with Maven. The AI module container is configured to call back to the host backend via `host.docker.internal`.
 
 If you use IntelliJ:
 
