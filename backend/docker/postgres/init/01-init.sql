@@ -12,6 +12,14 @@ CREATE TABLE IF NOT EXISTS users (
     update_time TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS patients (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS user_allowed_data_types (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     data_type VARCHAR(32) NOT NULL,
@@ -893,4 +901,28 @@ JOIN preprocessing_operations p
     ON p.data_type = 'ULTRASOUND'
 WHERE u.role = 'DOCTOR' OR u.user_name = 'admin'
 ON CONFLICT (owner_user_id, data_type, operation_code) DO NOTHING;
+
+INSERT INTO patients (
+    id,
+    name,
+    age,
+    created_at,
+    updated_at
+)
+VALUES
+    (
+        1001,
+        'Aylin Yilmaz',
+        47,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        1002,
+        'Kerem Demir',
+        55,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    )
+ON CONFLICT (id) DO NOTHING;
 

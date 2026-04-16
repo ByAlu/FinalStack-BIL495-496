@@ -17,20 +17,5 @@ public class DoctorSuggestionRequest {
     private String examinationId;
     @NotNull(message = "Patient ID cannot be blank")
     private Long patientId;
-    private List<DoctorSuggestionOfRegion> doctorSuggestions;
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    public static class DoctorSuggestionOfRegion {
-        @NotNull(message = "Examination region is not set")
-        private UsExaminationRegion region;
-
-        private Long bLines;
-        private Long rdScore;
-
-        @JsonIgnore
-        private String imageUrl; // this will be set by backend after doctor suggestion is generated
-
-        private String videourl; //whole image video url for doctor suggestion
-    }
+    
 }

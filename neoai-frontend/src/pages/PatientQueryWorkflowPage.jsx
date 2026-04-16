@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
@@ -21,7 +21,8 @@ import {
   Typography,
   Collapse
 } from "@mui/material";
-import { findPatientById } from "../services/mockApi";
+//import { findPatientById } from "../services/mockApi";
+import { getPatientExaminations } from "../services/examinationApi";
 import { resetExaminationWorkflowSession } from "../utils/resetExaminationWorkflowSession";
 import { getActiveWorkflowContext, resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
@@ -117,7 +118,10 @@ function getInitialPageState() {
 export function PatientQueryWorkflowPage() {
   const savedPageState = getInitialPageState();
   const [query, setQuery] = useState(savedPageState?.query || "PT-1001");
-  const [patient, setPatient] = useState(() => findPatientById(savedPageState?.query || "PT-1001"));
+  //const [patient, setPatient] = useState(() => findPatientById(savedPageState?.query || "PT-1001"));
+  const [patient, setPatient] = useState(null);
+  const [isLoadingPatient, setIsLoadingPatient] = useState(false);
+  const [patientLoadError, setPatientLoadError] = useState("");
   const [expandedExaminationId, setExpandedExaminationId] = useState(savedPageState?.expandedExaminationId || "");
   const [resultSize, setResultSize] = useState(savedPageState?.resultSize || 10);
   const [currentPage, setCurrentPage] = useState(savedPageState?.currentPage || 1);
@@ -141,9 +145,29 @@ export function PatientQueryWorkflowPage() {
     })
   );
 
+  async function loadPatientData(patientQuery) {
+    setIsLoadingPatient(true);
+    setPatientLoadError("");
+
+    try {
+      const loadedPatient = await getPatientExaminations(patientQuery);
+      setPatient(loadedPatient);
+    } catch (error) {
+      setPatient(null);
+      setPatientLoadError(error?.message || "Could not load patient examinations.");
+    } finally {
+      setIsLoadingPatient(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPatientData(query);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleSubmit(event) {
     event.preventDefault();
-    setPatient(findPatientById(query));
+    loadPatientData(query);
     setExpandedExaminationId("");
     setCurrentPage(1);
   }
@@ -462,6 +486,10 @@ export function PatientQueryWorkflowPage() {
                                   <Button
                                     component={Link}
                                     to={`/selection/${patient.id}/${examination.id}`}
+                                    state={{
+                                      patient,
+                                      examination
+                                    }}
                                     onClick={() => handleContinue(patient.id, examination.id)}
                                     variant="contained"
                                   >
@@ -484,21 +512,25 @@ export function PatientQueryWorkflowPage() {
                                       {examination.videos.map((video) => (
                                         <TableRow key={video.id}>
                                           <TableCell>
-                                            <Box
-                                              component="img"
-                                              alt={`${video.name} thumbnail`}
-                                              src={video.thumbnail}
-                                              sx={{
-                                                width: 72,
-                                                height: 72,
-                                                borderRadius: 1,
-                                                objectFit: "cover",
-                                                border: "1px solid rgba(148, 197, 255, 0.12)"
-                                              }}
-                                            />
+                                            {video.thumbnail ? (
+                                              <Box
+                                                component="img"
+                                                alt={`${video.name} thumbnail`}
+                                                src={video.thumbnail}
+                                                sx={{
+                                                  width: 72,
+                                                  height: 72,
+                                                  borderRadius: 1,
+                                                  objectFit: "cover",
+                                                  border: "1px solid rgba(148, 197, 255, 0.12)"
+                                                }}
+                                              />
+                                              ) : (
+                                                <Typography color="text.secondary">N/A</Typography>
+                                              )}
                                           </TableCell>
                                           <TableCell>{video.name}</TableCell>
-                                          <TableCell>{video.region.toUpperCase()}</TableCell>
+                                          <TableCell>{video.region ? video.region.toUpperCase() : "N/A"}</TableCell>
                                           <TableCell>{video.duration}</TableCell>
                                           <TableCell>{video.comment}</TableCell>
                                         </TableRow>
@@ -554,9 +586,11 @@ export function PatientQueryWorkflowPage() {
           }}
         >
           <Typography variant="h4" gutterBottom>
-            No patient found
+            {isLoadingPatient ? "Loading patient videos..." : "No patient found"}
           </Typography>
-          <Typography color="text.secondary">Use the sample ids `PT-1001` or `PT-1002` to explore the workflow.</Typography>
+          <Typography color="text.secondary">
+            {patientLoadError || "Use a valid patient id to load examinations from backend."}
+          </Typography>
         </Paper>
       )}
     </Stack>

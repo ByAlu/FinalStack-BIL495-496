@@ -99,4 +99,8 @@ public class User implements UserDetails {
         return allowedDataTypes.contains(dataType);
     }
 
+    public String getFormattedId() {
+    return "PT-" + String.format("%04d", id);
+}
+
 }
