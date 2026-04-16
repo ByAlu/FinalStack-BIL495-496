@@ -83,7 +83,7 @@ export function useVideoFrameExtraction({ examination, activeRegion, examination
 
         videoElement.addEventListener("loadedmetadata", handleLoadedMetadata);
         videoElement.addEventListener("error", handleError);
-        videoElement.src = video.videoUrl;
+        videoElement.src = video.videoUrl || video.url || "";
         videoElement.load();
       });
 

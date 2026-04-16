@@ -1,4 +1,27 @@
-﻿export function RegionVideosSidebar({
+import { useState } from "react";
+
+function RegionVideoThumbnail({ thumbnail, region, name }) {
+  const [hasImageError, setHasImageError] = useState(false);
+
+  if (!thumbnail || hasImageError) {
+    return (
+      <div className="region-video-thumbnail region-video-thumbnail-placeholder">
+        {region.toUpperCase()}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      alt={`${name || region} thumbnail`}
+      className="region-video-thumbnail"
+      src={thumbnail}
+      onError={() => setHasImageError(true)}
+    />
+  );
+}
+
+export function RegionVideosSidebar({
   examinationId,
   examinationVideos,
   regions,
@@ -19,7 +42,7 @@
               <strong>{examinationId}</strong>
             </div>
             <button className="panel-arrow-toggle" type="button" onClick={onClose}>
-              ‹
+              &lsaquo;
             </button>
           </div>
 
@@ -36,10 +59,10 @@
                   type="button"
                   onClick={() => onSelectRegion(region)}
                 >
-                  <img
-                    alt={`${regionVideo?.name || region} thumbnail`}
-                    className="region-video-thumbnail"
-                    src={regionVideo?.thumbnail}
+                  <RegionVideoThumbnail
+                    thumbnail={regionVideo?.thumbnail}
+                    region={region}
+                    name={regionVideo?.name}
                   />
                   <div className="region-video-meta">
                     <strong>{region.toUpperCase()}</strong>
@@ -55,7 +78,7 @@
         </>
       ) : (
         <button className="panel-edge-toggle" type="button" onClick={onOpen}>
-          ›
+          &rsaquo;
         </button>
       )}
     </aside>

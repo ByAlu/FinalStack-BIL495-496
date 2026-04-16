@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RegionVideosSidebar } from "../components/RegionVideosSidebar";
 import { SelectedFramesSidebar } from "../components/SelectedFramesSidebar";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { WorkflowSteps } from "../components/WorkflowSteps";
 import { ViewerHeader } from "../components/ViewerHeader";
 import { ViewerStage } from "../components/ViewerStage";
 import { useFramePlayback } from "../hooks/useFramePlayback";
@@ -10,8 +11,6 @@ import { useSelectionSession } from "../hooks/useSelectionSession";
 import { useViewerHold } from "../hooks/useViewerHold";
 import { useVideoFrameExtraction } from "../hooks/useVideoFrameExtraction";
 import { useViewerZoom } from "../hooks/useViewerZoom";
-import { getExaminationByIds } from "../services/mockApi";
-import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
@@ -52,8 +51,9 @@ function getMagnifierState(stageRect, imageRect, clientX, clientY, magnifierConf
 
 export function DataSelectionPage() {
   const { patientId, examinationId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
+  const examination = useMemo(() => location.state?.examination || null, [location.state]);
   const initialRegion = examination?.videos[0]?.region || "r1";
   const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
   const committedSelectionStateCacheKey = getCommittedSelectionStateCacheKey(patientId, examinationId);

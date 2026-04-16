@@ -550,6 +550,11 @@ export function PatientQueryWorkflowPage() {
                                   <Button
                                     component={Link}
                                     to={`/selection/${patient.id}/${examination.id}`}
+                                    state={{
+                                      patientId: patient.id,
+                                      examinationId: examination.id,
+                                      examination
+                                    }}
                                     onClick={() => handleContinue(patient.id, examination.id)}
                                     variant="contained"
                                   >
