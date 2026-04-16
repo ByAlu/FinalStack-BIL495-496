@@ -14,4 +14,10 @@ public class GCSPage<T> {
         this.nextPageToken = nextPageToken;
         this.hasNext = nextPageToken != null && !nextPageToken.isEmpty();
     }
+
+    public GCSPage(List<T> content, String nextPageToken, boolean hasNext) {
+        this.content = content;
+        this.nextPageToken = nextPageToken;
+        this.hasNext = hasNext;
+    }
 }

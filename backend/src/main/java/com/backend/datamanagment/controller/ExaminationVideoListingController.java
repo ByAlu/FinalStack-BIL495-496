@@ -2,12 +2,10 @@ package com.backend.datamanagment.controller;
 
 import com.backend.cloud.service.CloudService;
 import com.backend.datamanagment.service.ExaminationVideoListingService;
-import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.GCSPage;
 import com.backend.model.dto.UploadUrlResponseDTO;
 import com.backend.model.entity.UsExaminationRegion;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -33,9 +31,8 @@ public class ExaminationVideoListingController {
      */
     @GetMapping
     public ResponseEntity<GCSPage<Map<String, Object>>> getExaminationVideosByPatientId(@RequestParam Long patientId,
-                                                                                         @RequestParam(required = false) String pageToken,
                                                                                          Pageable pageable) {
-        return ResponseEntity.ok(service.getExaminationVideosByPatientId(patientId,pageToken ,pageable));
+        return ResponseEntity.ok(service.getExaminationVideosByPatientId(patientId, pageable));
     }
 
     /**
@@ -57,7 +54,6 @@ public class ExaminationVideoListingController {
                                                          @PathVariable String examName) {
         GCSPage<Map<String, Object>> groupedData = service.getExaminationVideosByPatientId(
                 patientId,
-                null,
                 PageRequest.of(0, 1000)
         );
 

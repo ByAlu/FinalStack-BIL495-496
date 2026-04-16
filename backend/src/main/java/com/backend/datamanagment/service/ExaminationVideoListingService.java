@@ -7,5 +7,5 @@ import org.springframework.data.domain.Pageable;
 import java.util.Map;
 
 public interface ExaminationVideoListingService {
-    GCSPage<Map<String, Object>> getExaminationVideosByPatientId(Long patientId, String pageToken, Pageable pageable);
+    GCSPage<Map<String, Object>> getExaminationVideosByPatientId(Long patientId, Pageable pageable);
 }
