@@ -46,7 +46,8 @@ export const PREPROCESSING_OPERATION_DEFINITIONS = [
     description: "Boost local contrast to make subtle tissue structures easier to see.",
     enabledByDefault: false,
     parameters: {
-      clipLimit: 2
+      clipLimit: 2,
+      tileGridSize: 8
     },
     controls: [
       {
@@ -56,6 +57,14 @@ export const PREPROCESSING_OPERATION_DEFINITIONS = [
         max: 8,
         step: 0.5,
         formatValue: formatDecimal
+      },
+      {
+        fieldName: "tileGridSize",
+        label: "Tile grid size",
+        min: 1,
+        max: 16,
+        step: 1,
+        formatValue: formatKernelSize
       }
     ]
   },

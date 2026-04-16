@@ -77,7 +77,7 @@ export async function applyGaussianFilter(src, kernelSize = 3, sigmaX = 0, sigma
   }
 }
 
-export async function applyClahe(src, clipLimit = 2) {
+export async function applyClahe(src, clipLimit = 2, tileGridSizeValue = 8) {
   if (!src) {
     return src;
   }
@@ -91,7 +91,8 @@ export async function applyClahe(src, clipLimit = 2) {
   const grayMat = new window.cv.Mat();
   const claheMat = new window.cv.Mat();
   const outputMat = new window.cv.Mat();
-  const tileGridSize = new window.cv.Size(8, 8);
+  const normalizedTileGridSize = Math.max(1, Number(tileGridSizeValue) || 8);
+  const tileGridSize = new window.cv.Size(normalizedTileGridSize, normalizedTileGridSize);
   const clahe =
     typeof window.cv.createCLAHE === "function"
       ? window.cv.createCLAHE(clipLimit, tileGridSize)
@@ -183,7 +184,7 @@ export async function applyOperationsToFrame(src, operations) {
     [PREPROCESSING_OPERATION_TYPES.GAUSSIAN_FILTER]: (currentSrc, operation) =>
       applyGaussianFilter(currentSrc, operation.kernelSize, operation.sigmaX, operation.sigmaY),
     [PREPROCESSING_OPERATION_TYPES.CLAHE]: (currentSrc, operation) =>
-      applyClahe(currentSrc, operation.clipLimit),
+      applyClahe(currentSrc, operation.clipLimit, operation.tileGridSize),
     [PREPROCESSING_OPERATION_TYPES.GRAYSCALE]: (currentSrc) => applyGrayscale(currentSrc),
     [PREPROCESSING_OPERATION_TYPES.SHARPEN]: (currentSrc, operation) =>
       applySharpen(currentSrc, operation.strength)

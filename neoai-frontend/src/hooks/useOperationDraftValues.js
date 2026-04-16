@@ -7,6 +7,7 @@ function buildDraftValues(operations) {
       {
         kernelSize: operation.kernelSize,
         clipLimit: operation.clipLimit,
+        tileGridSize: operation.tileGridSize,
         strength: operation.strength,
         sigmaX: operation.sigmaX,
         sigmaY: operation.sigmaY
