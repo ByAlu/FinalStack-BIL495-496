@@ -64,67 +64,69 @@ function mapVideo(video, index) {
   };
 }
 
-function mapExaminations(videos) {
-  const grouped = new Map();
+function formatDuration(seconds) {
+  if (seconds === undefined || seconds === null || Number.isNaN(Number(seconds))) {
+    return "--";
+  }
 
-  videos.forEach((video, index) => {
-    const examinationId = video.examinationName || `Exam_${index + 1}`;
-    const examinationDate = formatDateTime(video.examinationDate || video.uploadDate);
-    const current = grouped.get(examinationId);
-    const mappedVideo = mapVideo(video, index);
-
-    if (!current) {
-      grouped.set(examinationId, {
-        id: examinationId,
-        date: examinationDate || "Unknown date",
-        videos: [mappedVideo]
-      });
-      return;
-    }
-
-    current.videos.push(mappedVideo);
-
-    if (!current.date || current.date === "Unknown date") {
-      current.date = examinationDate || current.date;
-    }
-  });
-
-  return Array.from(grouped.values());
+  const totalSeconds = Math.max(0, Number(seconds));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = Math.floor(totalSeconds % 60);
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
-async function getAllExaminationVideos(patientId) {
-  const content = [];
-  let nextPageToken;
-  let hasNext = true;
-  let safetyCounter = 0;
+function mapGroupedExaminations(payload) {
+  const exams = payload?.exams || {};
+  const mappedExams = Object.entries(exams).map(([examName, regions]) => {
+    const regionEntries = Object.entries(regions || {});
+    const videos = regionEntries.map(([region, regionData], index) =>
+      mapVideo(
+        {
+          examinationName: examName,
+          region: region.toUpperCase(),
+          url: regionData?.url || "",
+          fileSize: regionData?.fileSize,
+          uploadDate: regionData?.uploadDate,
+          thumbnailUrl: regionData?.thumbnailUrl,
+          description: regionData?.description,
+          duration: formatDuration(regionData?.videoLengthSeconds)
+        },
+        index
+      )
+    );
 
-  while (hasNext && safetyCounter < 20) {
+    const firstUploadDate = regionEntries.find(([, regionData]) => regionData?.uploadDate)?.[1]?.uploadDate;
+    return {
+      id: examName,
+      date: formatDateTime(firstUploadDate) || "Unknown date",
+      videos
+    };
+  });
+
+  return mappedExams;
+}
+
+export async function getPatientExaminations(patientIdInput, options = {}) {
+  try {
+    const patientId = normalizePatientId(patientIdInput);
+    const page = options.page ?? 0;
+    const size = options.size ?? 10;
     const response = await api.get("/api/v1/examinations", {
       params: {
         patientId,
-        pageToken: nextPageToken
+        page,
+        size
       }
     });
-
-    const page = response.data || {};
-    content.push(...(page.content || []));
-    nextPageToken = page.nextPageToken;
-    hasNext = Boolean(page.hasNext);
-    safetyCounter += 1;
-  }
-
-  return content;
-}
-
-export async function getPatientExaminations(patientIdInput) {
-  try {
-    const patientId = normalizePatientId(patientIdInput);
-    const videos = await getAllExaminationVideos(patientId);
+    const data = response.data || {};
+    const payload = data.content?.[0] || {};
 
     return {
       id: String(patientIdInput).trim(),
       name: `Patient ${patientId}`,
-      examinations: mapExaminations(videos)
+      examinations: mapGroupedExaminations(payload),
+      hasNext: Boolean(data.hasNext),
+      pageNumber: page
     };
   } catch (error) {
     if (error.response) {

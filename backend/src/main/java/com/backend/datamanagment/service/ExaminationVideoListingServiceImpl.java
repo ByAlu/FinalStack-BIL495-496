@@ -10,11 +10,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class ExaminationVideoListingServiceImpl implements ExaminationVideoListingService{
@@ -34,38 +33,14 @@ public class ExaminationVideoListingServiceImpl implements ExaminationVideoListi
         int targetPageNumber = Math.max(pageable.getPageNumber(), 0);
         Map<String, Map<String, Object>> exams = new LinkedHashMap<>();
 
-        String currentToken = "";
-        com.google.api.gax.paging.Page<Blob> examPage = null;
-        for (int currentPage = 0; currentPage <= targetPageNumber; currentPage++) {
-            examPage = cloudService.getStorage().list(
-                    bucketName,
-                    Storage.BlobListOption.prefix(patientPrefix),
-                    Storage.BlobListOption.currentDirectory(),
-                    Storage.BlobListOption.pageSize(examPageSize),
-                    Storage.BlobListOption.pageToken(currentToken)
-            );
+        com.google.api.gax.paging.Page<Blob> allExamFolders = cloudService.getStorage().list(
+                bucketName,
+                Storage.BlobListOption.prefix(patientPrefix),
+                Storage.BlobListOption.currentDirectory()
+        );
 
-            if (currentPage == targetPageNumber) {
-                break;
-            }
-
-            currentToken = examPage.getNextPageToken();
-            if (currentToken == null || currentToken.isEmpty()) {
-                break;
-            }
-        }
-
-        if (examPage == null) {
-            examPage = cloudService.getStorage().list(
-                    bucketName,
-                    Storage.BlobListOption.prefix(patientPrefix),
-                    Storage.BlobListOption.currentDirectory(),
-                    Storage.BlobListOption.pageSize(examPageSize)
-            );
-        }
-
-        Set<String> examNames = new LinkedHashSet<>();
-        for (Blob examBlob : examPage.getValues()) {
+        List<String> allExamNames = new ArrayList<>();
+        for (Blob examBlob : allExamFolders.getValues()) {
             String examPath = examBlob.getName();
             if (!examPath.startsWith(patientPrefix)) continue;
             String[] parts = examPath.split("/");
@@ -74,8 +49,15 @@ public class ExaminationVideoListingServiceImpl implements ExaminationVideoListi
 
             String examName = parts[2];
             if (examName == null || examName.isBlank()) continue;
-            examNames.add(examName);
+            allExamNames.add(examName);
         }
+
+        List<String> uniqueExamNames = allExamNames.stream().distinct().sorted().collect(Collectors.toList());
+        int startIndex = targetPageNumber * examPageSize;
+        int endIndex = Math.min(startIndex + examPageSize, uniqueExamNames.size());
+        List<String> examNames = startIndex >= uniqueExamNames.size()
+                ? List.of()
+                : uniqueExamNames.subList(startIndex, endIndex);
 
         for (String examName : examNames) {
             String examPrefix = patientPrefix + examName + "/";
@@ -104,7 +86,7 @@ public class ExaminationVideoListingServiceImpl implements ExaminationVideoListi
             }
         }
 
-        boolean hasNext = examPage.getNextPageToken() != null && !examPage.getNextPageToken().isEmpty();
+        boolean hasNext = endIndex < uniqueExamNames.size();
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("patientId", patientId);

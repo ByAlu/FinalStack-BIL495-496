@@ -145,12 +145,15 @@ export function PatientQueryWorkflowPage() {
     })
   );
 
-  async function loadPatientData(patientQuery) {
+  async function loadPatientData(patientQuery, pageNumber = currentPage, pageSize = resultSize) {
     setIsLoadingPatient(true);
     setPatientLoadError("");
 
     try {
-      const loadedPatient = await getPatientExaminations(patientQuery);
+      const loadedPatient = await getPatientExaminations(patientQuery, {
+        page: Math.max(pageNumber - 1, 0),
+        size: pageSize
+      });
       setPatient(loadedPatient);
     } catch (error) {
       setPatient(null);
@@ -161,15 +164,15 @@ export function PatientQueryWorkflowPage() {
   }
 
   useEffect(() => {
-    loadPatientData(query);
+    loadPatientData(query, currentPage, resultSize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentPage, resultSize]);
 
   function handleSubmit(event) {
     event.preventDefault();
-    loadPatientData(query);
     setExpandedExaminationId("");
     setCurrentPage(1);
+    loadPatientData(query, 1, resultSize);
   }
 
   const filteredExaminations = useMemo(() => {
@@ -213,11 +216,10 @@ export function PatientQueryWorkflowPage() {
   }, [patient, examinationSearch, sortConfig, dateRange]);
 
   const totalResults = filteredExaminations.length;
-  const totalPages = Math.max(1, Math.ceil(totalResults / resultSize));
-  const activePage = Math.min(currentPage, totalPages);
-  const paginatedExaminations = filteredExaminations.slice((activePage - 1) * resultSize, activePage * resultSize);
+  const activePage = currentPage;
+  const paginatedExaminations = filteredExaminations;
   const showingStart = totalResults > 0 ? (activePage - 1) * resultSize + 1 : 0;
-  const showingEnd = Math.min(activePage * resultSize, totalResults);
+  const showingEnd = showingStart + totalResults - 1;
 
   function handleSort(columnKey) {
     setCurrentPage(1);
@@ -563,12 +565,12 @@ export function PatientQueryWorkflowPage() {
                   Previous
                 </Button>
                 <Typography color="text.secondary">
-                  Page {activePage} / {totalPages}
+                  Page {activePage}
                 </Typography>
                 <Button
                   variant="outlined"
-                  disabled={activePage === totalPages}
-                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={!patient?.hasNext}
+                  onClick={() => setCurrentPage((page) => page + 1)}
                 >
                   Next
                 </Button>
