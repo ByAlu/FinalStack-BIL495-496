@@ -274,20 +274,6 @@ export function DataSelectionPage() {
     };
   }, []);
 
-
-  if (!examination) {
-    return (
-      <div className="page-stack">
-        <section className="panel">
-          <h2>{isLoadingExamination ? "Loading examination..." : "Examination not found"}</h2>
-          <Link className="secondary-button" to="/query">
-            Back to query
-          </Link>
-        </section>
-      </div>
-    );
-  }
-
   function handleSelectRegion(region) {
     const nextFrame = lastViewedFrames[region] || 0;
 
@@ -428,7 +414,8 @@ export function DataSelectionPage() {
       state: {
         patientId,
         examinationId,
-        selectedFrames
+        selectedFrames,
+        examination
       }
     });
   }

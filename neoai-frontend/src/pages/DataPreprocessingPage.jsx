@@ -9,7 +9,7 @@ import { useViewerHold } from "../hooks/useViewerHold";
 import { useVideoFrameExtraction } from "../hooks/useVideoFrameExtraction";
 import { useViewerZoom } from "../hooks/useViewerZoom";
 import { createDefaultPreprocessingOperations, hydratePreprocessingOperations } from "../config/preprocessingOperations";
-import { getExaminationByIds } from "../services/mockApi";
+import { getExaminationByIds } from "../services/examinationApi";
 import { applyOperationsToFrame } from "../utils/imageProcessing";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
@@ -59,8 +59,50 @@ export function DataPreprocessingPage() {
   const { patientId, examinationId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
-  const initialRegion = examination?.videos[0]?.region || "r1";
+  const [examination, setExamination] = useState(() => {
+    const fromRoute = location.state?.examination;
+    if (fromRoute?.id === examinationId) {
+      return fromRoute;
+    }
+    return null;
+  });
+  const [isLoadingExamination, setIsLoadingExamination] = useState(() => {
+    const fromRoute = location.state?.examination;
+    return !(fromRoute?.id === examinationId);
+  });
+
+  useEffect(() => {
+    const fromRoute = location.state?.examination;
+    if (fromRoute?.id === examinationId) {
+      setExamination(fromRoute);
+      setIsLoadingExamination(false);
+      return undefined;
+    }
+
+    let isMounted = true;
+    setIsLoadingExamination(true);
+
+    getExaminationByIds(patientId, examinationId)
+      .then((loaded) => {
+        if (isMounted) {
+          setExamination(loaded);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setExamination(null);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingExamination(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [patientId, examinationId, location.state]);
   const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
   const preprocessingStateCacheKey = getPreprocessingStateCacheKey(patientId, examinationId);
   const committedPreprocessingStateCacheKey = getCommittedPreprocessingStateCacheKey(patientId, examinationId);
@@ -139,7 +181,7 @@ export function DataPreprocessingPage() {
   const { selectedFrames, setSelectedFrames } = useSelectionSession({
     patientId,
     examinationId,
-    initialRegion
+    initialRegion: examination?.videos?.[0]?.region || "r1"
   });
 
   useEffect(() => {
@@ -363,7 +405,7 @@ export function DataPreprocessingPage() {
     return (
       <div className="page-stack">
         <section className="panel">
-          <h2>Examination not found</h2>
+          <h2>{isLoadingExamination ? "Loading examination..." : "Examination not found"}</h2>
           <Link className="secondary-button" to="/query">
             Back to query
           </Link>

@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 //import { findPatientById } from "../services/mockApi";
 import { getPatientExaminations } from "../services/examinationApi";
+import { getPatientById } from "../services/patientApi";
 import { resetExaminationWorkflowSession } from "../utils/resetExaminationWorkflowSession";
 import { getActiveWorkflowContext, resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
@@ -150,11 +151,31 @@ export function PatientQueryWorkflowPage() {
     setPatientLoadError("");
 
     try {
-      const loadedPatient = await getPatientExaminations(patientQuery, {
-        page: Math.max(pageNumber - 1, 0),
-        size: pageSize
+      const [examinationsResult, profileResult] = await Promise.allSettled([
+        getPatientExaminations(patientQuery, {
+          page: Math.max(pageNumber - 1, 0),
+          size: pageSize
+        }),
+        getPatientById(patientQuery)
+      ]);
+
+      if (examinationsResult.status === "rejected") {
+        throw examinationsResult.reason;
+      }
+
+      const loadedExaminations = examinationsResult.value;
+      const profile = profileResult.status === "fulfilled" ? profileResult.value : null;
+      const displayName =
+        profile && typeof profile.name === "string" && profile.name.trim()
+          ? profile.name.trim()
+          : loadedExaminations.name;
+
+      setPatient({
+        ...loadedExaminations,
+        name: displayName,
+        profileId: profile?.id ?? loadedExaminations.id,
+        age: profile?.age ?? null
       });
-      setPatient(loadedPatient);
     } catch (error) {
       setPatient(null);
       setPatientLoadError(error?.message || "Could not load patient examinations.");
