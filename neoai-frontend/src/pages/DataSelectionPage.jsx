@@ -11,6 +11,7 @@ import { useViewerHold } from "../hooks/useViewerHold";
 import { useVideoFrameExtraction } from "../hooks/useVideoFrameExtraction";
 import { useViewerZoom } from "../hooks/useViewerZoom";
 import { getExaminationByIds } from "../services/mockApi";
+import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];

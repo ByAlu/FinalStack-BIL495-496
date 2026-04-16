@@ -1,4 +1,5 @@
 import { api } from "./httpClient";
+import { getActionLogs } from "./actionLogger";
 
 // Mock log data generator
 const generateMockLogs = () => {
@@ -84,36 +85,30 @@ export async function getLogs() {
       const response = await api.get("/api/logs");
       return response.data;
     } catch (backendError) {
-      // If backend endpoint doesn't exist, fall back to mock data
-      // Simulate some new logs appearing on refresh
-      const newLog = {
-        id: `application_${Date.now()}_${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`,
-        user: ["doctor_smith", "nurse_johnson", "admin", "radiologist_anderson", "system"][
-          Math.floor(Math.random() * 5)
-        ],
-        name: `OPERATION-${Math.floor(Math.random() * 1000)}`,
-        applicationType: [
-          "DATA_PREPROCESSING",
-          "AI_ANALYSIS",
-          "PATIENT_QUERY",
-          "SYSTEM_OPERATION",
-          "DATA_SELECTION",
-          "REPORT_GENERATION"
-        ][Math.floor(Math.random() * 6)],
-        queue: ["root.users", "root.admin", "root.system"][Math.floor(Math.random() * 3)],
-        priority: Math.floor(Math.random() * 10),
-        startTime: Date.now() - Math.random() * 60000,
-        finishTime: null,
-        state: "RUNNING",
-        finalStatus: "RUNNING",
-        progress: Math.floor(Math.random() * 100)
-      };
-
-      mockLogsCache = [newLog, ...mockLogsCache.slice(0, 49)];
-      return mockLogsCache;
+      // Fall back to real action logs from client-side logger
+      const actionLogs = getActionLogs();
+      
+      // Format action logs to match expected structure
+      const formattedLogs = actionLogs.map((log) => ({
+        id: log.id,
+        user: log.user,
+        name: log.name,
+        applicationType: log.applicationType,
+        queue: log.queue || "default.queue",
+        priority: log.priority || 0,
+        startTime: log.startTime instanceof Date ? log.startTime.getTime() : log.startTime,
+        finishTime: log.finishTime instanceof Date ? log.finishTime.getTime() : log.finishTime,
+        state: log.state,
+        finalStatus: log.finalStatus,
+        progress: log.progress || 0,
+        description: log.description,
+        metadata: log.metadata
+      }));
+      
+      return formattedLogs;
     }
   } catch (error) {
     console.error("Error fetching logs:", error);
-    return mockLogsCache;
+    return getActionLogs();
   }
 }

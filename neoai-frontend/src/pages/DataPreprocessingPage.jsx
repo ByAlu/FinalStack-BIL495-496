@@ -10,6 +10,7 @@ import { useVideoFrameExtraction } from "../hooks/useVideoFrameExtraction";
 import { useViewerZoom } from "../hooks/useViewerZoom";
 import { createDefaultPreprocessingOperations, hydratePreprocessingOperations } from "../config/preprocessingOperations";
 import { getExaminationByIds } from "../services/mockApi";
+import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 import { applyOperationsToFrame } from "../utils/imageProcessing";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
