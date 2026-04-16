@@ -584,6 +584,7 @@ export function DataPreprocessingPage() {
           activePreprocessingRegion: activeRegion,
           patientId,
           examinationId,
+          examination,
           selectedFrames: selectedFrameMap,
           processedFrames: nextProcessedFrames,
           preprocessingOperations: operations
