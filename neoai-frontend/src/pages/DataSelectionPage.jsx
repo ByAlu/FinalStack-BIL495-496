@@ -562,6 +562,7 @@ export function DataSelectionPage() {
           regions={regions}
           selectedFrames={selectedFrames}
           showVideoMenu={showVideoMenu}
+          videoFramesByName={videoFramesByName}
         />
 
         <section className="selection-main panel">

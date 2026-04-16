@@ -28,6 +28,7 @@ export function RegionVideosSidebar({
   activeRegion,
   selectedFrames,
   showVideoMenu,
+  videoFramesByName,
   onClose,
   onOpen,
   onSelectRegion
@@ -49,6 +50,7 @@ export function RegionVideosSidebar({
           <div className="region-video-list">
             {regions.map((region) => {
               const regionVideo = examinationVideos.find((video) => video.region === region);
+              const firstVideoFrame = regionVideo ? videoFramesByName?.[regionVideo.name]?.[0] || "" : "";
               const isActive = activeRegion === region;
               const isSelected = Boolean(selectedFrames[region]);
 
@@ -60,7 +62,7 @@ export function RegionVideosSidebar({
                   onClick={() => onSelectRegion(region)}
                 >
                   <RegionVideoThumbnail
-                    thumbnail={regionVideo?.thumbnail}
+                    thumbnail={firstVideoFrame}
                     region={region}
                     name={regionVideo?.name}
                   />
