@@ -9,7 +9,7 @@ docker compose up --build postgres ai-module
 This starts:
 
 - PostgreSQL on `localhost:5432`
-- AI module on `localhost:8000`
+- AI module on `localhost:8001`
 
 Database settings:
 
