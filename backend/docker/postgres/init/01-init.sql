@@ -12,6 +12,19 @@ CREATE TABLE IF NOT EXISTS users (
     update_time TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS patients (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    date_of_birth DATE NOT NULL,
+    gestational_age_weeks INTEGER NOT NULL,
+    birth_weight_kg NUMERIC(5, 2) NOT NULL,
+    postnatal_age_days INTEGER NOT NULL,
+    clinic VARCHAR(128) NOT NULL,
+    bed_number VARCHAR(32) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS user_allowed_data_types (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     data_type VARCHAR(32) NOT NULL,
@@ -893,4 +906,43 @@ JOIN preprocessing_operations p
     ON p.data_type = 'ULTRASOUND'
 WHERE u.role = 'DOCTOR' OR u.user_name = 'admin'
 ON CONFLICT (owner_user_id, data_type, operation_code) DO NOTHING;
+
+INSERT INTO patients (
+    id,
+    name,
+    date_of_birth,
+    gestational_age_weeks,
+    birth_weight_kg,
+    postnatal_age_days,
+    clinic,
+    bed_number,
+    created_at,
+    updated_at
+)
+VALUES
+    (
+        1001,
+        'Aylin Yilmaz',
+        DATE '2026-02-18',
+        34,
+        2.12,
+        12,
+        'NICU',
+        'B-12',
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        1002,
+        'Kerem Demir',
+        DATE '2026-01-25',
+        36,
+        2.85,
+        20,
+        'NICU',
+        'B-08',
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    )
+ON CONFLICT (id) DO NOTHING;
 
