@@ -9,8 +9,11 @@ import { useViewerHold } from "../hooks/useViewerHold";
 import { useVideoFrameExtraction } from "../hooks/useVideoFrameExtraction";
 import { useViewerZoom } from "../hooks/useViewerZoom";
 import { createDefaultPreprocessingOperations, hydratePreprocessingOperations } from "../config/preprocessingOperations";
-import { getExaminationByIds } from "../services/mockApi";
-import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
+import { getExaminationByIds } from "../services/examinationApi";
+import {
+  getCurrentUserPreprocessingSettings,
+  saveCurrentUserPreprocessingSettings
+} from "../services/preprocessingSettingsApi";
 import { applyOperationsToFrame } from "../utils/imageProcessing";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
@@ -20,6 +23,21 @@ const MAX_MAGNIFIER_CONFIG = { size: 500, zoomFactor: 8 };
 const MIN_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
 const PREVIEW_PROCESSING_DEBOUNCE_MS = 180;
 const OPENCV_READY_EVENT = "opencv-ready";
+const PREPROCESSING_SETTINGS_DATA_TYPE = "ULTRASOUND";
+const BACKEND_PREPROCESSING_CODE_TO_TYPE = {
+  MEDIAN_BLUR: "median-filter",
+  CLAHE: "clahe",
+  GAUSSIAN_BLUR: "gaussian-filter",
+  GRAYSCALE: "grayscale",
+  SHARPEN: "sharpen"
+};
+const FRONTEND_PREPROCESSING_TYPE_TO_CODE = {
+  "median-filter": "MEDIAN_BLUR",
+  clahe: "CLAHE",
+  "gaussian-filter": "GAUSSIAN_BLUR",
+  grayscale: "GRAYSCALE",
+  sharpen: "SHARPEN"
+};
 
 function getExaminationCacheKey(patientId, examinationId) {
   return `neoai-cache:${patientId}:${examinationId}`;
@@ -31,6 +49,115 @@ function getPreprocessingStateCacheKey(patientId, examinationId) {
 
 function getCommittedPreprocessingStateCacheKey(patientId, examinationId) {
   return `neoai-preprocessing-committed:${patientId}:${examinationId}`;
+}
+
+function getStoredOperations(preprocessingStateCacheKey, routeOperations) {
+  if (Array.isArray(routeOperations) && routeOperations.length > 0) {
+    return hydratePreprocessingOperations(routeOperations);
+  }
+
+  try {
+    const savedState = window.sessionStorage.getItem(preprocessingStateCacheKey);
+
+    if (savedState) {
+      const parsedState = JSON.parse(savedState);
+
+      if (Array.isArray(parsedState?.operations) && parsedState.operations.length > 0) {
+        return hydratePreprocessingOperations(parsedState.operations);
+      }
+    }
+  } catch {
+    return createDefaultPreprocessingOperations();
+  }
+
+  return createDefaultPreprocessingOperations();
+}
+
+function normalizeBackendSetting(setting) {
+  const type = BACKEND_PREPROCESSING_CODE_TO_TYPE[setting?.operationCode];
+
+  if (!type) {
+    return null;
+  }
+
+  const parameters = { ...(setting?.parameters || {}) };
+
+  if (type === "gaussian-filter" && parameters.sigma !== undefined) {
+    if (parameters.sigmaX === undefined) {
+      parameters.sigmaX = parameters.sigma;
+    }
+    if (parameters.sigmaY === undefined) {
+      parameters.sigmaY = parameters.sigma;
+    }
+    delete parameters.sigma;
+  }
+
+  return {
+    type,
+    enabled: Boolean(setting?.active),
+    label: setting?.operationName,
+    displayOrder: setting?.displayOrder,
+    ...parameters
+  };
+}
+
+function normalizeBackendSettings(settings) {
+  const normalizedSettings = Array.isArray(settings)
+    ? settings
+        .map(normalizeBackendSetting)
+        .filter(Boolean)
+        .sort((left, right) => (left.displayOrder ?? Number.MAX_SAFE_INTEGER) - (right.displayOrder ?? Number.MAX_SAFE_INTEGER))
+        .map(({ displayOrder, ...operation }) => operation)
+    : [];
+
+  if (normalizedSettings.length === 0) {
+    return [];
+  }
+
+  return hydratePreprocessingOperations(normalizedSettings, { includeMissingDefinitions: false });
+}
+
+function serializeOperationParameters(operation) {
+  switch (operation.type) {
+    case "median-filter":
+      return { kernelSize: operation.kernelSize };
+    case "clahe":
+      return {
+        clipLimit: operation.clipLimit,
+        tileGridSize: operation.tileGridSize
+      };
+    case "gaussian-filter":
+      return {
+        kernelSize: operation.kernelSize,
+        sigmaX: operation.sigmaX,
+        sigmaY: operation.sigmaY
+      };
+    case "grayscale":
+      return {};
+    case "sharpen":
+      return { strength: operation.strength };
+    default:
+      return {};
+  }
+}
+
+function serializeOperationsForBackend(operations) {
+  return operations
+    .map((operation, index) => {
+      const operationCode = FRONTEND_PREPROCESSING_TYPE_TO_CODE[operation.type];
+
+      if (!operationCode) {
+        return null;
+      }
+
+      return {
+        operationCode,
+        displayOrder: index + 1,
+        active: Boolean(operation.enabled),
+        parameters: serializeOperationParameters(operation)
+      };
+    })
+    .filter(Boolean);
 }
 
 function normalizeRotation(nextRotation) {
@@ -60,37 +187,21 @@ export function DataPreprocessingPage() {
   const { patientId, examinationId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
-  const initialRegion = examination?.videos[0]?.region || "r1";
+  const routeExamination = location.state?.examination || null;
+  const initialRegion = routeExamination?.videos?.[0]?.region || "r1";
   const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
   const preprocessingStateCacheKey = getPreprocessingStateCacheKey(patientId, examinationId);
   const committedPreprocessingStateCacheKey = getCommittedPreprocessingStateCacheKey(patientId, examinationId);
   const magnifierPopoverRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
-  const [operations, setOperations] = useState(() => {
-    const routeOperations = location.state?.preprocessingOperations;
-
-    if (Array.isArray(routeOperations) && routeOperations.length > 0) {
-      return hydratePreprocessingOperations(routeOperations);
-    }
-
-    try {
-      const savedState = window.sessionStorage.getItem(preprocessingStateCacheKey);
-
-      if (savedState) {
-        const parsedState = JSON.parse(savedState);
-
-        if (Array.isArray(parsedState?.operations) && parsedState.operations.length > 0) {
-          return hydratePreprocessingOperations(parsedState.operations);
-        }
-      }
-    } catch {
-      return createDefaultPreprocessingOperations();
-    }
-
-    return createDefaultPreprocessingOperations();
-  });
+  const [examination, setExamination] = useState(routeExamination);
+  const [isLoadingExamination, setIsLoadingExamination] = useState(!routeExamination);
+  const [savedOperationsSnapshot, setSavedOperationsSnapshot] = useState(null);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [operations, setOperations] = useState(() =>
+    getStoredOperations(preprocessingStateCacheKey, location.state?.preprocessingOperations)
+  );
   const [previewOperations, setPreviewOperations] = useState(() => createDefaultPreprocessingOperations());
   const [showOptionsMenu, setShowOptionsMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
@@ -142,6 +253,77 @@ export function DataPreprocessingPage() {
     examinationId,
     initialRegion
   });
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadExamination() {
+      if (routeExamination) {
+        setExamination(routeExamination);
+        setIsLoadingExamination(false);
+        return;
+      }
+
+      setIsLoadingExamination(true);
+
+      try {
+        const result = await getExaminationByIds(patientId, examinationId);
+
+        if (!ignore) {
+          setExamination(result);
+        }
+      } catch {
+        if (!ignore) {
+          setExamination(null);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingExamination(false);
+        }
+      }
+    }
+
+    loadExamination();
+
+    return () => {
+      ignore = true;
+    };
+  }, [examinationId, patientId, routeExamination]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadUserPreprocessingSettings() {
+      try {
+        const settings = await getCurrentUserPreprocessingSettings(PREPROCESSING_SETTINGS_DATA_TYPE);
+        const normalizedSettings = normalizeBackendSettings(settings);
+
+        if (ignore) {
+          return;
+        }
+
+        if (normalizedSettings.length > 0) {
+          setOperations(normalizedSettings);
+          setSavedOperationsSnapshot(JSON.stringify(normalizedSettings));
+          return;
+        }
+      } catch {
+        if (ignore) {
+          return;
+        }
+      }
+
+      if (!ignore) {
+        setSavedOperationsSnapshot(JSON.stringify(getStoredOperations(preprocessingStateCacheKey, location.state?.preprocessingOperations)));
+      }
+    }
+
+    loadUserPreprocessingSettings();
+
+    return () => {
+      ignore = true;
+    };
+  }, [preprocessingStateCacheKey, location.state?.preprocessingOperations]);
 
   useEffect(() => {
     function handleOpenCvReady() {
@@ -296,6 +478,12 @@ export function DataPreprocessingPage() {
   }, [operations]);
 
   useEffect(() => {
+    if (operations.length > 0) {
+      setPreviewOperations(operations);
+    }
+  }, [operations]);
+
+  useEffect(() => {
     try {
       window.sessionStorage.setItem(
         preprocessingStateCacheKey,
@@ -359,6 +547,58 @@ export function DataPreprocessingPage() {
       ignore = true;
     };
   }, [activeRegion, activeSelectedFrame, isOpenCvReady, previewOperations, previewSource]);
+
+  const currentOperationsSignature = JSON.stringify(operations);
+  const canReset = savedOperationsSnapshot !== null && currentOperationsSignature !== savedOperationsSnapshot;
+  const canSave = !isSavingSettings && savedOperationsSnapshot !== null && currentOperationsSignature !== savedOperationsSnapshot;
+
+  async function handleResetOperations() {
+    if (!savedOperationsSnapshot) {
+      return;
+    }
+
+    try {
+      const parsedSnapshot = JSON.parse(savedOperationsSnapshot);
+
+      if (Array.isArray(parsedSnapshot) && parsedSnapshot.length > 0) {
+        setOperations(parsedSnapshot);
+      }
+    } catch {
+      // Ignore invalid reset snapshots and keep the current unsaved state.
+    }
+  }
+
+  async function handleSaveOperations() {
+    if (!canSave) {
+      return;
+    }
+
+    setIsSavingSettings(true);
+
+    try {
+      const savedSettings = await saveCurrentUserPreprocessingSettings(
+        serializeOperationsForBackend(operations),
+        PREPROCESSING_SETTINGS_DATA_TYPE
+      );
+      const normalizedSettings = normalizeBackendSettings(savedSettings);
+      const nextOperations = normalizedSettings.length > 0 ? normalizedSettings : operations;
+
+      setOperations(nextOperations);
+      setSavedOperationsSnapshot(JSON.stringify(nextOperations));
+    } finally {
+      setIsSavingSettings(false);
+    }
+  }
+
+  if (isLoadingExamination) {
+    return (
+      <div className="page-stack">
+        <section className="panel">
+          <p>Loading examination...</p>
+        </section>
+      </div>
+    );
+  }
 
   if (!examination) {
     return (
@@ -685,10 +925,15 @@ export function DataPreprocessingPage() {
     <div className="page-stack selection-page">
       <section className={`selection-layout${showOptionsMenu ? "" : " hide-left"}${showSelectedMenu ? "" : " hide-right"}`}>
         <PreprocessingOptionsSidebar
+          canReset={canReset}
+          canSave={canSave}
+          isSaving={isSavingSettings}
           operations={operations}
+          onReset={handleResetOperations}
           showMenu={showOptionsMenu}
           onClose={() => setShowOptionsMenu(false)}
           onOpen={() => setShowOptionsMenu(true)}
+          onSave={handleSaveOperations}
           onToggleOperation={handleToggleOperation}
           onKernelSizeChange={handleKernelSizeChange}
           onOperationParameterChange={handleOperationParameterChange}
