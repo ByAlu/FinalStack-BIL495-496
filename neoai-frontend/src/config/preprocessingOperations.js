@@ -143,26 +143,46 @@ export function getPreprocessingOperationDefinition(operationType) {
   return PREPROCESSING_OPERATION_DEFINITIONS.find((definition) => definition.type === operationType) || null;
 }
 
-export function hydratePreprocessingOperations(savedOperations) {
-  const savedByType = new Map(
-    Array.isArray(savedOperations)
-      ? savedOperations
-          .filter((operation) => operation?.type)
-          .map((operation) => [operation.type, operation])
-      : []
-  );
+export function hydratePreprocessingOperations(savedOperations, options = {}) {
+  const { includeMissingDefinitions = true } = options;
+  const normalizedSavedOperations = Array.isArray(savedOperations)
+    ? savedOperations.filter((operation) => operation?.type)
+    : [];
+  const hydratedOperations = normalizedSavedOperations
+    .map((savedOperation) => {
+      const definition = getPreprocessingOperationDefinition(savedOperation.type);
 
-  return PREPROCESSING_OPERATION_DEFINITIONS.map((definition) => {
-    const savedOperation = savedByType.get(definition.type);
+      if (!definition) {
+        return null;
+      }
 
-    return {
+      return {
+        id: definition.id,
+        type: definition.type,
+        label: savedOperation.label ?? definition.label,
+        description: savedOperation.description ?? definition.description,
+        enabled: savedOperation.enabled ?? definition.enabledByDefault,
+        ...definition.parameters,
+        ...savedOperation
+      };
+    })
+    .filter(Boolean);
+
+  if (!includeMissingDefinitions) {
+    return hydratedOperations;
+  }
+
+  const includedTypes = new Set(hydratedOperations.map((operation) => operation.type));
+  const missingOperations = PREPROCESSING_OPERATION_DEFINITIONS
+    .filter((definition) => !includedTypes.has(definition.type))
+    .map((definition) => ({
       id: definition.id,
       type: definition.type,
       label: definition.label,
       description: definition.description,
-      enabled: savedOperation?.enabled ?? definition.enabledByDefault,
-      ...definition.parameters,
-      ...(savedOperation || {})
-    };
-  });
+      enabled: definition.enabledByDefault,
+      ...definition.parameters
+    }));
+
+  return [...hydratedOperations, ...missingOperations];
 }

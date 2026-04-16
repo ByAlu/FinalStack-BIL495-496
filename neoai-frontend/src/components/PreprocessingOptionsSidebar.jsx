@@ -5,10 +5,15 @@ import { useOperationDraftValues } from "../hooks/useOperationDraftValues";
 import { useOperationReorderDrag } from "../hooks/useOperationReorderDrag";
 
 export function PreprocessingOptionsSidebar({
+  canReset,
+  canSave,
+  isSaving,
   operations,
+  onReset,
   showMenu,
   onClose,
   onOpen,
+  onSave,
   onToggleOperation,
   onKernelSizeChange,
   onOperationParameterChange,
@@ -137,6 +142,25 @@ export function PreprocessingOptionsSidebar({
                 </div>
               );
             })}
+          </div>
+
+          <div className="preprocessing-sidebar-actions">
+            <button
+              className="preprocessing-action-button secondary"
+              disabled={!canReset}
+              type="button"
+              onClick={onReset}
+            >
+              Reset
+            </button>
+            <button
+              className="preprocessing-action-button primary"
+              disabled={!canSave}
+              type="button"
+              onClick={onSave}
+            >
+              {isSaving ? "Saving..." : "Save"}
+            </button>
           </div>
         </>
       ) : (

@@ -857,10 +857,14 @@ VALUES
         'ULTRASOUND',
         'Gaussian Blur',
         'GAUSSIAN_BLUR',
-        '{"kernelSize": 5, "sigma": 1.2}'::jsonb,
+        '{"kernelSize": 5, "sigmaX": 1.2, "sigmaY": 1.2}'::jsonb,
         TRUE
     )
-ON CONFLICT (data_type, operation_code) DO NOTHING;
+ON CONFLICT (data_type, operation_code) DO UPDATE
+SET
+    operation_name = EXCLUDED.operation_name,
+    default_parameters = EXCLUDED.default_parameters,
+    active = EXCLUDED.active;
 
 INSERT INTO user_preprocessing_settings (
     owner_user_id,
@@ -892,5 +896,12 @@ FROM users u
 JOIN preprocessing_operations p
     ON p.data_type = 'ULTRASOUND'
 WHERE u.role = 'DOCTOR' OR u.user_name = 'admin'
-ON CONFLICT (owner_user_id, data_type, operation_code) DO NOTHING;
+ON CONFLICT (owner_user_id, data_type, operation_code) DO UPDATE
+SET
+    operation_id = EXCLUDED.operation_id,
+    operation_name = EXCLUDED.operation_name,
+    display_order = EXCLUDED.display_order,
+    active = EXCLUDED.active,
+    parameters = EXCLUDED.parameters,
+    updated_at = EXCLUDED.updated_at;
 
