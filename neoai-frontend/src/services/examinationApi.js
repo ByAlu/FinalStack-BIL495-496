@@ -136,3 +136,31 @@ export async function getPatientExaminations(patientIdInput, options = {}) {
     throw error instanceof Error ? error : new Error("Could not reach the server.");
   }
 }
+
+//For data query page to select a single exam
+function mapSingleExamination(patientIdInput, examName, payload) {
+  const mapped = mapGroupedExaminations(payload);
+  const examination = mapped.find((item) => item.id === examName);
+
+  return {
+    id: examName,
+    patientId: String(patientIdInput).trim(),
+    videos: examination?.videos || []
+  };
+}
+
+export async function getExaminationByIds(patientIdInput, examinationId) {
+  try {
+    const patientId = normalizePatientId(patientIdInput);
+    const response = await api.get(`/api/v1/examinations/${patientId}/${examinationId}`);
+    const data = response.data || {};
+
+    return mapSingleExamination(patientIdInput, examinationId, data);
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data?.message || "Could not load examination videos.");
+    }
+
+    throw error instanceof Error ? error : new Error("Could not reach the server.");
+  }
+}

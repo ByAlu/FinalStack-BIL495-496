@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RegionVideosSidebar } from "../components/RegionVideosSidebar";
 import { SelectedFramesSidebar } from "../components/SelectedFramesSidebar";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation, } from "react-router-dom";
 import { ViewerHeader } from "../components/ViewerHeader";
 import { ViewerStage } from "../components/ViewerStage";
 import { useFramePlayback } from "../hooks/useFramePlayback";
@@ -10,8 +10,8 @@ import { useSelectionSession } from "../hooks/useSelectionSession";
 import { useViewerHold } from "../hooks/useViewerHold";
 import { useVideoFrameExtraction } from "../hooks/useVideoFrameExtraction";
 import { useViewerZoom } from "../hooks/useViewerZoom";
-import { getExaminationByIds } from "../services/mockApi";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
+import { getExaminationByIds } from "../services/examinationApi";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
 const DEFAULT_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
@@ -51,9 +51,16 @@ function getMagnifierState(stageRect, imageRect, clientX, clientY, magnifierConf
 
 export function DataSelectionPage() {
   const { patientId, examinationId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
-  const initialRegion = examination?.videos[0]?.region || "r1";
+  const [examination, setExamination] = useState(() => {
+    const examinationFromNavigation = location.state?.examination;
+    if (examinationFromNavigation?.id === examinationId) {
+      return examinationFromNavigation;
+    }
+    return null;
+  });
+  const [isLoadingExamination, setIsLoadingExamination] = useState(false);
   const examinationCacheKey = getExaminationCacheKey(patientId, examinationId);
   const committedSelectionStateCacheKey = getCommittedSelectionStateCacheKey(patientId, examinationId);
   const fpsPopoverRef = useRef(null);
@@ -102,7 +109,7 @@ export function DataSelectionPage() {
   const { activeRegion, setActiveRegion, lastViewedFrames, setLastViewedFrames, selectedFrames, setSelectedFrames } = useSelectionSession({
     patientId,
     examinationId,
-    initialRegion
+    initialRegion: examination?.videos?.[0]?.region || "r1"
   });
   const { videoFramesByName, videoInfoByName, extractionStateByName } = useVideoFrameExtraction({
     examination,
@@ -172,6 +179,42 @@ export function DataSelectionPage() {
   });
 
   useEffect(() => {
+    const examinationFromNavigation = location.state?.examination;
+    if (examinationFromNavigation?.id === examinationId) {
+      console.log("Loaded examination from navigation state:", examinationFromNavigation);
+      setExamination(examinationFromNavigation);
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoadingExamination(true);
+
+    getExaminationByIds(patientId, examinationId)
+      .then((loadedExamination) => {
+        if (!isMounted) {
+          return;
+        }
+        console.log("Loaded examination from API:", loadedExamination);
+        setExamination(loadedExamination);
+      })
+      .catch(() => {
+        if (!isMounted) {
+          return;
+        }
+        setExamination(null);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingExamination(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [patientId, examinationId, location.state]);
+
+  useEffect(() => {
     setViewerMode("video");
     stopPlayback();
     setCurrentFrame(() => {
@@ -235,9 +278,8 @@ export function DataSelectionPage() {
   if (!examination) {
     return (
       <div className="page-stack">
-        <WorkflowSteps currentStep="selection" context={{ patientId, examinationId }} />
         <section className="panel">
-          <h2>Examination not found</h2>
+          <h2>{isLoadingExamination ? "Loading examination..." : "Examination not found"}</h2>
           <Link className="secondary-button" to="/query">
             Back to query
           </Link>
