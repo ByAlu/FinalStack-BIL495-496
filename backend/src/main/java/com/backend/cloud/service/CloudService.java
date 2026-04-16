@@ -1,6 +1,8 @@
 package com.backend.cloud.service;
 
+import com.backend.datamanagment.model.ExaminationDTO;
 import com.backend.model.dto.ExaminationVideoDTO;
+import com.backend.model.dto.GCSPage;
 import com.backend.model.dto.UploadUrlResponseDTO;
 import com.backend.model.entity.UsExaminationRegion;
 import com.google.cloud.storage.Blob;
@@ -20,6 +22,8 @@ public interface CloudService {
     String generateV4GetObjectSignedUrl(String cloudPath);
 
     List<ExaminationVideoDTO> getExaminationVideoDTO(Long patientId, String examName);
+
+    GCSPage<ExaminationDTO> getExaminationsByPatientId(Long patientId, int size, String token);
 
     Storage getStorage();
 }

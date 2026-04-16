@@ -32,7 +32,7 @@ public class GCSStorageController {
             @RequestParam String folder,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String token) {
-        return ResponseEntity.ok(storageService.listFilesWithPagination(folder, size, token));
+        return ResponseEntity.ok(storageService.listFilesWithPagination(folder+'/', size, token));
     }
 
 }

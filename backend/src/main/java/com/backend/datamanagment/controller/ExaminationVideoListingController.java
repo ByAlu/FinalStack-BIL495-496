@@ -1,6 +1,7 @@
 package com.backend.datamanagment.controller;
 
 import com.backend.cloud.service.CloudService;
+import com.backend.datamanagment.model.ExaminationDTO;
 import com.backend.datamanagment.service.ExaminationVideoListingService;
 import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.GCSPage;
@@ -53,5 +54,13 @@ public class ExaminationVideoListingController {
     public ResponseEntity<List<ExaminationVideoDTO>> getVideos(@PathVariable Long patientId,
                                                                @PathVariable String examName) {
         return ResponseEntity.ok(cloudService.getExaminationVideoDTO(patientId, examName));
+    }
+
+    @GetMapping("/{patientId}")
+    public ResponseEntity<GCSPage<ExaminationDTO>> getExaminations(
+            @PathVariable Long patientId,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String token) {
+        return ResponseEntity.ok(cloudService.getExaminationsByPatientId(patientId, size, token));
     }
 }
