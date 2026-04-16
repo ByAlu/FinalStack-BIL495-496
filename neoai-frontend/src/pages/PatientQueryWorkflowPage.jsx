@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
@@ -159,9 +159,9 @@ function VideoThumbnail({ thumbnail, region, name }) {
 }
 
 export function PatientQueryWorkflowPage() {
-  const savedPageState = getInitialPageState();
+  const [savedPageState] = useState(() => getInitialPageState());
   const [query, setQuery] = useState(savedPageState?.query || "");
-  const [patient , setPatient] = useState(null);
+  const [patient , setPatient] = useState(savedPageState?.patient || null);
   const [isLoadingPatient , setisLoadingPatient] = useState(false);
   const [hasSearched, setHasSearched] = useState(Boolean(savedPageState?.hasSearched));
   const [queryError, setQueryError] = useState("");
@@ -175,19 +175,36 @@ export function PatientQueryWorkflowPage() {
     end: normalizeInputDateValue(savedPageState?.dateRange?.end || "")
   }));
 
-  window.sessionStorage.setItem(
-    QUERY_PAGE_STATE_KEY,
-    JSON.stringify({
-      query,
-      hasSearched,
-      expandedExaminationId,
-      resultSize,
-      currentPage,
-      examinationSearch,
-      sortConfig,
-      dateRange
-    })
-  );
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        QUERY_PAGE_STATE_KEY,
+        JSON.stringify({
+          query,
+          patient,
+          hasSearched,
+          expandedExaminationId,
+          resultSize,
+          currentPage,
+          examinationSearch,
+          sortConfig,
+          dateRange
+        })
+      );
+    } catch {
+      // Ignore session storage failures and keep the page functional.
+    }
+  }, [
+    query,
+    patient,
+    hasSearched,
+    expandedExaminationId,
+    resultSize,
+    currentPage,
+    examinationSearch,
+    sortConfig,
+    dateRange
+  ]);
 
   async function fetchPatient(patientQuery) {
       setisLoadingPatient(true);
