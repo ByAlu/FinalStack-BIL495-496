@@ -189,7 +189,6 @@ public class GCSStorageService implements CloudService {
         String exId = parts.length > 1 ? "EX_" + parts[1] : "Unknown Examination";
 
         ExaminationDTO dto = new ExaminationDTO();
-        dto.setFullName(folderName);
         dto.setExaminationDate(LocalDateTime.ofInstant(Instant.ofEpochSecond(unixTime), ZoneId.systemDefault()));
         dto.setExaminationName(exId);
         dto.setTimeAndExamName(folderName);

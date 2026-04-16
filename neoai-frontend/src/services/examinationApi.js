@@ -67,11 +67,11 @@ function mapVideo(dto, index = 0) {
 }
 
 function mapExaminationSummary(dto) {
-  const fullName = dto.fullName || dto.examinationName || "Unknown";
+  const timeAndExamName = dto.timeAndExamName || dto.examinationName || "Unknown";
 
   return {
-    id: fullName,
-    displayName: dto.examinationName || normalizeExaminationDisplayName(fullName),
+    id: timeAndExamName,
+    displayName: dto.examinationName || normalizeExaminationDisplayName(timeAndExamName),
     date: formatDate(dto.examinationDate),
     status: "AVAILABLE",
     videos: [],
