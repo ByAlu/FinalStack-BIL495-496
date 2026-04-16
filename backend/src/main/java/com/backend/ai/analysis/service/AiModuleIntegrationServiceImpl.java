@@ -4,7 +4,6 @@ import com.backend.ai.analysis.model.dto.AiAnalysisDTO;
 import com.backend.ai.analysis.model.dto.AiAnalysisResultDTO;
 import com.backend.ai.analysis.model.entity.AnalysisStatus;
 import com.backend.ai.analysis.model.entity.AnalysisTarget;
-import com.backend.ai.analysis.model.entity.AnalysisRequest;
 import com.backend.ai.analysis.model.entity.UsAiAnalysis;
 import com.backend.ai.analysis.model.entity.UsAnalysisModuleRun;
 import com.backend.ai.analysis.repository.UsAiAnalysisRepository;
@@ -12,15 +11,8 @@ import com.backend.ai.analysis.repository.UsAnalysisModuleRunRepository;
 import com.backend.model.entity.UsExaminationRegion;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import org.jcodec.api.FrameGrab;
-import org.jcodec.api.JCodecException;
-import org.jcodec.common.io.NIOUtils;
-import org.jcodec.common.io.SeekableByteChannel;
-import org.jcodec.common.model.Picture;
-import org.jcodec.scale.AWTUtil;
 import com.google.cloud.storage.HttpMethod;
+import com.google.cloud.storage.Storage;
 import lombok.extern.slf4j.Slf4j;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -33,11 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.UUID;
@@ -74,18 +61,18 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         UsAiAnalysis analysis = aiAnalysisRepository.findById(analysisUuid)
             .orElseThrow();
 
+        SelectedVideoRequest selectedVideo = resolveSelectedVideoRequest(analysis);
 
         for (UsAnalysisModuleRun run : analysis.getModuleRuns()) {
-            System.err.println("here");
             if (!run.getAiModule().isActive()) {
                 continue;
             }
 
-
-            //TODO: Get the url from gcs
-            //String imageUrl = createFrameImageAndGetSignedUrl(analysis);
-            String imageUrl = "https://i.imgur.com/rA5DjnD.jpeg";
-            Map<String, Object> fastApiRequestBody = buildFastApiRequestBody(imageUrl, target);
+            Map<String, Object> fastApiRequestBody = buildFastApiRequestBody(
+                    selectedVideo.videoUrl,
+                    selectedVideo.frameIndex,
+                    target
+            );
 
             try {
                 //Python request response
@@ -102,7 +89,9 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
                 run.setExternalJobId(jobId);
                 run.setStatus(AnalysisStatus.PROCESSING);
                 run.setRequestPayload(Map.of(
-                        "imageUrl", imageUrl,
+                        "videoUrl", selectedVideo.videoUrl,
+                        "frameIndex", selectedVideo.frameIndex,
+                        "region", selectedVideo.region.name(),
                         "b_lines", target.isB_lines(),
                         "rds_score", target.isRds_score(),
                         "bounding_boxes", target.isBounding_boxes()
@@ -127,15 +116,18 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
 
         return dto;
     }
-    private Map<String, Object> buildFastApiRequestBody(String imageUrl, AnalysisTarget target) {
+
+    private Map<String, Object> buildFastApiRequestBody(String videoUrl, int frameIndex, AnalysisTarget target) {
         Map<String, Object> analysisTargetPayload = new HashMap<>();
         analysisTargetPayload.put("b_lines", target.isB_lines());
         analysisTargetPayload.put("rds_score", target.isRds_score());
         analysisTargetPayload.put("bounding_boxes", target.isBounding_boxes());
 
         Map<String, Object> body = new HashMap<>();
-        body.put("imageUrl", imageUrl);
-        body.put("image_url", imageUrl);
+        body.put("videoUrl", videoUrl);
+        body.put("video_url", videoUrl);
+        body.put("frameIndex", frameIndex);
+        body.put("frame_index", frameIndex);
         body.put("callbackUrl", callbackUrl);
         body.put("callback_url", callbackUrl);
         body.put("analysisTarget", analysisTargetPayload);
@@ -269,7 +261,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         return null;
     }
 
-    private String createFrameImageAndGetSignedUrl(UsAiAnalysis analysis) {
+    private SelectedVideoRequest resolveSelectedVideoRequest(UsAiAnalysis analysis) {
         Map<UsExaminationRegion, Integer> selectedFrames = analysis.getSelectedFrameIndices();
         if (selectedFrames == null || selectedFrames.isEmpty()) {
             throw new IllegalArgumentException("No frame index was provided for analysis " + analysis.getAnalysisUuid());
@@ -293,29 +285,15 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
             throw new IllegalArgumentException("Video blob not found for path: " + videoPath);
         }
 
-        byte[] imageBytes = extractFrameAsJpeg(videoBlob.getContent(), frameIndex);
-
-        String imagePath = String.format(
-                "ai/PT_%s/%s/frames/%s/%s_frame_%d.jpg",
-                sanitizePathPart(patientId),
-                sanitizePathPart(examinationId),
-                analysis.getAnalysisUuid(),
-                region.name(),
-                frameIndex
-        );
-
-        BlobInfo imageBlobInfo = BlobInfo.newBuilder(BlobId.of(bucketName, imagePath))
-                .setContentType("image/jpeg")
-                .build();
-        storage.create(imageBlobInfo, imageBytes);
-
-        return storage.signUrl(
-                imageBlobInfo,
+        String signedVideoUrl = storage.signUrl(
+                videoBlob,
                 60,
                 java.util.concurrent.TimeUnit.MINUTES,
                 Storage.SignUrlOption.httpMethod(HttpMethod.GET),
                 Storage.SignUrlOption.withV4Signature()
         ).toString();
+
+        return new SelectedVideoRequest(region, frameIndex, signedVideoUrl);
     }
 
     private String resolveExistingVideoPath(String patientId, String examinationId, UsExaminationRegion region) {
@@ -333,40 +311,19 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         throw new IllegalArgumentException("No region video found in GCS for " + region.name());
     }
 
-    private byte[] extractFrameAsJpeg(byte[] mp4Bytes, int frameIndex) {
-        File tempVideo = null;
-        try {
-            tempVideo = File.createTempFile("analysis-", ".mp4");
-            java.nio.file.Files.write(tempVideo.toPath(), mp4Bytes);
-
-            BufferedImage frameImage = readFrame(tempVideo, frameIndex);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            ImageIO.write(frameImage, "jpg", out);
-            return out.toByteArray();
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to extract frame from video", e);
-        } finally {
-            if (tempVideo != null) {
-                tempVideo.delete();
-            }
-        }
-    }
-
-    private BufferedImage readFrame(File mp4File, int frameIndex) throws IOException {
-        try (SeekableByteChannel channel = NIOUtils.readableChannel(mp4File)) {
-            FrameGrab grab = FrameGrab.createFrameGrab(channel);
-            grab.seekToFramePrecise(frameIndex);
-            Picture picture = grab.getNativeFrame();
-            if (picture == null) {
-                throw new IllegalArgumentException("Frame " + frameIndex + " was not found in video");
-            }
-            return AWTUtil.toBufferedImage(picture);
-        } catch (JCodecException e) {
-            throw new IOException("Cannot decode mp4 frame", e);
-        }
-    }
-
     private String sanitizePathPart(String value) {
         return Objects.requireNonNullElse(value, "unknown").replaceAll("[^a-zA-Z0-9_\\-]", "_");
+    }
+
+    private static final class SelectedVideoRequest {
+        private final UsExaminationRegion region;
+        private final int frameIndex;
+        private final String videoUrl;
+
+        private SelectedVideoRequest(UsExaminationRegion region, int frameIndex, String videoUrl) {
+            this.region = region;
+            this.frameIndex = frameIndex;
+            this.videoUrl = videoUrl;
+        }
     }
 }
