@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
@@ -21,7 +21,6 @@ import {
   Typography,
   Collapse
 } from "@mui/material";
-//import { findPatientById } from "../services/mockApi";
 import { getPatientExaminations } from "../services/examinationApi";
 import { resetExaminationWorkflowSession } from "../utils/resetExaminationWorkflowSession";
 import { getActiveWorkflowContext, resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
@@ -115,12 +114,56 @@ function getInitialPageState() {
   }
 }
 
+function VideoThumbnail({ thumbnail, region, name }) {
+  const [hasImageError, setHasImageError] = useState(false);
+  const regionLabel = region ? String(region).toUpperCase() : "-";
+
+  if (!thumbnail || hasImageError) {
+    return (
+      <Box
+        aria-label={`${name} thumbnail placeholder`}
+        sx={{
+          width: 72,
+          height: 72,
+          borderRadius: 1,
+          border: "1px solid rgba(148, 197, 255, 0.12)",
+          bgcolor: "rgba(47, 200, 216, 0.08)",
+          color: "primary.main",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: 700,
+          letterSpacing: "0.08em"
+        }}
+      >
+        {regionLabel}
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      component="img"
+      alt={`${name} thumbnail`}
+      src={thumbnail}
+      onError={() => setHasImageError(true)}
+      sx={{
+        width: 72,
+        height: 72,
+        borderRadius: 1,
+        objectFit: "cover",
+        border: "1px solid rgba(148, 197, 255, 0.12)"
+      }}
+    />
+  );
+}
+
 export function PatientQueryWorkflowPage() {
   const savedPageState = getInitialPageState();
-  const [query, setQuery] = useState(savedPageState?.query || "PT-1001");
-  //const [patient, setPatient] = useState(() => findPatientById(savedPageState?.query || "PT-1001"));
+  const [query, setQuery] = useState(savedPageState?.query || "");
   const [patient , setPatient] = useState(null);
   const [isLoadingPatient , setisLoadingPatient] = useState(false);
+  const [hasSearched, setHasSearched] = useState(Boolean(savedPageState?.hasSearched));
   const [queryError, setQueryError] = useState("");
   const [expandedExaminationId, setExpandedExaminationId] = useState(savedPageState?.expandedExaminationId || "");
   const [resultSize, setResultSize] = useState(savedPageState?.resultSize || 10);
@@ -136,6 +179,7 @@ export function PatientQueryWorkflowPage() {
     QUERY_PAGE_STATE_KEY,
     JSON.stringify({
       query,
+      hasSearched,
       expandedExaminationId,
       resultSize,
       currentPage,
@@ -144,10 +188,6 @@ export function PatientQueryWorkflowPage() {
       dateRange
     })
   );
-
-  useEffect(()=>{
-    fetchPatient(savedPageState?.query || "PT-1001");
-  },[])
 
   async function fetchPatient(patientQuery) {
       setisLoadingPatient(true);
@@ -166,10 +206,20 @@ export function PatientQueryWorkflowPage() {
   }
 
   async function handleSubmit(event) {
-    
     event.preventDefault();
-    //setPatient(findPatientById(query));
-    await fetchPatient(query);
+    const normalizedQuery = query.trim();
+
+    setHasSearched(true);
+    setExpandedExaminationId("");
+    setCurrentPage(1);
+
+    if (!normalizedQuery) {
+      setPatient(null);
+      setQueryError("Enter a patient id.");
+      return;
+    }
+
+    await fetchPatient(normalizedQuery);
     setExpandedExaminationId("");
     setCurrentPage(1);
   }
@@ -305,8 +355,8 @@ export function PatientQueryWorkflowPage() {
         </Stack>
       </Paper>
 
-      {isLoadingPatient ?(
-          <Paper
+      {isLoadingPatient ? (
+        <Paper
           sx={{
             p: 3.5,
             borderRadius: 1,
@@ -316,8 +366,7 @@ export function PatientQueryWorkflowPage() {
         >
           <Typography>Loading patient examinations...</Typography>
         </Paper>
-        )
-        : patient ? (
+      ) : patient ? (
         <Paper
           sx={{
             p: 3.5,
@@ -471,8 +520,8 @@ export function PatientQueryWorkflowPage() {
                         >
                           <TableCell  padding="none" 
                               sx={{ 
-                                width: "1%",          // shrink column width to fit content
-                                whiteSpace: "nowrap"  // prevent wrapping
+                                width: "1%",
+                                whiteSpace: "nowrap"
                               }}
                           >
                             <IconButton
@@ -523,18 +572,7 @@ export function PatientQueryWorkflowPage() {
                                       {examination.videos.map((video, videoIndex) => (
                                         <TableRow key={`${video.id}-${videoIndex}`}>
                                           <TableCell>
-                                            <Box
-                                              component="img"
-                                              alt={`${video.name} thumbnail`}
-                                              src={video.thumbnail}
-                                              sx={{
-                                                width: 72,
-                                                height: 72,
-                                                borderRadius: 1,
-                                                objectFit: "cover",
-                                                border: "1px solid rgba(148, 197, 255, 0.12)"
-                                              }}
-                                            />
+                                            <VideoThumbnail thumbnail={video.thumbnail} region={video.region} name={video.name} />
                                           </TableCell>
                                           <TableCell>{video.name}</TableCell>
                                           <TableCell>{video.region.toUpperCase()}</TableCell>
@@ -583,7 +621,7 @@ export function PatientQueryWorkflowPage() {
             </Box>
           </Stack>
         </Paper>
-      ) : (
+      ) : hasSearched ? (
         <Paper
           sx={{
             p: 3.5,
@@ -595,12 +633,11 @@ export function PatientQueryWorkflowPage() {
           <Typography variant="h4" gutterBottom>
             No patient found
           </Typography>
-          {/*<Typography color="text.secondary">Use the sample ids `PT-1001` or `PT-1002` to explore the workflow.</Typography>*/}
           <Typography color="text.secondary">
             {queryError || "No records found for this patient id."}
           </Typography>
         </Paper>
-      )}
+      ) : null}
     </Stack>
   );
 }

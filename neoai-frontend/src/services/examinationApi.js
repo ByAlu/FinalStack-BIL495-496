@@ -43,7 +43,7 @@ function mapVideo(dto, index = 0) {
     id: `${dto.examinationName || "exam"}-${region}-${index}`,
     name: videoName,
     url: dto.url || "",
-    thumbnail: dto.thumbnailUrl || dto.url || "",
+    thumbnail: dto.thumbnailUrl || "",
     region,
     duration: "-",
     comment: "",
