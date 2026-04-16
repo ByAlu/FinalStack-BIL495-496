@@ -8,11 +8,14 @@ import com.backend.model.dto.UploadUrlResponseDTO;
 import com.backend.model.entity.UsExaminationRegion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/examinations")
@@ -29,9 +32,9 @@ public class ExaminationVideoListingController {
      * @return page of Examination Video datas, containing video URL and metadata
      */
     @GetMapping
-    public ResponseEntity<GCSPage<ExaminationVideoDTO>> getExaminationVideosByPatientId(@RequestParam Long patientId,
-                                                                                        @RequestParam(required = false) String pageToken,
-                                                                                        Pageable pageable) {
+    public ResponseEntity<GCSPage<Map<String, Object>>> getExaminationVideosByPatientId(@RequestParam Long patientId,
+                                                                                         @RequestParam(required = false) String pageToken,
+                                                                                         Pageable pageable) {
         return ResponseEntity.ok(service.getExaminationVideosByPatientId(patientId,pageToken ,pageable));
     }
 
@@ -50,8 +53,25 @@ public class ExaminationVideoListingController {
     }
 
     @GetMapping("/{patientId}/{examName}")
-    public ResponseEntity<List<ExaminationVideoDTO>> getVideos(@PathVariable Long patientId,
-                                                               @PathVariable String examName) {
-        return ResponseEntity.ok(cloudService.getExaminationVideoDTO(patientId, examName));
+    public ResponseEntity<Map<String, Object>> getVideos(@PathVariable Long patientId,
+                                                         @PathVariable String examName) {
+        GCSPage<Map<String, Object>> groupedData = service.getExaminationVideosByPatientId(
+                patientId,
+                null,
+                PageRequest.of(0, 1000)
+        );
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("patientId", patientId);
+
+        Map<String, Object> exams = new LinkedHashMap<>();
+        if (!groupedData.getContent().isEmpty()) {
+            Object rawExams = groupedData.getContent().get(0).get("exams");
+            if (rawExams instanceof Map<?, ?> allExams && allExams.containsKey(examName)) {
+                exams.put(examName, allExams.get(examName));
+            }
+        }
+        response.put("exams", exams);
+        return ResponseEntity.ok(response);
     }
 }

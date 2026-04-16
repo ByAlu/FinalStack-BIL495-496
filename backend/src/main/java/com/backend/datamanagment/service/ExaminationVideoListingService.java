@@ -2,9 +2,10 @@ package com.backend.datamanagment.service;
 
 import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.dto.GCSPage;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.Map;
+
 public interface ExaminationVideoListingService {
-    GCSPage<ExaminationVideoDTO> getExaminationVideosByPatientId(Long patientId, String pageToken, Pageable pageable);
+    GCSPage<Map<String, Object>> getExaminationVideosByPatientId(Long patientId, String pageToken, Pageable pageable);
 }

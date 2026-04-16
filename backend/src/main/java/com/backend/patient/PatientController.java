@@ -29,7 +29,7 @@ public class PatientController {
     }
     @GetMapping("/test")
     public String getMethodName() {
-        return new String();
+        return "healthy";
     }
     
 }

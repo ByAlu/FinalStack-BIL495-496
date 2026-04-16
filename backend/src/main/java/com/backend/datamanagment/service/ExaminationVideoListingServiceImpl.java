@@ -14,7 +14,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ExaminationVideoListingServiceImpl implements ExaminationVideoListingService{
@@ -28,15 +30,16 @@ public class ExaminationVideoListingServiceImpl implements ExaminationVideoListi
         this.bucketName = bucketName;
     }
     @Override
-    public GCSPage<ExaminationVideoDTO> getExaminationVideosByPatientId(Long patientId, String pageToken, Pageable pageable) {
+    public GCSPage<Map<String, Object>> getExaminationVideosByPatientId(Long patientId, String pageToken, Pageable pageable) {
         String prefix = String.format("ai/PT_%d/", patientId);
-        int targetSize = pageable.getPageSize()* UsExaminationRegion.values().length;
+        int targetSize = pageable.getPageSize() * UsExaminationRegion.values().length;
         if(pageToken == null) pageToken = "";
-        List<ExaminationVideoDTO> dtos = new ArrayList<>();
+        Map<String, Map<String, Object>> exams = new LinkedHashMap<>();
+
         do{
             com.google.api.gax.paging.Page<Blob> blobPage = cloudService.getStorage().list(bucketName,
                     Storage.BlobListOption.prefix(prefix),
-                    Storage.BlobListOption.pageSize(targetSize-dtos.size()),
+                    Storage.BlobListOption.pageSize(targetSize),
                     Storage.BlobListOption.pageToken(pageToken));
 
             for (Blob blob : blobPage.getValues()) {
@@ -46,22 +49,29 @@ public class ExaminationVideoListingServiceImpl implements ExaminationVideoListi
                 if (parts.length < 4 || path.contains("_thumb")) continue;
 
                 try {
-                    String regionPart = parts[3].split("\\.")[0]; // "R1"
-                    ExaminationVideoDTO dto = new ExaminationVideoDTO(patientId, UsExaminationRegion.valueOf(regionPart));
-                    dto.setExaminationName(parts[2]); // "EX_123"
-                    dto.setUrl(cloudService.generateV4GetObjectSignedUrl(path));
-                    dto.setFileSize(blob.getSize());
-                    dto.setUploadDate(blob.getCreateTimeOffsetDateTime().toLocalDateTime());
-                    dtos.add(dto);
+                    String examName = parts[2]; // "EX_123"
+                    String regionPart = parts[3].split("\\.")[0].toLowerCase(); // "r1"
+
+                    Map<String, Object> examRegions = exams.computeIfAbsent(examName, key -> new LinkedHashMap<>());
+                    Map<String, Object> regionData = new LinkedHashMap<>();
+                    regionData.put("url", cloudService.generateV4GetObjectSignedUrl(path));
+                    regionData.put("fileSize", blob.getSize());
+                    regionData.put("uploadDate", blob.getCreateTimeOffsetDateTime().toLocalDateTime());
+                    examRegions.put(regionPart, regionData);
                 } catch (Exception e) {
                     System.out.println(e.getMessage());
                     continue;
                 }
             }
             pageToken = blobPage.getNextPageToken();
-        }while (dtos.size() < targetSize && pageToken != null);
+        } while (pageToken != null && !pageToken.isEmpty());
 
-        // Spring Page yapısına uyarlıyoruz (GCS offset bilmediği için totalElements'i tahmini veririz)
-        return new GCSPage<>(dtos, pageToken);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("patientId", patientId);
+        payload.put("exams", exams);
+
+        List<Map<String, Object>> content = new ArrayList<>();
+        content.add(payload);
+        return new GCSPage<>(content, null);
     }
 }
