@@ -2,6 +2,8 @@ package com.backend.ai.analysis.model.dto;
 
 import com.backend.model.entity.UsExaminationRegion;
 import com.backend.ai.analysis.model.entity.AnalysisTarget;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -22,7 +24,9 @@ public class DoctorSuggestionRequest {
     Map<UsExaminationRegion, Integer> selectedFrameIndices;
 
     @NotNull(message = "Analysis target must be specified")
-    private AnalysisTarget analysisTarget;
+    @JsonProperty("selected_modules")
+    @JsonAlias("analysisTarget")
+    private AnalysisTarget selectedModules;
 
     @Override
     public String toString() {
@@ -30,7 +34,7 @@ public class DoctorSuggestionRequest {
                 "examinationId='" + examinationId + '\'' +
                 ", patientId='" + patientId + '\'' +
                 ", selectedFrameIndices=" + selectedFrameIndices +
-                ", targets=" + analysisTarget +
+                ", selectedModules=" + selectedModules +
                 '}';
     }
 }

@@ -20,10 +20,9 @@ function buildFrameIndices(selectedFrames) {
 
 export async function startAiAnalysis({ patientId, examinationId, selectedFrames, selectedModuleIds }) {
   const moduleIds = Array.isArray(selectedModuleIds) ? selectedModuleIds : [];
-  const analysisTarget = {
+  const selected_modules = {
     b_lines: moduleIds.includes("b-line"),
-    rds_score: moduleIds.includes("rds-score"),
-    bounding_boxes: true
+    rds_score: moduleIds.includes("rds-score")
   };
 
   try {
@@ -31,7 +30,7 @@ export async function startAiAnalysis({ patientId, examinationId, selectedFrames
       examinationId,
       patientId: normalizePatientId(patientId),
       selectedFrameIndices: buildFrameIndices(selectedFrames),
-      analysisTarget
+      selected_modules
     });
 
     return response.data;

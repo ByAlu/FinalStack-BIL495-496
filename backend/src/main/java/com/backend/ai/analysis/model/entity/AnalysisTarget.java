@@ -8,14 +8,12 @@ import lombok.Setter;
 public class AnalysisTarget {
     private boolean b_lines;
     private boolean rds_score;
-    private boolean bounding_boxes;
 
     @Override
     public String toString() {
-        return "AnalysisTargett{" +
-                "blines='" + b_lines + '\'' +
-                ", rds='" + rds_score + '\'' +
-                ", bboxes=" + bounding_boxes +
+        return "SelectedModules{" +
+                "b_lines=" + b_lines +
+                ", rds_score=" + rds_score +
                 '}';
     }
 }

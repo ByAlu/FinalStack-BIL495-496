@@ -92,9 +92,10 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
                         "videoUrl", selectedVideo.videoUrl,
                         "frameIndex", selectedVideo.frameIndex,
                         "region", selectedVideo.region.name(),
-                        "b_lines", target.isB_lines(),
-                        "rds_score", target.isRds_score(),
-                        "bounding_boxes", target.isBounding_boxes()
+                        "selected_modules", Map.of(
+                                "b_lines", target.isB_lines(),
+                                "rds_score", target.isRds_score()
+                        )
                 ));
 
             }catch (WebClientResponseException e) {
@@ -118,20 +119,15 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
     }
 
     private Map<String, Object> buildFastApiRequestBody(String videoUrl, int frameIndex, AnalysisTarget target) {
-        Map<String, Object> analysisTargetPayload = new HashMap<>();
-        analysisTargetPayload.put("b_lines", target.isB_lines());
-        analysisTargetPayload.put("rds_score", target.isRds_score());
-        analysisTargetPayload.put("bounding_boxes", target.isBounding_boxes());
+        Map<String, Object> selectedModulesPayload = new HashMap<>();
+        selectedModulesPayload.put("b_lines", target.isB_lines());
+        selectedModulesPayload.put("rds_score", target.isRds_score());
 
         Map<String, Object> body = new HashMap<>();
-        body.put("videoUrl", videoUrl);
         body.put("video_url", videoUrl);
-        body.put("frameIndex", frameIndex);
         body.put("frame_index", frameIndex);
-        body.put("callbackUrl", callbackUrl);
         body.put("callback_url", callbackUrl);
-        body.put("analysisTarget", analysisTargetPayload);
-        body.put("analysis_target", analysisTargetPayload);
+        body.put("selected_modules", selectedModulesPayload);
         return body;
     }
 

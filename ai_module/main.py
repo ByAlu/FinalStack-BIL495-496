@@ -73,16 +73,15 @@ CALLBACK_HOST_OVERRIDE = os.getenv("CALLBACK_HOST_OVERRIDE", "").strip()
 
 # ── SCHEMAS ──────────────────────────────────────────────────────────────────
 
-class AnalysisTarget(BaseModel):
+class SelectedModules(BaseModel):
     b_lines: bool = False
     rds_score: bool = False
-    bounding_boxes: bool = False
 
 class AnalyzeRequest(BaseModel):
     video_url: HttpUrl
     frame_index: int
     callback_url: HttpUrl
-    analysis_target: AnalysisTarget
+    selected_modules: SelectedModules
 
 class AnalyzeResponse(BaseModel):
     job_id: str
@@ -182,7 +181,7 @@ def resolve_callback_url(callback_url: str) -> str:
 
 # ── BACKGROUND TASK ───────────────────────────────────────────────────────────
 
-async def run_analysis(job_id: str, video_url: str, frame_index: int, callback_url: str, target: AnalysisTarget):
+async def run_analysis(job_id: str, video_url: str, frame_index: int, callback_url: str, selected_modules: SelectedModules):
     db = app.state.db
     result_payload: AnalysisResult
 
@@ -202,13 +201,13 @@ async def run_analysis(job_id: str, video_url: str, frame_index: int, callback_u
         b_line_count = sum(1 for b in boxes if int(b[0]) == 0)
 
         b_lines_result = None
-        if target.b_lines or target.bounding_boxes:
+        if selected_modules.b_lines:
             b_lines_result = BLineResult(
                 count=b_line_count,
                 bounding_boxes=boxes_to_schema(boxes)
             )
 
-        rds_score = compute_rds_score(b_line_count) if target.rds_score else None
+        rds_score = compute_rds_score(b_line_count) if selected_modules.rds_score else None
 
         result_payload = AnalysisResult(
             job_id=job_id,
@@ -285,7 +284,7 @@ async def analyze(req: AnalyzeRequest, background_tasks: BackgroundTasks):
         str(req.video_url),
         req.frame_index,
         str(req.callback_url),
-        req.analysis_target,
+        req.selected_modules,
     )
 
     return AnalyzeResponse(job_id=job_id)

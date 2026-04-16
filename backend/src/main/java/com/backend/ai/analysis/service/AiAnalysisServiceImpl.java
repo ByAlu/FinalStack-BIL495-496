@@ -63,7 +63,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
 
         aiAnalysis = aiAnalysisRepository.save(aiAnalysis);
 
-        List<String> codes = extractRequestedModules(request.getAnalysisTarget());
+        List<String> codes = extractRequestedModules(request.getSelectedModules());
 
         for (String code : codes) {
 
@@ -95,7 +95,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         */
 
         try {
-            aiModuleService.analyze(analysisUuid, request.getAnalysisTarget());
+            aiModuleService.analyze(analysisUuid, request.getSelectedModules());
         } catch (Exception e) {
             log.error("[AI-ENTRY] analyze failed for analysisUuid={}: {}", analysisUuid, e.getMessage(), e);
         }
@@ -117,10 +117,6 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         if (target.isRds_score()) {
             codes.add("RDS_SCORING");
         }
-        /* For now we assume bboxes are always requested
-        if (target.isBounding_boxes()) {
-            codes.add("BOUNDING_BOXES");
-        }*/
 
         return codes;
     }
