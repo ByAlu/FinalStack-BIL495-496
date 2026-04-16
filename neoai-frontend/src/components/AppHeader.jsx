@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
+import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import {
   AppBar,
   Avatar,
@@ -128,6 +129,15 @@ export function AppHeader({ user, logout, workflowMeta }) {
             >
               <PersonRoundedIcon fontSize="small" sx={{ mr: 1 }} />
               Profile
+            </MenuItem>
+            <MenuItem
+              component={Link}
+              to="/logs"
+              onClick={() => setAnchorEl(null)}
+              sx={{ borderRadius: 1 }}
+            >
+              <StorageRoundedIcon fontSize="small" sx={{ mr: 1 }} />
+              System Logs
             </MenuItem>
             <MenuItem
               onClick={() => {

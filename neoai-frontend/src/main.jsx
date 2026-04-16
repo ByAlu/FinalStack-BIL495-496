@@ -10,6 +10,7 @@ import "./styles/query-page.css";
 import "./styles/report-page.css";
 import "./styles/selection-page.css";
 import "./styles/auth.css";
+import "./styles/logs.css";
 import { appTheme } from "./theme";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
