@@ -12,6 +12,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { PatientQueryWorkflowPage } from "./pages/PatientQueryWorkflowPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ReportingPage } from "./pages/ReportingPage";
+import { LogsPage } from "./pages/LogsPage";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="logs" element={<LogsPage />} />
           <Route path="query" element={<PatientQueryWorkflowPage />} />
           <Route path="selection/:patientId/:examinationId" element={<DataSelectionPage />} />
           <Route path="preprocessing/:patientId/:examinationId" element={<DataPreprocessingPage />} />
