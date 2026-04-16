@@ -126,6 +126,7 @@ function mergeExaminationDetails(patient, examinationId, detailedExamination) {
         ? {
             ...examination,
             ...detailedExamination,
+            date: examination.date,
             displayName: examination.displayName || detailedExamination.displayName
           }
         : examination
@@ -351,8 +352,6 @@ export function PatientQueryWorkflowPage() {
           comparison = (left.displayName || left.id).localeCompare(right.displayName || right.id);
         } else if (sortConfig.key === "date") {
           comparison = parseExamDate(left.date) - parseExamDate(right.date);
-        } else if (sortConfig.key === "videos") {
-          comparison = (left.videoCount ?? left.videos.length ?? 0) - (right.videoCount ?? right.videos.length ?? 0);
         }
 
         return sortConfig.direction === "asc" ? comparison : -comparison;
@@ -592,14 +591,6 @@ export function PatientQueryWorkflowPage() {
                         </Box>
                       </Button>
                     </TableCell>
-                    <TableCell>
-                      <Button color="inherit" onClick={() => handleSort("videos")} sx={{ px: 0, fontWeight: 700 }}>
-                        Videos
-                        <Box component="span" sx={{ ml: 0.75, color: "primary.main" }}>
-                          {getSortIndicator("videos")}
-                        </Box>
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -631,10 +622,9 @@ export function PatientQueryWorkflowPage() {
                           </TableCell>
                           <TableCell>{examination.displayName || examination.id}</TableCell>
                           <TableCell>{formatExamDate(examination.date)}</TableCell>
-                          <TableCell>{examination.videoCount ?? "-"}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell colSpan={4} style={{ paddingBottom: 0, paddingTop: 0 }}>
+                          <TableCell colSpan={3} style={{ paddingBottom: 0, paddingTop: 0 }}>
                             <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                               <Box sx={{ margin: 1 }}>
                                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>

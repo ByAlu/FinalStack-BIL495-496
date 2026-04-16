@@ -6,7 +6,7 @@ import { SelectedFramesSidebar } from "../components/SelectedFramesSidebar";
 import { ViewerStage } from "../components/ViewerStage";
 import { useViewerHold } from "../hooks/useViewerHold";
 import { useViewerZoom } from "../hooks/useViewerZoom";
-import { getExaminationByIds } from "../services/mockApi";
+import { getExaminationByIds } from "../services/examinationApi";
 import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
@@ -51,7 +51,9 @@ export function AiModuleSelectionPage() {
   const magnifierPopoverRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
-  const examination = useMemo(() => getExaminationByIds(patientId, examinationId), [patientId, examinationId]);
+  const routeExamination = location.state?.examination || null;
+  const [examination, setExamination] = useState(routeExamination);
+  const [isLoadingExamination, setIsLoadingExamination] = useState(!routeExamination);
   const committedAiModuleStateCacheKey = getCommittedAiModuleStateCacheKey(patientId, examinationId);
   const selectedFrameMap = location.state?.processedFrames || location.state?.selectedFrames || {};
   const selectedRegions = useMemo(() => regions.filter((region) => selectedFrameMap[region]), [selectedFrameMap]);
@@ -140,6 +142,42 @@ export function AiModuleSelectionPage() {
   });
 
   useEffect(() => {
+    let ignore = false;
+
+    async function loadExamination() {
+      if (routeExamination) {
+        setExamination(routeExamination);
+        setIsLoadingExamination(false);
+        return;
+      }
+
+      setIsLoadingExamination(true);
+
+      try {
+        const result = await getExaminationByIds(patientId, examinationId);
+
+        if (!ignore) {
+          setExamination(result);
+        }
+      } catch {
+        if (!ignore) {
+          setExamination(null);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingExamination(false);
+        }
+      }
+    }
+
+    loadExamination();
+
+    return () => {
+      ignore = true;
+    };
+  }, [examinationId, patientId, routeExamination]);
+
+  useEffect(() => {
     function handlePointerDown(event) {
       if (!magnifierPopoverRef.current?.contains(event.target)) {
         setShowMagnifierPopover(false);
@@ -151,6 +189,16 @@ export function AiModuleSelectionPage() {
       window.removeEventListener("mousedown", handlePointerDown);
     };
   }, []);
+
+  if (isLoadingExamination) {
+    return (
+      <div className="page-stack">
+        <section className="panel">
+          <p>Loading examination...</p>
+        </section>
+      </div>
+    );
+  }
 
   if (!examination) {
     return (
