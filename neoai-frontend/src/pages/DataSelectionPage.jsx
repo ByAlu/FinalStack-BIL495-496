@@ -387,6 +387,7 @@ export function DataSelectionPage() {
       state: {
         patientId,
         examinationId,
+        examination,
         selectedFrames
       }
     });
