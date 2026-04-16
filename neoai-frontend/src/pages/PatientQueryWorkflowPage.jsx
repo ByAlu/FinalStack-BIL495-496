@@ -21,7 +21,7 @@ import {
   Typography,
   Collapse
 } from "@mui/material";
-import { getPatientExaminations } from "../services/examinationApi";
+import { getExaminationByIds, getPatientExaminations } from "../services/examinationApi";
 import { resetExaminationWorkflowSession } from "../utils/resetExaminationWorkflowSession";
 import { getActiveWorkflowContext, resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
@@ -114,6 +114,25 @@ function getInitialPageState() {
   }
 }
 
+function mergeExaminationDetails(patient, examinationId, detailedExamination) {
+  if (!patient) {
+    return patient;
+  }
+
+  return {
+    ...patient,
+    examinations: patient.examinations.map((examination) =>
+      examination.id === examinationId
+        ? {
+            ...examination,
+            ...detailedExamination,
+            displayName: examination.displayName || detailedExamination.displayName
+          }
+        : examination
+    )
+  };
+}
+
 function VideoThumbnail({ thumbnail, region, name }) {
   const [hasImageError, setHasImageError] = useState(false);
   const regionLabel = region ? String(region).toUpperCase() : "-";
@@ -164,7 +183,9 @@ export function PatientQueryWorkflowPage() {
   const [patient , setPatient] = useState(savedPageState?.patient || null);
   const [isLoadingPatient , setisLoadingPatient] = useState(false);
   const [hasSearched, setHasSearched] = useState(Boolean(savedPageState?.hasSearched));
-  const [queryError, setQueryError] = useState("");
+  const [queryError, setQueryError] = useState(savedPageState?.queryError || "");
+  const [loadingVideosById, setLoadingVideosById] = useState({});
+  const [videoErrorsById, setVideoErrorsById] = useState(savedPageState?.videoErrorsById || {});
   const [expandedExaminationId, setExpandedExaminationId] = useState(savedPageState?.expandedExaminationId || "");
   const [resultSize, setResultSize] = useState(savedPageState?.resultSize || 10);
   const [currentPage, setCurrentPage] = useState(savedPageState?.currentPage || 1);
@@ -183,6 +204,8 @@ export function PatientQueryWorkflowPage() {
           query,
           patient,
           hasSearched,
+          queryError,
+          videoErrorsById,
           expandedExaminationId,
           resultSize,
           currentPage,
@@ -198,6 +221,8 @@ export function PatientQueryWorkflowPage() {
     query,
     patient,
     hasSearched,
+    queryError,
+    videoErrorsById,
     expandedExaminationId,
     resultSize,
     currentPage,
@@ -209,6 +234,7 @@ export function PatientQueryWorkflowPage() {
   async function fetchPatient(patientQuery) {
       setisLoadingPatient(true);
       setQueryError("");
+      setVideoErrorsById({});
 
       try {
         const result = await getPatientExaminations(patientQuery);
@@ -220,6 +246,54 @@ export function PatientQueryWorkflowPage() {
       } finally {
         setisLoadingPatient(false)
       }
+  }
+
+  async function fetchExaminationVideos(examinationId) {
+    if (!patient) {
+      return;
+    }
+
+    const examination = patient.examinations.find((candidate) => candidate.id === examinationId);
+
+    if (!examination || examination.videos.length > 0 || loadingVideosById[examinationId]) {
+      return;
+    }
+
+    setLoadingVideosById((current) => ({
+      ...current,
+      [examinationId]: true
+    }));
+    setVideoErrorsById((current) => ({
+      ...current,
+      [examinationId]: ""
+    }));
+
+    try {
+      const detailedExamination = await getExaminationByIds(patient.id, examinationId);
+
+      if (detailedExamination) {
+        setPatient((current) => mergeExaminationDetails(current, examinationId, detailedExamination));
+      }
+    } catch (error) {
+      setVideoErrorsById((current) => ({
+        ...current,
+        [examinationId]: error.message || "Could not load examination videos."
+      }));
+    } finally {
+      setLoadingVideosById((current) => ({
+        ...current,
+        [examinationId]: false
+      }));
+    }
+  }
+
+  async function handleToggleExamination(examinationId) {
+    const isClosing = expandedExaminationId === examinationId;
+    setExpandedExaminationId(isClosing ? "" : examinationId);
+
+    if (!isClosing) {
+      await fetchExaminationVideos(examinationId);
+    }
   }
 
   async function handleSubmit(event) {
@@ -252,7 +326,11 @@ export function PatientQueryWorkflowPage() {
     const inclusiveEndDate = endDate ? getEndOfDay(endDate) : null;
 
     return [...patient.examinations]
-      .filter((examination) => examination.id.toLowerCase().includes(normalizedSearch))
+      .filter((examination) => {
+        const idText = examination.id.toLowerCase();
+        const displayText = (examination.displayName || examination.id).toLowerCase();
+        return idText.includes(normalizedSearch) || displayText.includes(normalizedSearch);
+      })
       .filter((examination) => {
         const examDate = parseExamDate(examination.date);
 
@@ -270,11 +348,11 @@ export function PatientQueryWorkflowPage() {
         let comparison = 0;
 
         if (sortConfig.key === "id") {
-          comparison = left.id.localeCompare(right.id);
+          comparison = (left.displayName || left.id).localeCompare(right.displayName || right.id);
         } else if (sortConfig.key === "date") {
           comparison = parseExamDate(left.date) - parseExamDate(right.date);
         } else if (sortConfig.key === "videos") {
-          comparison = left.videos.length - right.videos.length;
+          comparison = (left.videoCount ?? left.videos.length ?? 0) - (right.videoCount ?? right.videos.length ?? 0);
         }
 
         return sortConfig.direction === "asc" ? comparison : -comparison;
@@ -544,19 +622,16 @@ export function PatientQueryWorkflowPage() {
                             <IconButton
                               aria-label="expand row"
                               size="small"
-                              onClick={() =>
-                                  setExpandedExaminationId((current) =>
-                                    current === examination.id ? "" : examination.id
-                                  )
-                                }
+                              onClick={() => {
+                                void handleToggleExamination(examination.id);
+                              }}
                             >
                               {isExpanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
                             </IconButton>
                           </TableCell>
-                          <TableCell>{examination.id}</TableCell>
+                          <TableCell>{examination.displayName || examination.id}</TableCell>
                           <TableCell>{formatExamDate(examination.date)}</TableCell>
-                          <TableCell>{examination.videos.length}
-                          </TableCell>
+                          <TableCell>{examination.videoCount ?? "-"}</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell colSpan={4} style={{ paddingBottom: 0, paddingTop: 0 }}>
@@ -574,37 +649,46 @@ export function PatientQueryWorkflowPage() {
                                     }}
                                     onClick={() => handleContinue(patient.id, examination.id)}
                                     variant="contained"
+                                    disabled={examination.videos.length === 0 || loadingVideosById[examination.id]}
                                   >
                                     Continue
                                   </Button>
                                 </Box>
 
-                                   <TableContainer component={Box} sx={{ overflowX: "auto" }}>
-                                  <Table size="small">
-                                    <TableHead>
-                                      <TableRow>
-                                        <TableCell>Thumbnail</TableCell>
-                                        <TableCell>Video Name</TableCell>
-                                        <TableCell>Region</TableCell>
-                                        <TableCell>Duration</TableCell>
-                                        <TableCell>Description</TableCell>
-                                      </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                      {examination.videos.map((video, videoIndex) => (
-                                        <TableRow key={`${video.id}-${videoIndex}`}>
-                                          <TableCell>
-                                            <VideoThumbnail thumbnail={video.thumbnail} region={video.region} name={video.name} />
-                                          </TableCell>
-                                          <TableCell>{video.name}</TableCell>
-                                          <TableCell>{video.region.toUpperCase()}</TableCell>
-                                          <TableCell>{video.duration}</TableCell>
-                                          <TableCell>{video.comment}</TableCell>
+                                {loadingVideosById[examination.id] ? (
+                                  <Typography color="text.secondary">Loading examination videos...</Typography>
+                                ) : videoErrorsById[examination.id] ? (
+                                  <Typography color="error.main">{videoErrorsById[examination.id]}</Typography>
+                                ) : examination.videos.length === 0 ? (
+                                  <Typography color="text.secondary">No videos found for this examination.</Typography>
+                                ) : (
+                                  <TableContainer component={Box} sx={{ overflowX: "auto" }}>
+                                    <Table size="small">
+                                      <TableHead>
+                                        <TableRow>
+                                          <TableCell>Thumbnail</TableCell>
+                                          <TableCell>Video Name</TableCell>
+                                          <TableCell>Region</TableCell>
+                                          <TableCell>Duration</TableCell>
+                                          <TableCell>Description</TableCell>
                                         </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
-                                </TableContainer>
+                                      </TableHead>
+                                      <TableBody>
+                                        {examination.videos.map((video, videoIndex) => (
+                                          <TableRow key={`${video.id}-${videoIndex}`}>
+                                            <TableCell>
+                                              <VideoThumbnail thumbnail={video.thumbnail} region={video.region} name={video.name} />
+                                            </TableCell>
+                                            <TableCell>{video.name}</TableCell>
+                                            <TableCell>{video.region.toUpperCase()}</TableCell>
+                                            <TableCell>{video.duration}</TableCell>
+                                            <TableCell>{video.comment}</TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </TableContainer>
+                                )}
                               </Box>
                             </Collapse>
                           </TableCell>
@@ -655,7 +739,7 @@ export function PatientQueryWorkflowPage() {
           <Typography variant="h4" gutterBottom>
             No patient found
           </Typography>
-          <Typography color="text.secondary">
+          <Typography color={queryError ? "error.main" : "text.secondary"}>
             {queryError || "No records found for this patient id."}
           </Typography>
         </Paper>

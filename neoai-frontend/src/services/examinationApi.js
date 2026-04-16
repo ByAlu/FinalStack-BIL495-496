@@ -36,6 +36,21 @@ function formatDate(dateValue) {
   return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
 }
 
+function normalizeExaminationDisplayName(value) {
+  if (!value) {
+    return "Unknown";
+  }
+
+  const text = String(value);
+  const markerIndex = text.indexOf("_EX_");
+
+  if (markerIndex >= 0) {
+    return text.slice(markerIndex + 1);
+  }
+
+  return text;
+}
+
 function mapVideo(dto, index = 0) {
   const region = normalizeRegion(dto.region);
   const videoName = `${dto.examinationName || "exam"}-${region}.mp4`;
@@ -51,15 +66,31 @@ function mapVideo(dto, index = 0) {
   };
 }
 
+function mapExaminationSummary(dto) {
+  const fullName = dto.fullName || dto.examinationName || "Unknown";
+
+  return {
+    id: fullName,
+    displayName: dto.examinationName || normalizeExaminationDisplayName(fullName),
+    date: formatDate(dto.examinationDate),
+    status: "AVAILABLE",
+    videos: [],
+    videoCount: null
+  };
+}
+
 function mapToExamination(videos, examinationId) {
   const normalizedVideos = (videos || []).map((video, index) => mapVideo(video, index));
   const firstVideo = videos?.[0];
+  const resolvedId = examinationId || firstVideo?.examinationName || "Unknown";
 
   return {
-    id: examinationId || firstVideo?.examinationName || "Unknown",
+    id: resolvedId,
+    displayName: normalizeExaminationDisplayName(resolvedId),
     date: formatDate(firstVideo?.uploadDate || firstVideo?.examinationDate),
     status: "AVAILABLE",
-    videos: normalizedVideos
+    videos: normalizedVideos,
+    videoCount: normalizedVideos.length
   };
 }
 
@@ -71,24 +102,21 @@ export async function getPatientExaminations(patientIdInput) {
   }
 
   try {
-    const response = await api.get("/api/v1/examinations", {
-      params: {
-        patientId,
-        size: 100
-      }
-    });
+    let nextPageToken = null;
+    const examinations = [];
 
-    const content = Array.isArray(response.data?.content) ? response.data.content : [];
-    const groupedByExam = content.reduce((accumulator, item) => {
-      const key = item.examinationName || "Unknown";
-      if (!accumulator[key]) {
-        accumulator[key] = [];
-      }
-      accumulator[key].push(item);
-      return accumulator;
-    }, {});
+    do {
+      const response = await api.get(`/api/v1/examinations/${patientId}`, {
+        params: {
+          size: 100,
+          ...(nextPageToken ? { token: nextPageToken } : {})
+        }
+      });
 
-    const examinations = Object.entries(groupedByExam).map(([examName, videos]) => mapToExamination(videos, examName));
+      const content = Array.isArray(response.data?.content) ? response.data.content : [];
+      examinations.push(...content.map(mapExaminationSummary));
+      nextPageToken = response.data?.nextPageToken || null;
+    } while (nextPageToken);
 
     return {
       id: `PT-${patientId}`,
@@ -112,7 +140,7 @@ export async function getExaminationByIds(patientIdInput, examinationId) {
   }
 
   try {
-    const response = await api.get(`/api/v1/examinations/${patientId}/${examinationId}`);
+    const response = await api.get(`/api/v1/examinations/${patientId}/${encodeURIComponent(examinationId)}`);
     const videos = Array.isArray(response.data) ? response.data : [];
     return mapToExamination(videos, examinationId);
   } catch (error) {
