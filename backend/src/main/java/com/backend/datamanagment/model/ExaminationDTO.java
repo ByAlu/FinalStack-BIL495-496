@@ -10,4 +10,5 @@ import java.time.LocalDateTime;
 public class ExaminationDTO {
     private String examinationName;
     private LocalDateTime examinationDate;
+    private String timeAndExamName;
 }

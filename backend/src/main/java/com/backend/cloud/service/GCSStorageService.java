@@ -191,6 +191,7 @@ public class GCSStorageService implements CloudService {
         ExaminationDTO dto = new ExaminationDTO();
         dto.setExaminationDate(LocalDateTime.ofInstant(Instant.ofEpochSecond(unixTime), ZoneId.systemDefault()));
         dto.setExaminationName(exId);
+        dto.setTimeAndExamName(folderName);
 
         return dto;
     }
