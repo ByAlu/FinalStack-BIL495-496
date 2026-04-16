@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 
 export function LoginPage() {
   const { isAuthenticated, login } = useAuth();
@@ -25,9 +26,18 @@ export function LoginPage() {
     setLoading(true);
     setError("");
 
+    const actionLog = logSimpleAction(
+      `Login: ${credentials.username}`,
+      ActionTypes.LOGIN,
+      "User authentication attempt",
+      { username: credentials.username }
+    );
+
     try {
       await login(credentials);
+      completeAction(actionLog.id, "SUCCEEDED");
     } catch (submitError) {
+      completeAction(actionLog.id, "FAILED");
       setError(submitError.message);
       setLoading(false);
     }

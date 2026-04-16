@@ -5,6 +5,7 @@ import { ReportPdfDocument } from "../components/ReportPdfDocument";
 import { aiRegionResults } from "../data/mockData";
 import { useAuth } from "../context/AuthContext";
 import { findPatientById, getExaminationByIds, getReportById } from "../services/mockApi";
+import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
 const moduleLabelMap = {
