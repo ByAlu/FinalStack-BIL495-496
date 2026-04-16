@@ -50,10 +50,10 @@ public class ExaminationVideoListingController {
         return ResponseEntity.ok(cloudService.generateBulkUploadUrls(patientId,examName, regions));
     }
 
-    @GetMapping("/{patientId}/{examName}")
+    @GetMapping("/{patientId}/{timeAndExamName}")
     public ResponseEntity<List<ExaminationVideoDTO>> getVideos(@PathVariable Long patientId,
-                                                               @PathVariable String examName) {
-        return ResponseEntity.ok(cloudService.getExaminationVideoDTO(patientId, examName));
+                                                               @PathVariable String timeAndExamName) {
+        return ResponseEntity.ok(cloudService.getExaminationVideoDTO(patientId, timeAndExamName));
     }
 
     @GetMapping("/{patientId}")
