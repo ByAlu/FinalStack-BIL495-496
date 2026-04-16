@@ -1,6 +1,8 @@
 package com.backend.cloud.service;
 
+import com.backend.datamanagment.model.ExaminationDTO;
 import com.backend.model.dto.ExaminationVideoDTO;
+import com.backend.model.dto.GCSPage;
 import com.backend.model.dto.UploadUrlResponseDTO;
 import com.backend.model.entity.UsExaminationRegion;
 import com.google.cloud.storage.*;
@@ -11,9 +13,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.net.URL;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.StreamSupport;
 
 @Service
 public class GCSStorageService implements CloudService {
@@ -71,8 +78,14 @@ public class GCSStorageService implements CloudService {
     @Override
     public com.google.api.gax.paging.Page<Blob> listFilesWithPagination(String folderPrefix, int pageSize, String pageToken) {
         // folderPrefix: "patient-123/" gibi olmalı
-        Storage.BlobListOption options = Storage.BlobListOption.prefix(folderPrefix);
+        Storage.BlobListOption options = Storage.BlobListOption.prefix("ai/"+folderPrefix);
+        System.out.println(options);
 
+        if(pageToken == null) {
+            return storage.list(bucketName,
+                    options,
+                    Storage.BlobListOption.pageSize(pageSize));
+        }
         return storage.list(bucketName,
                 options,
                 Storage.BlobListOption.pageSize(pageSize),
@@ -130,6 +143,56 @@ public class GCSStorageService implements CloudService {
         }
         return dtoList;
 
+    }
+
+    @Override
+    public GCSPage<ExaminationDTO> getExaminationsByPatientId(Long patientId, int size, String token) {
+        size=size+1;
+        String prefix = "ai/PT_" + patientId + "/";
+
+        List<Storage.BlobListOption> options = new ArrayList<>();
+        options.add(Storage.BlobListOption.prefix(prefix));
+        options.add(Storage.BlobListOption.currentDirectory()); // delimiter("/") otomatik eklenir
+        options.add(Storage.BlobListOption.pageSize(size)); // 20 adet donsun
+
+        if (token != null && !token.trim().isEmpty()) {
+            options.add(Storage.BlobListOption.pageToken(token));
+        }
+
+        // 1. GCS'den ham sayfayı çek
+        com.google.api.gax.paging.Page<Blob> blobPage = storage.list(bucketName, options.toArray(new Storage.BlobListOption[0]));
+
+        // 2. Klasör isimlerini ayıkla ve DTO'ya map'le
+        // Not: GCS klasör listelerken boş Blob nesneleri veya prefixler döner
+        List<ExaminationDTO> dtoList = StreamSupport.stream(blobPage.getValues().spliterator(), false)
+                .map(Blob::getName)
+                .map(fullName -> {
+                    String cleaned = fullName.endsWith("/") ? fullName.substring(0, fullName.length() - 1) : fullName;
+                    String[] pathParts = cleaned.split("/");
+                    return pathParts[pathParts.length - 1];
+                })
+                .filter(folderName -> folderName.contains("_EX_"))
+                .map(this::mapFolderToDTO)
+                // GCS'den gelen veriyi sayfa içinde tekrar sıralayalım
+                .sorted(Comparator.comparing(ExaminationDTO::getExaminationDate).reversed())
+                .toList();
+
+        // 3. Kendi GCSPage objemizi dönelim (içinde içerik ve sonraki sayfa token'ı olsun)
+        return new GCSPage<>(dtoList, blobPage.getNextPageToken());
+    }
+
+    private ExaminationDTO mapFolderToDTO(String folderName) {
+        // 1. Klasör ismini parçala: "1713264463_EX_133"
+        String[] parts = folderName.split("_EX_");
+
+        long unixTime = Long.parseLong(parts[0]); // İlk 10 hane: 1713264463
+        String exId = parts.length > 1 ? "EX_" + parts[1] : "Unknown Examination";
+
+        ExaminationDTO dto = new ExaminationDTO();
+        dto.setExaminationDate(LocalDateTime.ofInstant(Instant.ofEpochSecond(unixTime), ZoneId.systemDefault()));
+        dto.setExaminationName(exId);
+
+        return dto;
     }
 
     @Override
