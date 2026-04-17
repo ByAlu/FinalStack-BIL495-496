@@ -36,6 +36,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { createUser, getAllUsers, updateUser } from "../services/userApi";
+import { notifyUserError } from "../services/errorToastBus";
 
 const ROLE_OPTIONS = [
   { value: "DOCTOR", label: "Doctor" },
@@ -332,27 +333,37 @@ export function AdminPanelPage() {
     setSubmitSuccess("");
 
     if (!form.username.trim() || !form.email.trim()) {
-      setSubmitError("Username and email are required.");
+      const text = "Username and email are required.";
+      setSubmitError(text);
+      notifyUserError(text);
       return;
     }
 
     if (isCreating && !form.password) {
-      setSubmitError("Password is required for new users.");
+      const text = "Password is required for new users.";
+      setSubmitError(text);
+      notifyUserError(text);
       return;
     }
 
     if (form.password && !isStrongPassword(form.password)) {
-      setSubmitError("Password must be at least 8 characters long and include both letters and numbers.");
+      const text = "Password must be at least 8 characters long and include both letters and numbers.";
+      setSubmitError(text);
+      notifyUserError(text);
       return;
     }
 
     if (!isValidTurkeyPhoneNumber(form.phoneNumber.trim())) {
-      setSubmitError("Phone number must be a valid Turkish number with 10 digits after +90.");
+      const text = "Phone number must be a valid Turkish number with 10 digits after +90.";
+      setSubmitError(text);
+      notifyUserError(text);
       return;
     }
 
     if (!form.allowedDataTypes.length) {
-      setSubmitError("Select at least one allowed data type.");
+      const text = "Select at least one allowed data type.";
+      setSubmitError(text);
+      notifyUserError(text);
       return;
     }
 

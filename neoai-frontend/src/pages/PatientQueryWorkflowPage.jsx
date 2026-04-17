@@ -22,6 +22,7 @@ import {
   Collapse
 } from "@mui/material";
 import { findPatientById } from "../services/mockApi";
+import { notifyUserError } from "../services/errorToastBus";
 import { resetExaminationWorkflowSession } from "../utils/resetExaminationWorkflowSession";
 import { getActiveWorkflowContext, resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
@@ -143,7 +144,11 @@ export function PatientQueryWorkflowPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
-    setPatient(findPatientById(query));
+    const found = findPatientById(query);
+    setPatient(found);
+    if (!found) {
+      notifyUserError("No patient was found for this ID.");
+    }
     setExpandedExaminationId("");
     setCurrentPage(1);
   }

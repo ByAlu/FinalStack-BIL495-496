@@ -32,6 +32,7 @@ import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CloseIcon from "@mui/icons-material/Close";
 import { getLogs } from "../services/systemApi";
+import { notifyUserError } from "../services/errorToastBus";
 import "../styles/logs.css";
 
 const STATUS_COLORS = {
@@ -76,6 +77,7 @@ export function LogsPage() {
       applyFilters(data);
     } catch (error) {
       console.error("Failed to fetch logs:", error);
+      notifyUserError(error?.message || "Could not load activity logs.");
     } finally {
       setLoading(false);
     }

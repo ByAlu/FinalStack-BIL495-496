@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { findPatientById } from "../services/mockApi";
+import { notifyUserError } from "../services/errorToastBus";
 
 export function PatientQueryPage() {
   const [query, setQuery] = useState("PT-1001");
@@ -8,7 +9,11 @@ export function PatientQueryPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
-    setPatient(findPatientById(query));
+    const found = findPatientById(query);
+    setPatient(found);
+    if (!found) {
+      notifyUserError("No patient was found for this ID.");
+    }
   }
 
   return (

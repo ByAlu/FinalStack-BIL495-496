@@ -12,14 +12,17 @@ import "./styles/selection-page.css";
 import "./styles/auth.css";
 import "./styles/logs.css";
 import { appTheme } from "./theme";
+import { ToastProvider } from "./context/ToastContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ThemeProvider theme={appTheme}>
       <CssBaseline />
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ToastProvider>
     </ThemeProvider>
   </React.StrictMode>
 );
