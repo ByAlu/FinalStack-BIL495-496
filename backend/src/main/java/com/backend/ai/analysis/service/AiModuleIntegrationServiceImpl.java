@@ -1,5 +1,6 @@
 package com.backend.ai.analysis.service;
 
+import com.backend.cloud.service.CloudService;
 import com.backend.ai.analysis.model.dto.AiAnalysisModuleRunDTO;
 import com.backend.ai.analysis.model.dto.AiAnalysisPreprocessingSettingDTO;
 import com.backend.ai.analysis.model.dto.AiAnalysisResultDTO;
@@ -11,10 +12,7 @@ import com.backend.ai.analysis.model.entity.UsAnalysisPreprocessingSetting;
 import com.backend.ai.analysis.repository.UsAiAnalysisRepository;
 import com.backend.ai.analysis.repository.UsAnalysisModuleRunRepository;
 import com.backend.model.entity.UsExaminationRegion;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.HttpMethod;
-import com.google.cloud.storage.Storage;
+import com.backend.model.dto.ExaminationVideoDTO;
 import lombok.extern.slf4j.Slf4j;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -51,23 +49,23 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
     private final UsAnalysisModuleRunRepository analysisModuleRunRepository;
     private final UsAiAnalysisRepository aiAnalysisRepository;
     private final WebClient webClient;
-    private final Storage storage;
+    private final CloudService cloudService;
 
     public AiModuleIntegrationServiceImpl(
             UsAnalysisModuleRunRepository analysisModuleRunRepository,
             UsAiAnalysisRepository aiAnalysisRepository,
             WebClient webClient,
-            Storage storage,
+            CloudService cloudService,
             @Value("${api.callback.url}") String callbackUrl,
             @Value("${api.url}") String apiUrl,
             @Value("${gcp.storage.bucket-name}") String bucketName,
-            @Value("${api.poll.interval-ms:1000}") long pollIntervalMs,
+            @Value("${api.poll.interval-ms:200}") long pollIntervalMs,
             @Value("${api.poll.timeout-ms:120000}") long pollTimeoutMs
     ) {
         this.analysisModuleRunRepository = analysisModuleRunRepository;
         this.aiAnalysisRepository = aiAnalysisRepository;
         this.webClient = webClient;
-        this.storage = storage;
+        this.cloudService = cloudService;
         this.callbackUrl = callbackUrl;
         this.apiUrl = apiUrl;
         this.bucketName = bucketName;
@@ -93,8 +91,17 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
             runsByRegion.computeIfAbsent(resolveRegion(run), ignored -> new ArrayList<>()).add(run);
         }
 
+        List<SubmittedRegionRun> submittedRegionRuns = new ArrayList<>();
+
         for (Map.Entry<UsExaminationRegion, List<UsAnalysisModuleRun>> regionEntry : runsByRegion.entrySet()) {
-            executeRegionRun(analysis, regionEntry.getKey(), regionEntry.getValue());
+            SubmittedRegionRun submittedRegionRun = submitRegionRun(analysis, regionEntry.getKey(), regionEntry.getValue());
+            if (submittedRegionRun != null) {
+                submittedRegionRuns.add(submittedRegionRun);
+            }
+        }
+
+        if (!submittedRegionRuns.isEmpty()) {
+            waitForSubmittedRegionRuns(analysis, submittedRegionRuns);
         }
 
         refreshAnalysisStatus(analysis);
@@ -114,7 +121,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         return body;
     }
 
-    private void executeRegionRun(
+    private SubmittedRegionRun submitRegionRun(
             UsAiAnalysis analysis,
             UsExaminationRegion region,
             List<UsAnalysisModuleRun> regionRuns
@@ -163,12 +170,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
                 run.setRequestPayload(requestPayload);
                 analysisModuleRunRepository.save(run);
             }
-
-            Map<String, Object> jobResponse = waitForJobCompletion(jobId);
-            Map<String, Object> normalizedResultPayload = normalizeAiResultPayload(jobResponse);
-            for (UsAnalysisModuleRun run : regionRuns) {
-                applyRunResponse(analysis, run, jobResponse, normalizedResultPayload);
-            }
+            return new SubmittedRegionRun(region, regionRuns, jobId);
         } catch (WebClientResponseException e) {
             log.error("[AI] FastAPI request failed. status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
             for (UsAnalysisModuleRun run : regionRuns) {
@@ -187,21 +189,37 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
                 ));
             }
         }
+        return null;
     }
 
-    private Map<String, Object> waitForJobCompletion(String jobId) {
+    private void waitForSubmittedRegionRuns(UsAiAnalysis analysis, List<SubmittedRegionRun> submittedRegionRuns) {
         long startedAt = System.currentTimeMillis();
+        List<SubmittedRegionRun> pendingRuns = new ArrayList<>(submittedRegionRuns);
 
-        while (System.currentTimeMillis() - startedAt <= pollTimeoutMs) {
-            Map<String, Object> jobResponse = webClient.get()
-                    .uri(apiUrl + "/jobs/{jobId}", jobId)
-                    .retrieve()
-                    .bodyToMono(MAP_RESPONSE_TYPE)
-                    .block();
+        while (!pendingRuns.isEmpty() && System.currentTimeMillis() - startedAt <= pollTimeoutMs) {
+            List<SubmittedRegionRun> completedRuns = new ArrayList<>();
 
-            AnalysisStatus status = parseStatus(asString(jobResponse, "status"));
-            if (status == AnalysisStatus.COMPLETED || status == AnalysisStatus.FAILED) {
-                return jobResponse;
+            for (SubmittedRegionRun submittedRegionRun : pendingRuns) {
+                Map<String, Object> jobResponse = webClient.get()
+                        .uri(apiUrl + "/jobs/{jobId}", submittedRegionRun.jobId)
+                        .retrieve()
+                        .bodyToMono(MAP_RESPONSE_TYPE)
+                        .block();
+
+                AnalysisStatus status = parseStatus(asString(jobResponse, "status"));
+                if (status == AnalysisStatus.COMPLETED || status == AnalysisStatus.FAILED) {
+                    Map<String, Object> normalizedResultPayload = normalizeAiResultPayload(jobResponse);
+                    for (UsAnalysisModuleRun run : submittedRegionRun.regionRuns) {
+                        applyRunResponse(analysis, run, jobResponse, normalizedResultPayload);
+                    }
+                    completedRuns.add(submittedRegionRun);
+                }
+            }
+
+            pendingRuns.removeAll(completedRuns);
+
+            if (pendingRuns.isEmpty()) {
+                return;
             }
 
             try {
@@ -212,7 +230,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
             }
         }
 
-        throw new IllegalStateException("Timed out waiting for AI job " + jobId);
+        throw new IllegalStateException("Timed out waiting for AI jobs to complete");
     }
 
     private void applyRunResponse(
@@ -601,43 +619,29 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
             throw new IllegalArgumentException("No valid frame index found in selectedFrameIndices for " + region.name());
         }
 
-        String patientId = analysis.getExamination().getExternalPatientId();
+        Long numericPatientId = extractNumericPatientId(analysis.getExamination().getExternalPatientId());
         String examinationId = analysis.getExamination().getExternalExaminationId();
-        String videoPath = resolveExistingVideoPath(patientId, examinationId, region);
 
-        Blob videoBlob = storage.get(BlobId.of(bucketName, videoPath));
-        if (videoBlob == null) {
-            throw new IllegalArgumentException("Video blob not found for path: " + videoPath);
-        }
-
-        String signedVideoUrl = storage.signUrl(
-                videoBlob,
-                60,
-                java.util.concurrent.TimeUnit.MINUTES,
-                Storage.SignUrlOption.httpMethod(HttpMethod.GET),
-                Storage.SignUrlOption.withV4Signature()
-        ).toString();
-
-        return new SelectedVideoRequest(region, resolvedFrameIndex, signedVideoUrl);
-    }
-
-    private String resolveExistingVideoPath(String patientId, String examinationId, UsExaminationRegion region) {
-        String safePatient = sanitizePathPart(patientId);
-        String safeExam = sanitizePathPart(examinationId);
-        List<String> candidates = new ArrayList<>();
-        candidates.add(String.format("ai/PT_%s/%s/%s.mp4", safePatient, safeExam, region.name()));
-        candidates.add(String.format("ai/%s/%s/%s.mp4", safePatient, safeExam, region.name()));
-
-        for (String path : candidates) {
-            if (storage.get(BlobId.of(bucketName, path)) != null) {
-                return path;
+        List<ExaminationVideoDTO> examinationVideos = cloudService.getExaminationVideoDTO(numericPatientId, examinationId);
+        for (ExaminationVideoDTO examinationVideo : examinationVideos) {
+            if (examinationVideo.getRegion() == region && examinationVideo.getUrl() != null && !examinationVideo.getUrl().isBlank()) {
+                return new SelectedVideoRequest(region, resolvedFrameIndex, examinationVideo.getUrl());
             }
         }
-        throw new IllegalArgumentException("No region video found in GCS for " + region.name());
+
+        throw new IllegalArgumentException(
+                "No signed examination video URL found for patient " + numericPatientId
+                        + ", examination " + examinationId
+                        + ", region " + region.name()
+        );
     }
 
-    private String sanitizePathPart(String value) {
-        return Objects.requireNonNullElse(value, "unknown").replaceAll("[^a-zA-Z0-9_\\-]", "_");
+    private Long extractNumericPatientId(String patientId) {
+        String digits = Objects.requireNonNullElse(patientId, "").replaceAll("\\D", "");
+        if (digits.isBlank()) {
+            throw new IllegalArgumentException("Patient id does not contain a numeric value: " + patientId);
+        }
+        return Long.valueOf(digits);
     }
 
     @SuppressWarnings("unchecked")
@@ -661,6 +665,18 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
             this.region = region;
             this.frameIndex = frameIndex;
             this.videoUrl = videoUrl;
+        }
+    }
+
+    private static final class SubmittedRegionRun {
+        private final UsExaminationRegion region;
+        private final List<UsAnalysisModuleRun> regionRuns;
+        private final String jobId;
+
+        private SubmittedRegionRun(UsExaminationRegion region, List<UsAnalysisModuleRun> regionRuns, String jobId) {
+            this.region = region;
+            this.regionRuns = regionRuns;
+            this.jobId = jobId;
         }
     }
 }
