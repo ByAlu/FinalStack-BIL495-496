@@ -439,6 +439,20 @@
   min-height: 56px;
 }
 
+.report-assessment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.report-assessment-status {
+  margin: 0;
+  color: #bcd0e4;
+  line-height: 1.5;
+}
+
 .report-assessment-input::placeholder {
   color: #8ca6c5;
 }

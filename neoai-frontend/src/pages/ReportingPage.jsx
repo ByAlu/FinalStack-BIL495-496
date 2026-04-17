@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ReportPdfDocument } from "../components/ReportPdfDocument";
 import { aiRegionResults } from "../data/mockData";
 import { useAuth } from "../context/AuthContext";
+import { getDoctorSuggestion, saveDoctorSuggestion } from "../services/anallysisApi";
 import { findPatientById, getExaminationByIds, getReportById } from "../services/mockApi";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
@@ -138,6 +139,7 @@ export function ReportingPage() {
   const location = useLocation();
   const { user } = useAuth();
   const report = useMemo(() => getReportById(reportId), [reportId]);
+  const analysisId = location.state?.analysisId || location.state?.analysisResult?.analysisUuid || null;
   const patientId = location.state?.patientId || report?.patientId;
   const examinationId = location.state?.examinationId || report?.examinationId;
   const patient = useMemo(() => findPatientById(patientId), [patientId]);
@@ -152,6 +154,9 @@ export function ReportingPage() {
   const [otherClinicalIndication, setOtherClinicalIndication] = useState("");
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportFormat, setExportFormat] = useState("pdf");
+  const [isLoadingDoctorSuggestion, setIsLoadingDoctorSuggestion] = useState(Boolean(analysisId));
+  const [isSavingDoctorSuggestion, setIsSavingDoctorSuggestion] = useState(false);
+  const [doctorSuggestionStatus, setDoctorSuggestionStatus] = useState("");
   const sessionSelectedFrameMap = useMemo(
     () => readSelectedFramesFromSession(patientId, examinationId),
     [examinationId, patientId]
@@ -303,10 +308,70 @@ export function ReportingPage() {
     ]
   );
 
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadDoctorSuggestionData() {
+      if (!analysisId) {
+        setIsLoadingDoctorSuggestion(false);
+        return;
+      }
+
+      setIsLoadingDoctorSuggestion(true);
+      setDoctorSuggestionStatus("");
+
+      try {
+        const suggestion = await getDoctorSuggestion(analysisId);
+
+        if (!ignore && suggestion) {
+          setFinalDiagnosis(suggestion.finalDiagnosis || "");
+          setTreatmentRecommendation(suggestion.treatmentRecommendation || "");
+          setFollowUpRecommendation(suggestion.followUpRecommendation || "");
+        }
+      } catch (error) {
+        if (!ignore) {
+          setDoctorSuggestionStatus(error.message || "Could not load physician assessment.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingDoctorSuggestion(false);
+        }
+      }
+    }
+
+    loadDoctorSuggestionData();
+
+    return () => {
+      ignore = true;
+    };
+  }, [analysisId]);
+
   function handleClinicalIndicationToggle(optionId) {
     setSelectedClinicalIndications((current) =>
       current.includes(optionId) ? current.filter((item) => item !== optionId) : [...current, optionId]
     );
+  }
+
+  async function handleSaveDoctorSuggestion() {
+    if (!analysisId || isSavingDoctorSuggestion) {
+      return;
+    }
+
+    setIsSavingDoctorSuggestion(true);
+    setDoctorSuggestionStatus("");
+
+    try {
+      await saveDoctorSuggestion(analysisId, {
+        finalDiagnosis,
+        treatmentRecommendation,
+        followUpRecommendation
+      });
+      setDoctorSuggestionStatus("Physician assessment saved.");
+    } catch (error) {
+      setDoctorSuggestionStatus(error.message || "Could not save physician assessment.");
+    } finally {
+      setIsSavingDoctorSuggestion(false);
+    }
   }
 
   async function handleExportPdf() {
@@ -548,6 +613,7 @@ export function ReportingPage() {
           <section className="report-footer-grid">
             <section className="report-card">
               <h2 className="report-card-title">{isRdsSelected ? "6. Clinical Assessment (Physician)" : "5. Clinical Assessment (Physician)"}</h2>
+              {isLoadingDoctorSuggestion ? <p className="report-section-copy">Loading physician assessment...</p> : null}
               <div className="report-assessment-block">
                 <label className="report-assessment-row">
                   <span className="report-assessment-label">Final Diagnosis</span>
@@ -579,6 +645,17 @@ export function ReportingPage() {
                     value={followUpRecommendation}
                   />
                 </label>
+              </div>
+              <div className="report-assessment-actions">
+                <button
+                  className="report-button primary"
+                  disabled={!analysisId || isSavingDoctorSuggestion}
+                  type="button"
+                  onClick={handleSaveDoctorSuggestion}
+                >
+                  {isSavingDoctorSuggestion ? "Saving..." : "Save Assessment"}
+                </button>
+                {doctorSuggestionStatus ? <p className="report-assessment-status">{doctorSuggestionStatus}</p> : null}
               </div>
             </section>
 

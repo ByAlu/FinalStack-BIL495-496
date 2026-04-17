@@ -221,11 +221,7 @@ export function ReportPdfDocument({ reportData }) {
                   <View style={styles.tableRow}>
                     {renderCell("Score", "50%")}
                     {renderCell(String(row.regionScore), "50%", false, true)}
-                  </View>
-                  <View style={styles.tableRow}>
-                    {renderCell("Returned value", "50%", false, false, true)}
-                    {renderCell("Integer score", "50%", false, true, true)}
-                  </View>
+                  </View>                  
                   </View>
                 </>
               ) : null}

@@ -852,9 +852,9 @@ JOIN LATERAL (
 ) AS regions(region, region_order) ON TRUE
 WHERE e.external_patient_id IN ('PT_1001', 'PT_1002')
   AND regions.region_order <= CASE
-      WHEN CAST(RIGHT(e.external_examination_id, 4) AS INTEGER) % 5 = 0 THEN 4
-      WHEN CAST(RIGHT(e.external_examination_id, 4) AS INTEGER) % 3 = 0 THEN 5
-      ELSE 6
+        WHEN CAST(SUBSTRING(e.external_examination_id FROM '(\d+)$') AS INTEGER) % 5 = 0 THEN 4
+        WHEN CAST(SUBSTRING(e.external_examination_id FROM '(\d+)$') AS INTEGER) % 3 = 0 THEN 5
+        ELSE 6
   END
   AND NOT EXISTS (
       SELECT 1

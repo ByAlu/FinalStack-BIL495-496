@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfRenderMock = vi.fn();
 const toBlobMock = vi.fn();
+const mockGetDoctorSuggestion = vi.fn();
+const mockSaveDoctorSuggestion = vi.fn();
 
 vi.mock("@react-pdf/renderer", async () => {
   const React = await import("react");
@@ -35,6 +37,11 @@ vi.mock("../src/context/AuthContext", () => ({
   })
 }));
 
+vi.mock("../src/services/anallysisApi", () => ({
+  getDoctorSuggestion: (...args) => mockGetDoctorSuggestion(...args),
+  saveDoctorSuggestion: (...args) => mockSaveDoctorSuggestion(...args)
+}));
+
 const { AppLayout } = await import("../src/components/AppLayout");
 const { ReportingPage } = await import("../src/pages/ReportingPage");
 
@@ -61,7 +68,9 @@ function buildRouteState() {
       }
     },
     selectedModuleIds: ["rds-score", "b-line"],
+    analysisId: "analysis-123",
     analysisResult: {
+      analysisUuid: "analysis-123",
       resultData: {
         regions: {
           R1: {
@@ -129,8 +138,20 @@ describe("ReportingPage", () => {
   beforeEach(() => {
     pdfRenderMock.mockReset();
     toBlobMock.mockReset();
+    mockGetDoctorSuggestion.mockReset();
+    mockSaveDoctorSuggestion.mockReset();
     pdfRenderMock.mockReturnValue({
       toBlob: toBlobMock.mockResolvedValue(new Blob(["pdf"], { type: "application/pdf" }))
+    });
+    mockGetDoctorSuggestion.mockResolvedValue({
+      finalDiagnosis: "",
+      treatmentRecommendation: "",
+      followUpRecommendation: ""
+    });
+    mockSaveDoctorSuggestion.mockResolvedValue({
+      finalDiagnosis: "",
+      treatmentRecommendation: "",
+      followUpRecommendation: ""
     });
     window.URL.createObjectURL = vi.fn(() => "blob:report");
     window.URL.revokeObjectURL = vi.fn();
@@ -160,6 +181,24 @@ describe("ReportingPage", () => {
 
     expect(finalDiagnosisInput).toHaveValue("Moderate neonatal RDS.");
     expect(treatmentInput).toHaveValue("Continue respiratory support and monitor closely.");
+  });
+
+  it("saves the physician assessment to the backend doctor suggestion endpoint", async () => {
+    renderReportingPage();
+
+    const finalDiagnosisInput = screen.getByPlaceholderText(/write final diagnosis/i);
+    const saveButton = screen.getByRole("button", { name: /save assessment/i });
+
+    await userEvent.type(finalDiagnosisInput, "Moderate neonatal RDS.");
+    await userEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockSaveDoctorSuggestion).toHaveBeenCalledWith("analysis-123", {
+        finalDiagnosis: "Moderate neonatal RDS.",
+        treatmentRecommendation: "",
+        followUpRecommendation: ""
+      });
+    });
   });
 
   it("exports the report as PDF", async () => {

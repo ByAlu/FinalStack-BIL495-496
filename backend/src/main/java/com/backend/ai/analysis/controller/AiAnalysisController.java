@@ -2,9 +2,11 @@ package com.backend.ai.analysis.controller;
 
 import com.backend.ai.analysis.model.dto.AiAnalysisResultDTO;
 import com.backend.ai.analysis.model.dto.AiModuleOptionDTO;
+import com.backend.ai.analysis.model.dto.DoctorSuggestionDTO;
 import com.backend.ai.analysis.service.AiAnalysisService;
 import com.backend.ai.analysis.service.AiModuleCatalogService;
 import com.backend.ai.analysis.service.AiModuleIntegrationService;
+import com.backend.ai.analysis.service.DoctorSuggestionService;
 import com.backend.ai.analysis.model.dto.DoctorSuggestionRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,8 @@ public class AiAnalysisController {
     private AiModuleIntegrationService aiModuleIntegrationService;
     @Autowired
     private AiModuleCatalogService aiModuleCatalogService;
+    @Autowired
+    private DoctorSuggestionService doctorSuggestionService;
 
     @GetMapping("/modules")
     public ResponseEntity<List<AiModuleOptionDTO>> getAvailableModules() {
@@ -38,6 +42,19 @@ public class AiAnalysisController {
     @GetMapping("/{uuid}")
     public ResponseEntity<AiAnalysisResultDTO> getAnalysis(@PathVariable UUID uuid) {
         return ResponseEntity.ok(aiModuleIntegrationService.getAnalysis(uuid));
+    }
+
+    @GetMapping("/{uuid}/doctor-suggestion")
+    public ResponseEntity<DoctorSuggestionDTO> getDoctorSuggestion(@PathVariable UUID uuid) {
+        return ResponseEntity.ok(doctorSuggestionService.getByAnalysisUuid(uuid));
+    }
+
+    @PutMapping("/{uuid}/doctor-suggestion")
+    public ResponseEntity<DoctorSuggestionDTO> saveDoctorSuggestion(
+            @PathVariable UUID uuid,
+            @RequestBody DoctorSuggestionDTO doctorSuggestionDTO
+    ) {
+        return ResponseEntity.ok(doctorSuggestionService.saveByAnalysisUuid(uuid, doctorSuggestionDTO));
     }
 
     @PostMapping("/callback")

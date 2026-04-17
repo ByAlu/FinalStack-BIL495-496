@@ -109,3 +109,33 @@ export async function getAiAnalysisResult(analysisId) {
     throw new Error(error.response?.data?.message || "Could not load AI analysis result.");
   }
 }
+
+export async function getDoctorSuggestion(analysisId) {
+  if (!analysisId) {
+    return {
+      finalDiagnosis: "",
+      treatmentRecommendation: "",
+      followUpRecommendation: ""
+    };
+  }
+
+  try {
+    const response = await api.get(`/api/v1/ai-analysis/${analysisId}/doctor-suggestion`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Could not load physician assessment.");
+  }
+}
+
+export async function saveDoctorSuggestion(analysisId, payload) {
+  if (!analysisId) {
+    throw new Error("Analysis id is required to save physician assessment.");
+  }
+
+  try {
+    const response = await api.put(`/api/v1/ai-analysis/${analysisId}/doctor-suggestion`, payload);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Could not save physician assessment.");
+  }
+}
