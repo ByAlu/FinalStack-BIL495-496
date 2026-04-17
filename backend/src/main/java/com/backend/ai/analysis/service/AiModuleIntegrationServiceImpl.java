@@ -85,7 +85,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
                 .orElseThrow(() -> new EntityNotFoundException("Analysis not found: " + analysisUuid));
 
         analysis.setStatus(AnalysisStatus.PROCESSING);
-        aiAnalysisRepository.save(analysis);
+        aiAnalysisRepository.saveAndFlush(analysis);
         Map<UsExaminationRegion, String> examinationVideoUrls = loadExaminationVideoUrls(analysis);
 
         Map<UsExaminationRegion, List<UsAnalysisModuleRun>> runsByRegion = new LinkedHashMap<>();
@@ -116,9 +116,13 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         }
 
         refreshAnalysisStatus(analysis);
-        analysis.setResultData(buildSummaryResultData(analysis));
-        aiAnalysisRepository.save(analysis);
-        return toResultDto(analysis);
+        Map<String, Object> finalResultData = buildSummaryResultData(analysis);
+        UsAiAnalysis persistedAnalysis = persistAnalysisState(
+                analysis.getAnalysisUuid(),
+                analysis.getStatus(),
+                finalResultData
+        );
+        return toResultDto(persistedAnalysis);
     }
 
     private Map<String, Object> buildFastApiRequestBody(String videoUrl, int frameIndex, AnalysisTarget target) {
@@ -269,8 +273,11 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
 
         analysisModuleRunRepository.save(run);
         refreshAnalysisStatus(analysis);
-        analysis.setResultData(buildSummaryResultData(analysis));
-        aiAnalysisRepository.save(analysis);
+        persistAnalysisState(
+                analysis.getAnalysisUuid(),
+                analysis.getStatus(),
+                buildSummaryResultData(analysis)
+        );
     }
 
     private void markRunFailed(
@@ -289,8 +296,11 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
                 "error", errorMessage == null ? "Unknown error" : errorMessage
         ));
         refreshAnalysisStatus(analysis);
-        analysis.setResultData(buildSummaryResultData(analysis));
-        aiAnalysisRepository.save(analysis);
+        persistAnalysisState(
+                analysis.getAnalysisUuid(),
+                analysis.getStatus(),
+                buildSummaryResultData(analysis)
+        );
     }
 
     private Map<String, Object> buildSelectedModulesPayload(AnalysisTarget target) {
@@ -385,6 +395,18 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         } else {
             analysis.setStatus(AnalysisStatus.PROCESSING);
         }
+    }
+
+    private UsAiAnalysis persistAnalysisState(
+            UUID analysisUuid,
+            AnalysisStatus status,
+            Map<String, Object> resultData
+    ) {
+        UsAiAnalysis persistedAnalysis = aiAnalysisRepository.findById(analysisUuid)
+                .orElseThrow(() -> new EntityNotFoundException("Analysis not found: " + analysisUuid));
+        persistedAnalysis.setStatus(status);
+        persistedAnalysis.setResultData(resultData == null ? null : new LinkedHashMap<>(resultData));
+        return aiAnalysisRepository.saveAndFlush(persistedAnalysis);
     }
 
     private AiAnalysisResultDTO toResultDto(UsAiAnalysis entity) {
@@ -497,7 +519,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
             analysis.setStatus(AnalysisStatus.PROCESSING);
         }
 
-        aiAnalysisRepository.save(analysis);
+        aiAnalysisRepository.saveAndFlush(analysis);
 
     }
 

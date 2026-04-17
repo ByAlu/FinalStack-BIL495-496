@@ -18,7 +18,6 @@ import com.backend.model.entity.UsExaminationRegion;
 import com.backend.model.repository.UsExaminationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -53,7 +52,6 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     }
 
     @Override
-    @Transactional
     public AiAnalysisResultDTO startAnalysis(DoctorSuggestionRequest request) {
         UsExamination examination = usExaminationRepository.findByExternalExaminationId(request.getExaminationId())
                 .orElseThrow(() -> new IllegalArgumentException("Examination not found: " + request.getExaminationId()));

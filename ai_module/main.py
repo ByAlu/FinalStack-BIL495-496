@@ -135,9 +135,9 @@ async def run_analysis(
 
         def random_box():
             return BoundingBox(
-                x=round(random.uniform(0, 1280), 2),
-                y=round(random.uniform(0, 720), 2),
-                width=round(random.uniform(10, 200), 2),
+                x=round(random.uniform(0, 512), 2),
+                y=round(random.uniform(0, 512), 2),
+                width=round(random.uniform(50, 200), 2),
                 height=round(random.uniform(10, 200), 2),
                 confidence=round(random.uniform(0.3, 0.99), 4),
             )
