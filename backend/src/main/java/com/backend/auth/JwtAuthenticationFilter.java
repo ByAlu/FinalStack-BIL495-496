@@ -41,7 +41,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 2. Token'ı ayıkla
         jwt = authHeader.substring(7);
-        userName = jwtService.extractUsername(jwt); // sub kısmını (NeoRacer06) alıyoruz
+        try {
+            userName = jwtService.extractUsername(jwt); // sub kısmını (NeoRacer06) alıyoruz
+        } catch (Exception e) {
+            // Invalid/expired token: do not abort the chain (permitAll routes must still work).
+            filterChain.doFilter(request, response);
+            return;
+        }
         // 3. Kullanıcı varsa ve sistemde henüz login olmamışsa (SecurityContext boşsa)
         if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userName);
@@ -63,6 +69,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
-        return request.getServletPath().startsWith("/api/v1/auth");
+        String path = requestPathWithoutContext(request);
+        return path.startsWith("/api/v1/auth")
+                || path.equals("/api/v1/ai-analysis/callback");
+    }
+
+    private static String requestPathWithoutContext(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        if (contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath)) {
+            uri = uri.substring(contextPath.length());
+        }
+        return uri.isEmpty() ? "/" : uri;
     }
 }

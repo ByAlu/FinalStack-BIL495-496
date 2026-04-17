@@ -8,11 +8,11 @@ import com.backend.ai.analysis.model.entity.UsAiAnalysis;
 import com.backend.ai.analysis.model.entity.UsAnalysisModuleRun;
 import com.backend.ai.analysis.repository.UsAiAnalysisRepository;
 import com.backend.ai.analysis.repository.UsAnalysisModuleRunRepository;
+import com.backend.cloud.service.CloudService;
+import com.backend.model.dto.ExaminationVideoDTO;
 import com.backend.model.entity.UsExaminationRegion;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.HttpMethod;
-import com.google.cloud.storage.Storage;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -29,11 +29,10 @@ import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.Map;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Objects;
+import java.util.LinkedHashMap;
 
 @Service
 @Slf4j
@@ -43,8 +42,6 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
     private String callbackUrl;
     @Value("${api.url}")
     private String apiUrl;
-    @Value("${gcp.storage.bucket-name}")
-    private String bucketName;
 
     @Autowired
     private UsAnalysisModuleRunRepository analysisModuleRunRepository;
@@ -53,25 +50,27 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
     @Autowired
     private WebClient webClient;
     @Autowired
-    private Storage storage;
+    private CloudService cloudService;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public AiAnalysisDTO analyze(UUID analysisUuid, AnalysisTarget target) {
         UsAiAnalysis analysis = aiAnalysisRepository.findById(analysisUuid)
             .orElseThrow();
 
-        SelectedVideoRequest selectedVideo = resolveSelectedVideoRequest(analysis);
-        Map<String, Object> requestPayload = buildRequestPayload(selectedVideo, target);
-        Map<String, Object> fastApiRequestBody = buildFastApiRequestBody(
-                selectedVideo.videoUrl,
-                selectedVideo.frameIndex,
-                target
-        );
-
         for (UsAnalysisModuleRun run : analysis.getModuleRuns()) {
-            if (!run.getAiModule().isActive()) {
+            if (!run.getAiModule().isActive() || run.getStatus() != AnalysisStatus.PENDING) {
                 continue;
             }
+            SelectedVideoRequest selectedVideo = resolveSelectedVideoRequest(analysis, run);
+            Map<String, Object> selectedModules = resolveSelectedModulesPayload(run, target);
+            Map<String, Object> requestPayload = buildRequestPayload(selectedVideo, selectedModules);
+            Map<String, Object> fastApiRequestBody = buildFastApiRequestBody(
+                    selectedVideo.videoUrl,
+                    selectedVideo.frameIndex,
+                    selectedModules
+            );
             triggerModuleRun(run, fastApiRequestBody, requestPayload);
         }
 
@@ -101,25 +100,23 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
     }
 
     private String callAnalyzeApi(Map<String, Object> fastApiRequestBody) {
-        log.info("[AI] Calling FastAPI endpoint: {}/analyze", apiUrl);
+        log.info("[AI] Calling FastAPI endpoint: {}/analyze with payload={}", apiUrl, fastApiRequestBody);
         Map<String, Object> response = webClient.post()
                 .uri(apiUrl + "/analyze")
                 .bodyValue(fastApiRequestBody)
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
                 .block();
+        log.info("[AI] FastAPI response: {}", response);
         return asString(response, "job_id", "jobId", "external_job_id");
     }
 
-    private Map<String, Object> buildRequestPayload(SelectedVideoRequest selectedVideo, AnalysisTarget target) {
+    private Map<String, Object> buildRequestPayload(SelectedVideoRequest selectedVideo, Map<String, Object> selectedModules) {
         return Map.of(
                 "videoUrl", selectedVideo.videoUrl,
                 "frameIndex", selectedVideo.frameIndex,
                 "region", selectedVideo.region.name(),
-                "selected_modules", Map.of(
-                        "b_lines", target.isB_lines(),
-                        "rds_score", target.isRds_score()
-                )
+                "selected_modules", selectedModules
         );
     }
 
@@ -130,11 +127,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         return dto;
     }
 
-    private Map<String, Object> buildFastApiRequestBody(String videoUrl, int frameIndex, AnalysisTarget target) {
-        Map<String, Object> selectedModulesPayload = new HashMap<>();
-        selectedModulesPayload.put("b_lines", target.isB_lines());
-        selectedModulesPayload.put("rds_score", target.isRds_score());
-
+    private Map<String, Object> buildFastApiRequestBody(String videoUrl, int frameIndex, Map<String, Object> selectedModulesPayload) {
         Map<String, Object> body = new HashMap<>();
         body.put("video_url", videoUrl);
         body.put("frame_index", frameIndex);
@@ -172,7 +165,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
             updateModuleRunFromCallback(moduleRun, callbackPayLoad, callbackStatus);
         }
 
-        mergeResultData(analysis, callbackPayLoad);
+        mergeResultData(analysis, moduleRun, callbackPayLoad, callbackStatus);
         analysis.setStatus(calculateAnalysisStatus(analysis));
         aiAnalysisRepository.save(analysis);
     }
@@ -207,11 +200,43 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         }
     }
 
-    private void mergeResultData(UsAiAnalysis analysis, Map<String, Object> callbackPayLoad) {
-        Map<String, Object> resultData = extractResultData(callbackPayLoad);
-        if (resultData != null && !resultData.isEmpty()) {
-            analysis.setResultData(resultData);
+    @SuppressWarnings("unchecked")
+    private void mergeResultData(
+            UsAiAnalysis analysis,
+            UsAnalysisModuleRun moduleRun,
+            Map<String, Object> callbackPayLoad,
+            AnalysisStatus callbackStatus
+    ) {
+        Map<String, Object> normalizedResult = extractResultData(callbackPayLoad);
+        if (normalizedResult == null) {
+            normalizedResult = new LinkedHashMap<>();
         }
+        normalizedResult.putIfAbsent("status", callbackStatus.name().toLowerCase(Locale.ROOT));
+        String jobId = asString(callbackPayLoad, "job_id", "jobId", "external_job_id");
+        if (jobId != null) {
+            normalizedResult.putIfAbsent("job_id", jobId);
+        }
+
+        Map<String, Object> currentAnalysisResult = analysis.getResultData() != null
+                ? new LinkedHashMap<>(analysis.getResultData())
+                : new LinkedHashMap<>();
+
+        String region = moduleRun != null ? asString(moduleRun.getRequestPayload(), "region") : null;
+        if (region != null && !region.isBlank()) {
+            Object existingRegions = currentAnalysisResult.get("regions");
+            Map<String, Object> regionsMap;
+            if (existingRegions instanceof Map<?, ?> existingMap) {
+                regionsMap = new LinkedHashMap<>((Map<String, Object>) existingMap);
+            } else {
+                regionsMap = new LinkedHashMap<>();
+            }
+            regionsMap.put(region, normalizedResult);
+            currentAnalysisResult.put("regions", regionsMap);
+        } else {
+            currentAnalysisResult.putAll(normalizedResult);
+        }
+
+        analysis.setResultData(currentAnalysisResult);
     }
 
     private AnalysisStatus calculateAnalysisStatus(UsAiAnalysis analysis) {
@@ -282,13 +307,66 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
             return (Map<String, Object>) resultMap;
         }
         Object result = payload.get("result");
+        if (result instanceof String s && !s.isBlank()) {
+            try {
+                Map<String, Object> inner = objectMapper.readValue(s, new TypeReference<>() {});
+                Map<String, Object> fromInner = extractResultData(inner);
+                if (fromInner != null && !fromInner.isEmpty()) {
+                    return fromInner;
+                }
+            } catch (Exception e) {
+                log.debug("[AI] Callback payload had string \"result\" but it was not JSON: {}", e.getMessage());
+            }
+        }
         if (result instanceof Map<?, ?> resultMap) {
             return (Map<String, Object>) resultMap;
+        }
+        if (payload.containsKey("b_lines") || payload.containsKey("rds_score") || payload.containsKey("error")) {
+            Map<String, Object> fallback = new LinkedHashMap<>();
+            if (payload.containsKey("b_lines")) {
+                fallback.put("b_lines", payload.get("b_lines"));
+            }
+            if (payload.containsKey("rds_score")) {
+                fallback.put("rds_score", payload.get("rds_score"));
+            }
+            if (payload.containsKey("error")) {
+                fallback.put("error", payload.get("error"));
+            }
+            return fallback;
         }
         return null;
     }
 
-    private SelectedVideoRequest resolveSelectedVideoRequest(UsAiAnalysis analysis) {
+    private SelectedVideoRequest resolveSelectedVideoRequest(UsAiAnalysis analysis, UsAnalysisModuleRun run) {
+        RegionFrameSelection selected = resolveRegionAndFrameForRun(analysis, run);
+        UsExaminationRegion region = selected.region();
+        int frameIndex = selected.frameIndex();
+
+        Long patientId = analysis.getPatientId();
+        String examinationId = analysis.getExamId();
+        String signedVideoUrl = resolveExistingVideoPath(patientId, examinationId, region);
+
+        return new SelectedVideoRequest(region, frameIndex, signedVideoUrl);
+    }
+
+    private RegionFrameSelection resolveRegionAndFrameForRun(UsAiAnalysis analysis, UsAnalysisModuleRun run) {
+        Map<String, Object> payload = run.getRequestPayload();
+        if (payload != null) {
+            String payloadRegion = asString(payload, "region");
+            Integer payloadFrame = asInteger(payload, "frameIndex", "frame_index");
+
+            if (payloadRegion != null && payloadFrame != null && payloadFrame >= 0) {
+                try {
+                    return new RegionFrameSelection(
+                            UsExaminationRegion.valueOf(payloadRegion),
+                            payloadFrame
+                    );
+                } catch (IllegalArgumentException ignored) {
+                    // fall through to analysis-level lookup
+                }
+            }
+        }
+
         Map<UsExaminationRegion, Integer> selectedFrames = analysis.getSelectedFrameIndices();
         if (selectedFrames == null || selectedFrames.isEmpty()) {
             throw new IllegalArgumentException("No frame index was provided for analysis " + analysis.getAnalysisUuid());
@@ -300,45 +378,56 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
                 .min(Comparator.comparing(e -> e.getKey().name()))
                 .orElseThrow(() -> new IllegalArgumentException("No valid frame index found in selectedFrameIndices"));
 
-        UsExaminationRegion region = selected.getKey();
-        int frameIndex = selected.getValue();
+        return new RegionFrameSelection(selected.getKey(), selected.getValue());
+    }
 
-        Long patientId = analysis.getPatientId();
-        String examinationId = analysis.getExamId();
-        String videoPath = resolveExistingVideoPath(patientId, examinationId, region);
-
-        Blob videoBlob = storage.get(BlobId.of(bucketName, videoPath));
-        if (videoBlob == null) {
-            throw new IllegalArgumentException("Video blob not found for path: " + videoPath);
+    private Map<String, Object> resolveSelectedModulesPayload(UsAnalysisModuleRun run, AnalysisTarget fallbackTarget) {
+        Map<String, Object> payload = run.getRequestPayload();
+        if (payload != null) {
+            Object runSelectedModules = payload.get("selected_modules");
+            if (runSelectedModules instanceof Map<?, ?> selectedModulesMap) {
+                Map<String, Object> selectedModules = new HashMap<>();
+                Object bLines = selectedModulesMap.get("b_lines");
+                Object rdsScore = selectedModulesMap.get("rds_score");
+                selectedModules.put("b_lines", bLines instanceof Boolean ? bLines : false);
+                selectedModules.put("rds_score", rdsScore instanceof Boolean ? rdsScore : false);
+                return selectedModules;
+            }
         }
 
-        String signedVideoUrl = storage.signUrl(
-                videoBlob,
-                60,
-                java.util.concurrent.TimeUnit.MINUTES,
-                Storage.SignUrlOption.httpMethod(HttpMethod.GET),
-                Storage.SignUrlOption.withV4Signature()
-        ).toString();
+        return Map.of(
+                "b_lines", fallbackTarget.isB_lines(),
+                "rds_score", fallbackTarget.isRds_score()
+        );
+    }
 
-        return new SelectedVideoRequest(region, frameIndex, signedVideoUrl);
+    private Integer asInteger(Map<String, Object> payload, String... keys) {
+        String rawValue = asString(payload, keys);
+        if (rawValue == null) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(rawValue);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private String resolveExistingVideoPath(Long patientId, String examinationId, UsExaminationRegion region) {
-        String safeExam = sanitizePathPart(examinationId);
-        List<String> candidates = new ArrayList<>();
-        candidates.add(String.format("ai/PT_%s/%s/%s.mp4", patientId, safeExam, region.name()));
-        candidates.add(String.format("ai/%s/%s/%s.mp4", patientId, safeExam, region.name()));
-
-        for (String path : candidates) {
-            if (storage.get(BlobId.of(bucketName, path)) != null) {
-                return path;
+        List<ExaminationVideoDTO> videos = cloudService.getExaminationVideoDTO(patientId, examinationId);
+        for (ExaminationVideoDTO video : videos) {
+            if (video.getRegion() == region && video.getUrl() != null && !video.getUrl().isBlank()) {
+                return video.getUrl();
             }
         }
+        List<String> availableRegions = videos.stream()
+                .map(ExaminationVideoDTO::getRegion)
+                .filter(java.util.Objects::nonNull)
+                .map(Enum::name)
+                .toList();
+        log.error("[AI] No region video found via CloudService. patientId={}, examinationId={}, region={}, availableRegions={}",
+                patientId, examinationId, region.name(), availableRegions);
         throw new IllegalArgumentException("No region video found in GCS for " + region.name());
-    }
-
-    private String sanitizePathPart(String value) {
-        return Objects.requireNonNullElse(value, "unknown").replaceAll("[^a-zA-Z0-9_\\-]", "_");
     }
 
     private static final class SelectedVideoRequest {
@@ -352,4 +441,6 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
             this.videoUrl = videoUrl;
         }
     }
+
+    private record RegionFrameSelection(UsExaminationRegion region, int frameIndex) {}
 }

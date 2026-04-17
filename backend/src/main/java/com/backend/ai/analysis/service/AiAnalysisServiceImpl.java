@@ -1,6 +1,5 @@
 package com.backend.ai.analysis.service;
 
-import com.backend.ai.analysis.model.dto.AiAnalysisDTO;
 import com.backend.ai.analysis.model.dto.AiSuggestionRequest;
 import com.backend.ai.analysis.model.entity.AnalysisStatus;
 import com.backend.ai.analysis.model.entity.AnalysisTarget;
@@ -21,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -49,6 +49,10 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         //Get exam id
         String examId = request.getExaminationId();
         Long patientId = parsePatientId(request.getPatientId());
+        Map<UsExaminationRegion, Integer> selectedFrames = request.getSelectedFrameIndices();
+        if (selectedFrames == null || selectedFrames.isEmpty()) {
+            throw new IllegalArgumentException("Selected frames must include at least one region");
+        }
 
         //Create new analysis
         UsAiAnalysis aiAnalysis = new UsAiAnalysis();
@@ -60,25 +64,40 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         aiAnalysis = aiAnalysisRepository.save(aiAnalysis);
 
         List<String> codes = extractRequestedModules(request.getSelectedModules());
+        if (codes.isEmpty()) {
+            throw new IllegalArgumentException("At least one AI module must be selected");
+        }
+        UsAiModule primaryModule = resolvePrimaryModule(codes);
+        Map<String, Object> selectedModulesPayload = Map.of(
+                "b_lines", request.getSelectedModules().isB_lines(),
+                "rds_score", request.getSelectedModules().isRds_score()
+        );
 
-        for (String code : codes) {
-
-            UsAiModule module = usAiModuleRepository.findByModuleCode(code)
-                    .orElseThrow(() -> new IllegalArgumentException("Module not found: " + code));
+        for (Map.Entry<UsExaminationRegion, Integer> regionFrame : selectedFrames.entrySet()) {
+            UsExaminationRegion region = regionFrame.getKey();
+            Integer frameIndex = regionFrame.getValue();
+            if (region == null || frameIndex == null || frameIndex < 0) {
+                continue;
+            }
 
             UsAnalysisModuleRun run = new UsAnalysisModuleRun();
             run.setAnalysis(aiAnalysis);
-            run.setAiModule(module);
-            //Versioning is sstatic for now
+            run.setAiModule(primaryModule);
+            //Versioning is static for now
             run.setModuleVersion("V1.0");
             run.setStatus(AnalysisStatus.PENDING);
 
-            // optional payload
-            run.setRequestPayload(Map.of(
-                    "regionFrames", request.getSelectedFrameIndices()
-            ));
+            Map<String, Object> runPayload = new HashMap<>();
+            runPayload.put("region", region.name());
+            runPayload.put("frameIndex", frameIndex);
+            runPayload.put("selected_modules", selectedModulesPayload);
+            run.setRequestPayload(runPayload);
+
             analysisModuleRunRepository.save(run);
             aiAnalysis.getModuleRuns().add(run);
+        }
+        if (aiAnalysis.getModuleRuns().isEmpty()) {
+            throw new IllegalArgumentException("No valid region/frame selections provided");
         }
 
         //Save analysis
@@ -115,6 +134,12 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         }
 
         return codes;
+    }
+
+    private UsAiModule resolvePrimaryModule(List<String> codes) {
+        String primaryCode = codes.contains("B_LINE_DETECTION") ? "B_LINE_DETECTION" : codes.get(0);
+        return usAiModuleRepository.findByModuleCode(primaryCode)
+                .orElseThrow(() -> new IllegalArgumentException("Module not found: " + primaryCode));
     }
     public static long parsePatientId(String rawId) {
         if (rawId == null || rawId.isBlank()) {

@@ -6,6 +6,9 @@ import com.backend.ai.analysis.service.AiAnalysisService;
 import com.backend.ai.analysis.service.AiModuleIntegrationService;
 import com.backend.model.dto.AnalysisInitiatedDTO;
 import com.backend.ai.analysis.model.dto.AiSuggestionRequest;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +24,8 @@ public class AiAnalysisController {
     private AiAnalysisService aiAnalysisService;
     @Autowired
     private AiModuleIntegrationService aiModuleIntegrationService;
+    @Autowired
+    private ObjectMapper objectMapper;
     
     //The ai module backend requires the following
     //callback url
@@ -37,7 +42,9 @@ public class AiAnalysisController {
     }
 
     @PostMapping("/callback")
-    public ResponseEntity<Void> handleAiCallback(@RequestBody Map<String, Object> callbackPayload) {
+    public ResponseEntity<Void> handleAiCallback(@RequestBody String rawBody) throws JsonProcessingException {
+        // Accept JSON whether clients send application/json or text/plain (some HTTP clients default to the latter).
+        Map<String, Object> callbackPayload = objectMapper.readValue(rawBody, new TypeReference<>() {});
         aiModuleIntegrationService.processCallBack(callbackPayload);
         return ResponseEntity.ok().build();
     }
