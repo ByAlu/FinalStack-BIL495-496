@@ -81,6 +81,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
 
         analysis.setStatus(AnalysisStatus.PROCESSING);
         aiAnalysisRepository.save(analysis);
+        Map<UsExaminationRegion, String> examinationVideoUrls = loadExaminationVideoUrls(analysis);
 
         Map<UsExaminationRegion, List<UsAnalysisModuleRun>> runsByRegion = new LinkedHashMap<>();
         for (UsAnalysisModuleRun run : analysis.getModuleRuns()) {
@@ -94,7 +95,12 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         List<SubmittedRegionRun> submittedRegionRuns = new ArrayList<>();
 
         for (Map.Entry<UsExaminationRegion, List<UsAnalysisModuleRun>> regionEntry : runsByRegion.entrySet()) {
-            SubmittedRegionRun submittedRegionRun = submitRegionRun(analysis, regionEntry.getKey(), regionEntry.getValue());
+            SubmittedRegionRun submittedRegionRun = submitRegionRun(
+                    analysis,
+                    regionEntry.getKey(),
+                    regionEntry.getValue(),
+                    examinationVideoUrls
+            );
             if (submittedRegionRun != null) {
                 submittedRegionRuns.add(submittedRegionRun);
             }
@@ -124,10 +130,16 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
     private SubmittedRegionRun submitRegionRun(
             UsAiAnalysis analysis,
             UsExaminationRegion region,
-            List<UsAnalysisModuleRun> regionRuns
+            List<UsAnalysisModuleRun> regionRuns,
+            Map<UsExaminationRegion, String> examinationVideoUrls
     ) {
         Integer frameIndex = resolveFrameIndex(regionRuns.get(0));
-        SelectedVideoRequest selectedVideo = resolveSelectedVideoRequest(analysis, region, frameIndex);
+        SelectedVideoRequest selectedVideo = resolveSelectedVideoRequest(
+                analysis,
+                region,
+                frameIndex,
+                examinationVideoUrls
+        );
         AnalysisTarget target = buildTargetForRuns(regionRuns);
         Map<String, Object> fastApiRequestBody = buildFastApiRequestBody(
                 selectedVideo.videoUrl,
@@ -610,7 +622,8 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
     private SelectedVideoRequest resolveSelectedVideoRequest(
             UsAiAnalysis analysis,
             UsExaminationRegion region,
-            Integer frameIndex
+            Integer frameIndex,
+            Map<UsExaminationRegion, String> examinationVideoUrls
     ) {
         int resolvedFrameIndex = frameIndex != null
                 ? frameIndex
@@ -619,21 +632,42 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
             throw new IllegalArgumentException("No valid frame index found in selectedFrameIndices for " + region.name());
         }
 
-        Long numericPatientId = extractNumericPatientId(analysis.getExamination().getExternalPatientId());
-        String examinationId = analysis.getExamination().getExternalExaminationId();
-
-        List<ExaminationVideoDTO> examinationVideos = cloudService.getExaminationVideoDTO(numericPatientId, examinationId);
-        for (ExaminationVideoDTO examinationVideo : examinationVideos) {
-            if (examinationVideo.getRegion() == region && examinationVideo.getUrl() != null && !examinationVideo.getUrl().isBlank()) {
-                return new SelectedVideoRequest(region, resolvedFrameIndex, examinationVideo.getUrl());
-            }
+        String signedVideoUrl = examinationVideoUrls.get(region);
+        if (signedVideoUrl != null && !signedVideoUrl.isBlank()) {
+            return new SelectedVideoRequest(region, resolvedFrameIndex, signedVideoUrl);
         }
 
+        Long numericPatientId = extractNumericPatientId(analysis.getExamination().getExternalPatientId());
+        String examinationId = analysis.getExamination().getExternalExaminationId();
         throw new IllegalArgumentException(
                 "No signed examination video URL found for patient " + numericPatientId
                         + ", examination " + examinationId
                         + ", region " + region.name()
         );
+    }
+
+    // fetch all urls at once 
+    private Map<UsExaminationRegion, String> loadExaminationVideoUrls(UsAiAnalysis analysis) {
+        Long numericPatientId = extractNumericPatientId(analysis.getExamination().getExternalPatientId());
+        String examinationId = analysis.getExamination().getExternalExaminationId();
+
+        List<ExaminationVideoDTO> examinationVideos = cloudService.getExaminationVideoDTO(numericPatientId, examinationId);
+        Map<UsExaminationRegion, String> examinationVideoUrls = new LinkedHashMap<>();
+
+        for (ExaminationVideoDTO examinationVideo : examinationVideos) {
+            if (examinationVideo.getRegion() == null) {
+                continue;
+            }
+
+            String signedUrl = examinationVideo.getUrl();
+            if (signedUrl == null || signedUrl.isBlank()) {
+                continue;
+            }
+
+            examinationVideoUrls.put(examinationVideo.getRegion(), signedUrl);
+        }
+
+        return examinationVideoUrls;
     }
 
     private Long extractNumericPatientId(String patientId) {
