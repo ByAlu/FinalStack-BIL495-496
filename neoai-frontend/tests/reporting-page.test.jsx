@@ -60,7 +60,31 @@ function buildRouteState() {
         frameIndex: 0
       }
     },
-    selectedModuleIds: ["rds-score", "b-line"]
+    selectedModuleIds: ["rds-score", "b-line"],
+    analysisResult: {
+      resultData: {
+        regions: {
+          R1: {
+            region: "R1",
+            b_line_module: {
+              count: 3
+            },
+            rds_score_module: {
+              score: 2
+            }
+          },
+          R2: {
+            region: "R2",
+            b_line_module: {
+              count: 1
+            },
+            rds_score_module: {
+              score: 1
+            }
+          }
+        }
+      }
+    }
   };
 }
 
@@ -120,6 +144,9 @@ describe("ReportingPage", () => {
     expect(screen.getByText(/3\. selected module results by frame/i)).toBeInTheDocument();
     expect(screen.getByText(/4\. ai disease classification/i)).toBeInTheDocument();
     expect(screen.getByText(/respiratory distress syndrome \(rds\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/selected ai modules:/i)).toBeInTheDocument();
+    expect(screen.getByText(/total detected b-lines across selected frames: 4/i)).toBeInTheDocument();
+    expect(screen.getByText(/dr\. test user/i)).toBeInTheDocument();
   });
 
   it("lets the doctor enter assessment commentary in the report panel", async () => {

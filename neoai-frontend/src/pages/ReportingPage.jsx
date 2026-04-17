@@ -5,13 +5,24 @@ import { ReportPdfDocument } from "../components/ReportPdfDocument";
 import { aiRegionResults } from "../data/mockData";
 import { useAuth } from "../context/AuthContext";
 import { findPatientById, getExaminationByIds, getReportById } from "../services/mockApi";
-import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
 const moduleLabelMap = {
   "rds-score": "RDS-SCORE",
   "b-line": "B-LINE"
 };
+const SECTION_FOUR_CLASSIFICATION_ROWS = [
+  { diagnosis: "Respiratory Distress Syndrome (RDS)", probability: "%74" },
+  { diagnosis: "Transient Tachypnea of the Newborn (TTN)", probability: "%49" },
+  { diagnosis: "Neonatal pneumonia", probability: "%37" },
+  { diagnosis: "Normal lung pattern", probability: "%8" },
+  { diagnosis: "Other", probability: "%9" }
+];
+const SECTION_FIVE_CONSTANT_PARAGRAPHS = [
+  "The selected AI modules provide structured decision support for the reviewed representative frames.",
+  "Findings should be interpreted together with bedside examination, respiratory support requirement, and overall NICU clinical status.",
+  "Final diagnosis and treatment planning remain the responsibility of the reporting physician."
+];
 const clinicalIndicationOptions = [
   { id: "respiratory-distress", label: "Respiratory distress" },
   { id: "suspected-rds", label: "Suspected RDS" },
@@ -66,10 +77,6 @@ function readSelectedModulesFromSession(patientId, examinationId) {
   }
 }
 
-function formatPercent(value) {
-  return `%${Math.round(value * 100)}`;
-}
-
 function getFrameImageSource(frameValue) {
   if (!frameValue) {
     return "";
@@ -110,37 +117,6 @@ function getOverallSeverity(totalScore) {
   };
 }
 
-function getDiagnosisProbabilities(totalScore) {
-  const scores = [
-    {
-      label: "Normal lung pattern",
-      probability: totalScore <= 3 ? 0.58 : 0.08
-    },
-    {
-      label: "Respiratory Distress Syndrome (RDS)",
-      probability: totalScore >= 9 ? 0.74 : totalScore >= 5 ? 0.46 : 0.18
-    },
-    {
-      label: "Transient Tachypnea of the Newborn (TTN)",
-      probability: totalScore >= 4 && totalScore <= 10 ? 0.49 : 0.22
-    },
-    {
-      label: "Neonatal pneumonia",
-      probability: highlightedProbability(totalScore, 7, 0.37, 0.16)
-    },
-    {
-      label: "Other",
-      probability: 0.09
-    }
-  ];
-
-  return scores;
-}
-
-function highlightedProbability(totalScore, threshold, highValue, lowValue) {
-  return totalScore >= threshold ? highValue : lowValue;
-}
-
 function normalizeAnalysisRegionResults(resultData) {
   const regionEntries = Object.entries(resultData?.regions || {});
 
@@ -160,7 +136,7 @@ function normalizeAnalysisRegionResults(resultData) {
 export function ReportingPage() {
   const { reportId } = useParams();
   const location = useLocation();
-  const { token: user } = useAuth();
+  const { user } = useAuth();
   const report = useMemo(() => getReportById(reportId), [reportId]);
   const patientId = location.state?.patientId || report?.patientId;
   const examinationId = location.state?.examinationId || report?.examinationId;
@@ -235,14 +211,37 @@ export function ReportingPage() {
   );
 
   const totalScore = regionReportRows.reduce((sum, row) => sum + row.regionScore, 0);
+  const totalBLineCount = regionReportRows.reduce((sum, row) => sum + row.bLineCount, 0);
   const isRdsSelected = selectedModuleIds.includes("rds-score");
   const isBLineSelected = selectedModuleIds.includes("b-line");
   const overallSeverity = getOverallSeverity(totalScore);
-  const diagnosisProbabilities = getDiagnosisProbabilities(totalScore);
   const highlightedRegions = regionReportRows
     .filter((row) => row.regionScore >= 2 || row.bLineCount >= 3)
     .map((row) => row.region.toUpperCase());
   const signedBy = user?.fullName || report?.reviewedBy || "Dr. Elif Kaya";
+  const selectedModuleLabels = selectedModuleIds
+    .map((moduleId) => moduleLabelMap[moduleId] || moduleId.toUpperCase())
+    .join(", ");
+  const selectedAiSummaryRows = [
+    isBLineSelected
+      ? {
+          label: "B-LINE Summary",
+          value: `Total detected B-lines across selected frames: ${totalBLineCount}`
+        }
+      : null,
+    isRdsSelected
+      ? {
+          label: "RDS-SCORE Summary",
+          value: `Total score across selected regions: ${totalScore} (${overallSeverity.label})`
+        }
+      : null,
+    highlightedRegions.length > 0
+      ? {
+          label: "Highlighted Regions",
+          value: highlightedRegions.join(", ")
+        }
+      : null
+  ].filter(Boolean);
   const patientFields = useMemo(
     () => [
       { label: "Patient ID:", value: report?.patientId || "-" },
@@ -274,10 +273,9 @@ export function ReportingPage() {
       },
       selectedModuleIds,
       regionRows: regionReportRows,
-      diagnosisProbabilities: diagnosisProbabilities.map((item) => ({
-        label: item.label,
-        probability: formatPercent(item.probability)
-      })),
+      classificationRows: SECTION_FOUR_CLASSIFICATION_ROWS,
+      selectedAiSummaryRows,
+      sectionFiveParagraphs: SECTION_FIVE_CONSTANT_PARAGRAPHS,
       totalScore,
       overallSeverityLabel: overallSeverity.label,
       highlightedRegions,
@@ -287,18 +285,19 @@ export function ReportingPage() {
       signedBy
     }),
     [
-      diagnosisProbabilities,
       finalDiagnosis,
       followUpRecommendation,
       highlightedRegions,
-      otherClinicalIndication,
       overallSeverity.label,
+      otherClinicalIndication,
       patientFields,
+      selectedAiSummaryRows,
       selectedModuleIds,
       regionReportRows,
       report?.title,
-      selectedIndicationLabels,
       signedBy,
+      selectedIndicationLabels,
+      totalBLineCount,
       totalScore,
       treatmentRecommendation
     ]
@@ -508,10 +507,10 @@ export function ReportingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {diagnosisProbabilities.map((item) => (
-                    <tr key={item.label}>
-                      <td>{item.label}</td>
-                      <td>{formatPercent(item.probability)}</td>
+                  {SECTION_FOUR_CLASSIFICATION_ROWS.map((item) => (
+                    <tr key={item.diagnosis}>
+                      <td>{item.diagnosis}</td>
+                      <td>{item.probability}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -523,9 +522,26 @@ export function ReportingPage() {
           <section className="report-section-grid">
             <section className="report-card">
               <h2 className="report-card-title">{isRdsSelected ? "5. AI Clinical Report" : "4. AI Clinical Report"}</h2>
-              <p className="report-section-copy">
-                Automatic clinical assessment generated by NeoAI LUS Assistant:
-              </p>
+              <p className="report-section-copy">Automatic clinical assessment generated by NeoAI LUS Assistant:</p>
+              <div className="report-field-list report-ai-summary-list">
+                <div className="report-field-row">
+                  <span className="report-field-label">Selected AI Modules:</span>
+                  <span className="report-field-value">{selectedModuleLabels || "-"}</span>
+                </div>
+                {selectedAiSummaryRows.map((item) => (
+                  <div className="report-field-row" key={item.label}>
+                    <span className="report-field-label">{item.label}:</span>
+                    <span className="report-field-value">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="report-ai-report-copy">
+                {SECTION_FIVE_CONSTANT_PARAGRAPHS.map((paragraph) => (
+                  <p className="report-section-copy" key={paragraph}>
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
             </section>
           </section>
 

@@ -139,6 +139,17 @@
   gap: 14px;
 }
 
+.report-ai-summary-list {
+  margin-top: 16px;
+}
+
+.report-ai-report-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+
 .report-field-row {
   display: flex;
   flex-wrap: wrap;
