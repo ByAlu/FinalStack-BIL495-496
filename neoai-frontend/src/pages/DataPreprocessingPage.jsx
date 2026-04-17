@@ -10,6 +10,7 @@ import { useVideoFrameExtraction } from "../hooks/useVideoFrameExtraction";
 import { useViewerZoom } from "../hooks/useViewerZoom";
 import { createDefaultPreprocessingOperations, hydratePreprocessingOperations } from "../config/preprocessingOperations";
 import { getExaminationByIds } from "../services/mockApi";
+import { notifyUserError } from "../services/errorToastBus";
 import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 import { applyOperationsToFrame } from "../utils/imageProcessing";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
@@ -348,7 +349,9 @@ export function DataPreprocessingPage() {
       } catch (error) {
         if (!ignore) {
           setProcessedPreviewSrc("");
-          setProcessingErrorMessage(error.message || "Preprocessing failed for the selected frame.");
+          const text = error.message || "Preprocessing failed for the selected frame.";
+          setProcessingErrorMessage(text);
+          notifyUserError(text);
         }
       }
     }

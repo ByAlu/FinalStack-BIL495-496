@@ -57,7 +57,7 @@ let mockLogsCache = generateMockLogs();
 
 export async function getBackendStatus() {
   try {
-    const response = await api.get("/api/health");
+    const response = await api.get("/api/health", { skipGlobalErrorToast: true });
 
     return {
       connected: true,
@@ -82,7 +82,7 @@ export async function getLogs() {
   try {
     // Try to fetch from backend first
     try {
-      const response = await api.get("/api/logs");
+      const response = await api.get("/api/logs", { skipGlobalErrorToast: true });
       return response.data;
     } catch (backendError) {
       // Fall back to real action logs from client-side logger

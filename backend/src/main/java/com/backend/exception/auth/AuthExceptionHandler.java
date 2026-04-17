@@ -9,13 +9,34 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.Locale;
+
 @RestControllerAdvice
 public class AuthExceptionHandler {
+
+    private static final String FRIENDLY_WRONG_PASSWORD = "You entered an incorrect password.";
+    private static final String CURRENT_PASSWORD_INCORRECT = "Current password is incorrect.";
+
+    private static String resolveBadCredentialsMessage(BadCredentialsException ex) {
+        String raw = ex.getMessage();
+        if (CURRENT_PASSWORD_INCORRECT.equals(raw)) {
+            return raw;
+        }
+        if (raw == null || raw.isBlank()) {
+            return FRIENDLY_WRONG_PASSWORD;
+        }
+        String normalized = raw.trim().toLowerCase(Locale.ROOT);
+        if ("bad credentials".equals(normalized) || normalized.contains("bad credentials")) {
+            return FRIENDLY_WRONG_PASSWORD;
+        }
+        return raw;
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex) {
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
-                ex.getMessage(),
+                resolveBadCredentialsMessage(ex),
                 System.currentTimeMillis()
         );
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);

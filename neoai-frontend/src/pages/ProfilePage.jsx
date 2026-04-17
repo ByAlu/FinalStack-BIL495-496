@@ -24,6 +24,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { useAuth } from "../context/AuthContext";
 import { changePassword, getCurrentUserProfile } from "../services/userApi";
+import { notifyUserError } from "../services/errorToastBus";
 
 function formatRole(role) {
   if (!role) {
@@ -115,7 +116,10 @@ export function ProfilePage() {
     setPasswordSuccess("");
 
     if (!isStrongPassword(passwordForm.newPassword)) {
-      setPasswordError("New password must be at least 8 characters long and include both letters and numbers.");
+      const text =
+        "New password must be at least 8 characters long and include both letters and numbers.";
+      setPasswordError(text);
+      notifyUserError(text);
       return;
     }
 
