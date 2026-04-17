@@ -6,8 +6,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class AnalysisTarget {
-    private boolean b_lines;
-    private boolean rds_score;
+    private boolean b_lines = false;
+    private boolean rds_score = false;
 
     @Override
     public String toString() {
