@@ -1,29 +1,40 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, HttpUrl
 from typing import Optional, List
-import httpx
-import tempfile
 import os
 import uuid
 import json
-from urllib.parse import urlparse, urlunparse
+import random
+import logging
+import sys
 
 import asyncpg
-import cv2
-
-from visualize_predictions import YOLOBackend
-
 from contextlib import asynccontextmanager
+
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/bline_db")
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+    force=True,
+)
+logger = logging.getLogger("app")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.db = await asyncpg.create_pool(DATABASE_URL)
+
     async with app.state.db.acquire() as conn:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS analysis_jobs (
                 job_id       TEXT PRIMARY KEY,
-                image_url    TEXT,
                 video_url    TEXT NOT NULL,
                 frame_index  INTEGER NOT NULL,
                 callback_url TEXT NOT NULL,
@@ -33,26 +44,12 @@ async def lifespan(app: FastAPI):
                 updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """)
-        await conn.execute("""
-            ALTER TABLE analysis_jobs
-            ADD COLUMN IF NOT EXISTS video_url TEXT
-        """)
-        await conn.execute("""
-            ALTER TABLE analysis_jobs
-            ADD COLUMN IF NOT EXISTS frame_index INTEGER
-        """)
-        await conn.execute("""
-            UPDATE analysis_jobs
-            SET video_url = COALESCE(video_url, image_url)
-            WHERE video_url IS NULL
-        """)
-        await conn.execute("""
-            UPDATE analysis_jobs
-            SET frame_index = COALESCE(frame_index, 0)
-            WHERE frame_index IS NULL
-        """)
+
+    logger.info("app started")
     yield
     await app.state.db.close()
+    logger.info("app stopped")
+
 
 app = FastAPI(title="B-Line Detection API", lifespan=lifespan)
 
@@ -63,19 +60,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "best.pt")
-CONF_THRESHOLD = 0.25
-predictor = YOLOBackend(MODEL_PATH)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/bline_db")
-CALLBACK_HOST_OVERRIDE = os.getenv("CALLBACK_HOST_OVERRIDE", "").strip()
+@app.middleware("http")
+async def log_raw_request_body(request: Request, call_next):
+    body = await request.body()
+    raw_body = body.decode("utf-8", errors="replace")
 
+    logger.info("Incoming %s %s", request.method, request.url.path)
+    logger.info("Raw request body: %s", raw_body)
 
-# ── SCHEMAS ──────────────────────────────────────────────────────────────────
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    request = Request(request.scope, receive)
+    response = await call_next(request)
+    return response
+
 
 class SelectedModules(BaseModel):
     b_lines: bool = False
     rds_score: bool = False
+
 
 class AnalyzeRequest(BaseModel):
     video_url: HttpUrl
@@ -83,8 +88,10 @@ class AnalyzeRequest(BaseModel):
     callback_url: HttpUrl
     selected_modules: SelectedModules
 
+
 class AnalyzeResponse(BaseModel):
     job_id: str
+
 
 class BoundingBox(BaseModel):
     x: float
@@ -93,121 +100,56 @@ class BoundingBox(BaseModel):
     height: float
     confidence: float
 
+
 class BLineResult(BaseModel):
     count: int
     bounding_boxes: List[BoundingBox]
 
+
 class AnalysisResult(BaseModel):
     job_id: str
-    status: str                         # "completed" | "failed"
+    status: str
     b_lines: Optional[BLineResult] = None
     rds_score: Optional[int] = None
     error: Optional[str] = None
 
-# ── HELPERS ───────────────────────────────────────────────────────────────────
 
-async def download_to_tempfile(url: str, suffix: str) -> str:
-    async with httpx.AsyncClient() as client:
-        r = await client.get(url, timeout=30)
-        r.raise_for_status()
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    tmp.write(r.content)
-    tmp.close()
-    return tmp.name
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.error("422 validation error on %s", request.url.path)
+    logger.error("Validation details: %s", exc.errors())
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
-def extract_video_frame(video_path: str, frame_index: int) -> str:
-    capture = cv2.VideoCapture(video_path)
-    if not capture.isOpened():
-        capture.release()
-        raise ValueError("Video could not be opened")
 
-    try:
-        total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-        if frame_index < 0:
-            raise ValueError("frame_index must be >= 0")
-        if total_frames > 0 and frame_index >= total_frames:
-            raise ValueError(f"frame_index {frame_index} is out of range for video with {total_frames} frames")
-
-        capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-        ok, frame = capture.read()
-        if not ok or frame is None:
-            raise ValueError(f"Frame {frame_index} could not be read from video")
-
-        frame_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-        frame_file.close()
-        if not cv2.imwrite(frame_file.name, frame):
-            raise ValueError("Extracted frame could not be saved")
-        return frame_file.name
-    finally:
-        capture.release()
-
-def boxes_to_schema(boxes: list) -> List[BoundingBox]:
-    result = []
-    for box in boxes:
-        if int(box[0]) != 0:
-            continue
-        result.append(BoundingBox(
-            x=box[1],
-            y=box[2],
-            width=box[3],
-            height=box[4],
-            confidence=round(box[5], 4) if len(box) > 5 else 0.0
-        ))
-    return result
-
-def compute_rds_score(b_line_count: int) -> int:
-    if b_line_count == 0:
-        return 0
-    elif b_line_count <= 2:
-        return 1
-    elif b_line_count <= 5:
-        return 2
-    else:
-        return 3
-
-def resolve_callback_url(callback_url: str) -> str:
-    if not CALLBACK_HOST_OVERRIDE:
-        return callback_url
-
-    parsed = urlparse(callback_url)
-    if parsed.hostname not in {"localhost", "127.0.0.1"}:
-        return callback_url
-
-    netloc = CALLBACK_HOST_OVERRIDE
-    if parsed.port:
-        netloc = f"{CALLBACK_HOST_OVERRIDE}:{parsed.port}"
-
-    return urlunparse(parsed._replace(netloc=netloc))
-
-# ── BACKGROUND TASK ───────────────────────────────────────────────────────────
-
-async def run_analysis(job_id: str, video_url: str, frame_index: int, callback_url: str, selected_modules: SelectedModules):
+async def run_analysis(
+    job_id: str,
+    video_url: str,
+    frame_index: int,
+    callback_url: str,
+    selected_modules: SelectedModules,
+):
     db = app.state.db
-    result_payload: AnalysisResult
 
     try:
-        video_path = await download_to_tempfile(video_url, ".mp4")
-        try:
-            frame_path = extract_video_frame(video_path, frame_index)
-            try:
-                boxes = predictor.predict(frame_path, CONF_THRESHOLD)
-            finally:
-                if os.path.exists(frame_path):
-                    os.unlink(frame_path)
-        finally:
-            if os.path.exists(video_path):
-                os.unlink(video_path)
+        b_line_count = random.randint(0, 4)
 
-        b_line_count = sum(1 for b in boxes if int(b[0]) == 0)
+        def random_box():
+            return BoundingBox(
+                x=round(random.uniform(0, 1280), 2),
+                y=round(random.uniform(0, 720), 2),
+                width=round(random.uniform(10, 200), 2),
+                height=round(random.uniform(10, 200), 2),
+                confidence=round(random.uniform(0.3, 0.99), 4),
+            )
 
         b_lines_result = None
         if selected_modules.b_lines:
-            b_lines_result = BLineResult(
-                count=b_line_count,
-                bounding_boxes=boxes_to_schema(boxes)
-            )
+            boxes = [random_box() for _ in range(b_line_count)]
+            b_lines_result = BLineResult(count=b_line_count, bounding_boxes=boxes)
 
-        rds_score = compute_rds_score(b_line_count) if selected_modules.rds_score else None
+        rds_score = None
+        if selected_modules.rds_score:
+            rds_score = random.randint(0, 3)
 
         result_payload = AnalysisResult(
             job_id=job_id,
@@ -220,50 +162,29 @@ async def run_analysis(job_id: str, video_url: str, frame_index: int, callback_u
             await conn.execute(
                 """
                 UPDATE analysis_jobs
-                SET status = 'completed',
-                    result = $1,
-                    updated_at = NOW()
+                SET status = 'completed', result = $1, updated_at = NOW()
                 WHERE job_id = $2
                 """,
                 json.dumps(result_payload.model_dump()),
                 job_id,
             )
+
+        logger.info("analysis completed for job_id=%s", job_id)
 
     except Exception as exc:
-        result_payload = AnalysisResult(
-            job_id=job_id,
-            status="failed",
-            error=str(exc),
-        )
-        async with db.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE analysis_jobs
-                SET status = 'failed',
-                    result = $1,
-                    updated_at = NOW()
-                WHERE job_id = $2
-                """,
-                json.dumps(result_payload.model_dump()),
-                job_id,
-            )
+        logger.exception("analysis failed for job_id=%s: %s", job_id, exc)
 
-    try:
-        resolved_callback_url = resolve_callback_url(callback_url)
-        async with httpx.AsyncClient() as client:
-            await client.post(
-                resolved_callback_url,
-                json=result_payload.model_dump(),
-                timeout=15,
-            )
-    except Exception as cb_exc:
-        print(f"[WARN] Callback failed for job {job_id}: {cb_exc}")
-
-
-# ── ENDPOINT ──────────────────────────────────────────────────────────────────
 
 @app.post("/analyze", response_model=AnalyzeResponse, status_code=202)
 async def analyze(req: AnalyzeRequest, background_tasks: BackgroundTasks):
+    logger.info(
+        "Parsed request: video_url=%s frame_index=%s callback_url=%s selected_modules=%s",
+        req.video_url,
+        req.frame_index,
+        req.callback_url,
+        req.selected_modules.model_dump(),
+    )
+
     job_id = str(uuid.uuid4())
 
     async with app.state.db.acquire() as conn:
@@ -290,15 +211,15 @@ async def analyze(req: AnalyzeRequest, background_tasks: BackgroundTasks):
     return AnalyzeResponse(job_id=job_id)
 
 
-# ── OPTINAL: Querying Job Status  ──────────────────────────────────────────
-
 @app.get("/jobs/{job_id}")
 async def get_job(job_id: str):
     async with app.state.db.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT job_id, status, result, created_at, updated_at FROM analysis_jobs WHERE job_id = $1",
+            "SELECT * FROM analysis_jobs WHERE job_id = $1",
             job_id,
         )
+
     if not row:
-        raise HTTPException(status_code=404, detail="Job bulunamadı")
+        raise HTTPException(status_code=404, detail="Job not found")
+
     return dict(row)

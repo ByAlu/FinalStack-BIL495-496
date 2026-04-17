@@ -9,9 +9,11 @@ vi.mock("../src/services/examinationApi", () => ({
 }));
 
 const mockGetAvailableAiModules = vi.fn();
+const mockStartAiAnalysis = vi.fn();
 
 vi.mock("../src/services/anallysisApi", () => ({
-  getAvailableAiModules: (...args) => mockGetAvailableAiModules(...args)
+  getAvailableAiModules: (...args) => mockGetAvailableAiModules(...args),
+  startAiAnalysis: (...args) => mockStartAiAnalysis(...args)
 }));
 
 vi.mock("../src/services/actionLogger", () => ({
@@ -62,7 +64,7 @@ function renderAiModuleSelectionPage(routeState = buildRouteState()) {
     >
       <Routes>
         <Route path="/ai-module/:patientId/:examinationId" element={<AiModuleSelectionPage />} />
-        <Route path="/results/:reportId" element={<div>Results Screen</div>} />
+        <Route path="/results/:analysisId" element={<div>Results Screen</div>} />
       </Routes>
     </MemoryRouter>
   );
@@ -71,6 +73,7 @@ function renderAiModuleSelectionPage(routeState = buildRouteState()) {
 describe("AiModuleSelectionPage", () => {
   beforeEach(() => {
     mockGetAvailableAiModules.mockReset();
+    mockStartAiAnalysis.mockReset();
     mockGetAvailableAiModules.mockResolvedValue([
       {
         moduleCode: "B_LINE_DETECTION",
@@ -85,6 +88,13 @@ describe("AiModuleSelectionPage", () => {
         description: "Scores respiratory distress syndrome findings for ultrasound examinations."
       }
     ]);
+    mockStartAiAnalysis.mockResolvedValue({
+      analysisUuid: "analysis-123",
+      status: "COMPLETED",
+      resultData: {
+        regions: {}
+      }
+    });
   });
 
   it("allows continuing after selecting an available AI module", async () => {
@@ -98,6 +108,7 @@ describe("AiModuleSelectionPage", () => {
     expect(continueButton).toBeEnabled();
     await userEvent.click(continueButton);
 
+    expect(mockStartAiAnalysis).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Results Screen")).toBeInTheDocument();
   });
 

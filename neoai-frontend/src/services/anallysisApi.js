@@ -1,5 +1,13 @@
 import { api } from "./httpClient";
 
+const FRONTEND_PREPROCESSING_TYPE_TO_CODE = {
+  "median-filter": "MEDIAN_BLUR",
+  clahe: "CLAHE",
+  "gaussian-filter": "GAUSSIAN_BLUR",
+  grayscale: "GRAYSCALE",
+  sharpen: "SHARPEN"
+};
+
 export async function getAvailableAiModules() {
   try {
     const response = await api.get("/api/v1/ai-analysis/modules");
@@ -7,15 +15,6 @@ export async function getAvailableAiModules() {
   } catch (error) {
     throw new Error(error.response?.data?.message || "Could not load AI modules.");
   }
-}
-
-function normalizePatientId(patientId) {
-  if (patientId === null || patientId === undefined) {
-    return "";
-  }
-
-  const match = String(patientId).trim().match(/\d+/);
-  return match ? match[0] : String(patientId).trim();
 }
 
 function buildFrameIndices(selectedFrames) {
@@ -27,7 +26,56 @@ function buildFrameIndices(selectedFrames) {
   }, {});
 }
 
-export async function startAiAnalysis({ patientId, examinationId, selectedFrames, selectedModuleIds }) {
+function serializeOperationParameters(operation) {
+  switch (operation?.type) {
+    case "median-filter":
+      return { kernelSize: operation.kernelSize };
+    case "clahe":
+      return {
+        clipLimit: operation.clipLimit,
+        tileGridSize: operation.tileGridSize
+      };
+    case "gaussian-filter":
+      return {
+        kernelSize: operation.kernelSize,
+        sigmaX: operation.sigmaX,
+        sigmaY: operation.sigmaY
+      };
+    case "grayscale":
+      return {};
+    case "sharpen":
+      return { strength: operation.strength };
+    default:
+      return {};
+  }
+}
+
+function buildPreprocessingSettings(preprocessingOperations) {
+  return (Array.isArray(preprocessingOperations) ? preprocessingOperations : [])
+    .map((operation, index) => {
+      const operationCode = FRONTEND_PREPROCESSING_TYPE_TO_CODE[operation?.type];
+
+      if (!operationCode) {
+        return null;
+      }
+
+      return {
+        operationCode,
+        displayOrder: index + 1,
+        active: Boolean(operation.enabled),
+        parameters: serializeOperationParameters(operation)
+      };
+    })
+    .filter(Boolean);
+}
+
+export async function startAiAnalysis({
+  patientId,
+  examinationId,
+  selectedFrames,
+  selectedModuleIds,
+  preprocessingOperations
+}) {
   const moduleIds = Array.isArray(selectedModuleIds) ? selectedModuleIds : [];
   const selected_modules = {
     b_lines: moduleIds.includes("b-line"),
@@ -37,9 +85,10 @@ export async function startAiAnalysis({ patientId, examinationId, selectedFrames
   try {
     const response = await api.post("/api/v1/ai-analysis", {
       examinationId,
-      patientId: normalizePatientId(patientId),
+      patientId: patientId == null ? "" : String(patientId).trim(),
       selectedFrameIndices: buildFrameIndices(selectedFrames),
-      selected_modules
+      selected_modules,
+      preprocessingSettings: buildPreprocessingSettings(preprocessingOperations)
     });
 
     return response.data;

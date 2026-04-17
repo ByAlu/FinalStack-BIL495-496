@@ -6,9 +6,8 @@ import { SelectedFramesSidebar } from "../components/SelectedFramesSidebar";
 import { ViewerStage } from "../components/ViewerStage";
 import { useViewerHold } from "../hooks/useViewerHold";
 import { useViewerZoom } from "../hooks/useViewerZoom";
-import { getAvailableAiModules } from "../services/anallysisApi";
+import { getAvailableAiModules, startAiAnalysis } from "../services/anallysisApi";
 import { getExaminationByIds } from "../services/examinationApi";
-import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
@@ -76,6 +75,8 @@ export function AiModuleSelectionPage() {
   const [availableModules, setAvailableModules] = useState([]);
   const [isLoadingModules, setIsLoadingModules] = useState(true);
   const [moduleLoadError, setModuleLoadError] = useState("");
+  const [isSubmittingAnalysis, setIsSubmittingAnalysis] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
   const [selectedModuleIds, setSelectedModuleIds] = useState(() => {
     if (Array.isArray(location.state?.selectedModuleIds) && location.state.selectedModuleIds.length > 0) {
       return location.state.selectedModuleIds;
@@ -293,6 +294,7 @@ export function AiModuleSelectionPage() {
 
   function handleToggleModule(moduleId) {
     setDisabledActionMessage("");
+    setAnalysisError("");
     setSelectedModuleIds((current) =>
       current.includes(moduleId) ? current.filter((item) => item !== moduleId) : [...current, moduleId]
     );
@@ -377,7 +379,11 @@ export function AiModuleSelectionPage() {
     setViewRotation(0);
   }
 
-  function handleContinue() {
+  async function handleContinue() {
+    if (selectedModuleIds.length === 0 || isLoadingModules || isSubmittingAnalysis) {
+      return;
+    }
+
     const nextModuleSignature = JSON.stringify(selectedModuleIds);
 
     setActiveWorkflowContext({ patientId, examinationId, reportId: DEFAULT_REPORT_ID });
@@ -395,19 +401,43 @@ export function AiModuleSelectionPage() {
         );
       } catch {
         // Ignore session storage failures and keep the page functional.
+        }
       }
-    }
 
-    navigate(`/results/${DEFAULT_REPORT_ID}`, {
-      state: {
-        ...location.state,
+    setIsSubmittingAnalysis(true);
+    setAnalysisError("");
+
+    try {
+      const analysisResult = await startAiAnalysis({
         patientId,
         examinationId,
-        reportId: DEFAULT_REPORT_ID,
-        selectedModuleId: selectedModuleIds[0] || null,
-        selectedModuleIds
+        selectedFrames: selectedFrameMap,
+        selectedModuleIds,
+        preprocessingOperations: location.state?.preprocessingOperations
+      });
+      const resolvedAnalysisId = analysisResult?.analysisUuid || analysisResult?.analysisId;
+
+      if (!resolvedAnalysisId) {
+        throw new Error("AI analysis completed but no analysis id was returned.");
       }
-    });
+
+      navigate(`/results/${resolvedAnalysisId}`, {
+        state: {
+          ...location.state,
+          patientId,
+          examinationId,
+          reportId: DEFAULT_REPORT_ID,
+          analysisId: resolvedAnalysisId,
+          analysisResult,
+          selectedModuleId: selectedModuleIds[0] || null,
+          selectedModuleIds
+        }
+      });
+    } catch (error) {
+      setAnalysisError(error.message || "Could not complete AI analysis.");
+    } finally {
+      setIsSubmittingAnalysis(false);
+    }
   }
 
   function handleViewerPointerDown(event) {
@@ -531,15 +561,17 @@ export function AiModuleSelectionPage() {
                   className="primary-button"
                   type="button"
                   onClick={handleContinue}
-                  disabled={selectedModuleIds.length === 0 || isLoadingModules}
+                  disabled={selectedModuleIds.length === 0 || isLoadingModules || isSubmittingAnalysis}
                 >
-                  Continue
+                  {isSubmittingAnalysis ? "Running AI..." : "Continue"}
                 </button>
               </span>
             }
             setShowMagnifierPopover={setShowMagnifierPopover}
             showMagnifierPopover={showMagnifierPopover}
           />
+
+          {analysisError ? <p className="selection-toolbar-helper">{analysisError}</p> : null}
 
           <ViewerStage
             activeProgressPercent={0}

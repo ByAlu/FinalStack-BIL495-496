@@ -3,6 +3,4 @@ uvicorn[standard]
 pydantic
 httpx
 asyncpg
-opencv-python
 numpy
-ultralytics

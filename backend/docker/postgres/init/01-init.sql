@@ -799,6 +799,25 @@ INSERT INTO us_examinations (
     updated_at
 )
 SELECT
+    '1776348962_EX_124',
+    'PT_1001',
+    TIMESTAMP '2025-01-01 08:00:00'
+        + ((seq - 1) * INTERVAL '2 days')
+        + ((seq % 5) * INTERVAL '3 hours')
+        + ((seq % 4) * INTERVAL '17 minutes'),
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+FROM generate_series(1, 1) AS seq
+ON CONFLICT (external_examination_id) DO NOTHING;
+
+INSERT INTO us_examinations (
+    external_examination_id,
+    external_patient_id,
+    examination_date,
+    created_at,
+    updated_at
+)
+SELECT
     'EX_' || LPAD((1055 + seq)::text, 4, '0'),
     'PT_1002',
     TIMESTAMP '2025-04-10 09:30:00'

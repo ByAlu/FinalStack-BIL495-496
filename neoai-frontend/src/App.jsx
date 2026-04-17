@@ -34,7 +34,7 @@ function App() {
           <Route path="selection/:patientId/:examinationId" element={<DataSelectionPage />} />
           <Route path="preprocessing/:patientId/:examinationId" element={<DataPreprocessingPage />} />
           <Route path="ai-module/:patientId/:examinationId" element={<AiModuleSelectionPage />} />
-          <Route path="results/:reportId" element={<AiResultsPage />} />
+          <Route path="results/:analysisId" element={<AiResultsPage />} />
           <Route path="report/:reportId" element={<ReportingPage />} />
           <Route
             path="admin"

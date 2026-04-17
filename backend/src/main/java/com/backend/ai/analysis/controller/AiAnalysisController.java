@@ -1,12 +1,10 @@
 package com.backend.ai.analysis.controller;
 
-import com.backend.ai.analysis.model.dto.AiAnalysisDTO;
 import com.backend.ai.analysis.model.dto.AiAnalysisResultDTO;
 import com.backend.ai.analysis.model.dto.AiModuleOptionDTO;
 import com.backend.ai.analysis.service.AiAnalysisService;
 import com.backend.ai.analysis.service.AiModuleCatalogService;
 import com.backend.ai.analysis.service.AiModuleIntegrationService;
-import com.backend.model.dto.AnalysisInitiatedDTO;
 import com.backend.ai.analysis.model.dto.DoctorSuggestionRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,8 +31,8 @@ public class AiAnalysisController {
     }
     
     @PostMapping
-    public ResponseEntity<AnalysisInitiatedDTO> startAnalysis(@Valid @RequestBody DoctorSuggestionRequest doctorSuggestionRequest) {
-        return ResponseEntity.accepted().body(aiAnalysisService.startAnalysis(doctorSuggestionRequest));
+    public ResponseEntity<AiAnalysisResultDTO> startAnalysis(@Valid @RequestBody DoctorSuggestionRequest doctorSuggestionRequest) {
+        return ResponseEntity.ok(aiAnalysisService.startAnalysis(doctorSuggestionRequest));
     }
 
     @GetMapping("/{uuid}")

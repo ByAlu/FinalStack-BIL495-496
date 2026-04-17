@@ -7,7 +7,6 @@
 # Gereksinimler (YOLO):   pip install ultralytics opencv-python
 # Gereksinimler (F-RCNN): pip install torch torchvision opencv-python
 
-import cv2
 import numpy as np
 import argparse
 from pathlib import Path

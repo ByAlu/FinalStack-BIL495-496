@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -28,6 +29,10 @@ public class DoctorSuggestionRequest {
     @JsonAlias("analysisTarget")
     private AnalysisTarget selectedModules;
 
+    @JsonProperty("preprocessingSettings")
+    @JsonAlias("preprocessing_settings")
+    private List<UserPreprocessingSettingDTO> preprocessingSettings;
+
     @Override
     public String toString() {
         return "DoctorSuggestionRequest{" +
@@ -35,6 +40,7 @@ public class DoctorSuggestionRequest {
                 ", patientId='" + patientId + '\'' +
                 ", selectedFrameIndices=" + selectedFrameIndices +
                 ", selectedModules=" + selectedModules +
+                ", preprocessingSettings=" + preprocessingSettings +
                 '}';
     }
 }

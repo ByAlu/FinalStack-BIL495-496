@@ -22,7 +22,7 @@ export function AppLayout() {
   const selectionMatch = matchPath("/selection/:patientId/:examinationId", location.pathname);
   const preprocessingMatch = matchPath("/preprocessing/:patientId/:examinationId", location.pathname);
   const aiModuleMatch = matchPath("/ai-module/:patientId/:examinationId", location.pathname);
-  const resultsMatch = matchPath("/results/:reportId", location.pathname);
+  const resultsMatch = matchPath("/results/:analysisId", location.pathname);
   const reportMatch = matchPath("/report/:reportId", location.pathname);
   let workflowMeta = null;
 
@@ -35,12 +35,12 @@ export function AppLayout() {
   } else if (aiModuleMatch) {
     workflowMeta = { currentStep: "ai-module", context: aiModuleMatch.params };
   } else if (resultsMatch) {
-    workflowMeta = {
+        workflowMeta = {
       currentStep: "results",
       context: {
         patientId: location.state?.patientId,
         examinationId: location.state?.examinationId,
-        reportId: resultsMatch.params.reportId
+        analysisId: resultsMatch.params.analysisId
       }
     };
   } else if (reportMatch) {

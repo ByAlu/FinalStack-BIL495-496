@@ -3,10 +3,9 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AiResultsModulesSidebar } from "../components/AiResultsModulesSidebar";
 import { AiViewerToolbar } from "../components/AiViewerToolbar";
 import { SelectedFramesSidebar } from "../components/SelectedFramesSidebar";
-import { aiRegionResults } from "../data/mockData";
 import { useViewerHold } from "../hooks/useViewerHold";
 import { useViewerZoom } from "../hooks/useViewerZoom";
-import { getReportById } from "../services/mockApi";
+import { getAiAnalysisResult } from "../services/anallysisApi";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
 const RESULT_IMAGE_WIDTH = 400;
@@ -51,28 +50,118 @@ function getAverageConfidence(boxes) {
   return total / boxes.length;
 }
 
+function getSelectionStateCacheKey(patientId, examinationId) {
+  return `neoai-selection:${patientId}:${examinationId}`;
+}
+
+function readSelectedFramesFromSession(patientId, examinationId) {
+  if (!patientId || !examinationId) {
+    return {};
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(getSelectionStateCacheKey(patientId, examinationId));
+
+    if (!rawValue) {
+      return {};
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    return parsedValue?.selectedFrames || {};
+  } catch {
+    return {};
+  }
+}
+
+function getCommittedAiModuleStateCacheKey(patientId, examinationId) {
+  return `neoai-ai-module-committed:${patientId}:${examinationId}`;
+}
+
+function readSelectedModulesFromSession(patientId, examinationId) {
+  if (!patientId || !examinationId) {
+    return [];
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(getCommittedAiModuleStateCacheKey(patientId, examinationId));
+
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    return Array.isArray(parsedValue?.selectedModuleIds) ? parsedValue.selectedModuleIds : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeAnalysisRegionResults(resultData) {
+  const regionEntries = Object.entries(resultData?.regions || {});
+
+  return regionEntries.reduce((accumulator, [regionKey, regionValue]) => {
+    const normalizedRegionKey = String(regionKey).toLowerCase();
+
+    accumulator[normalizedRegionKey] = {
+      region: regionValue?.region || String(regionKey).toUpperCase(),
+      frame_index: regionValue?.frame_index ?? null,
+      b_line_module: regionValue?.b_line_module || null,
+      rds_score_module: regionValue?.rds_score_module || null,
+      module_errors: regionValue?.module_errors || {}
+    };
+
+    return accumulator;
+  }, {});
+}
+
+function deriveSelectedModuleIds(locationState, sessionModuleIds, analysisResult) {
+  if (Array.isArray(locationState?.selectedModuleIds) && locationState.selectedModuleIds.length > 0) {
+    return locationState.selectedModuleIds;
+  }
+
+  if (locationState?.selectedModuleId) {
+    return [locationState.selectedModuleId];
+  }
+
+  if (sessionModuleIds.length > 0) {
+    return sessionModuleIds;
+  }
+
+  const backendModuleIds = Array.isArray(analysisResult?.moduleRuns)
+    ? [...new Set(analysisResult.moduleRuns.map((run) => run.moduleId).filter(Boolean))]
+    : [];
+
+  return backendModuleIds;
+}
+
 export function AiResultsPage() {
-  const { reportId } = useParams();
+  const { analysisId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const magnifierPopoverRef = useRef(null);
   const viewerStageRef = useRef(null);
   const previewImageRef = useRef(null);
   const resultImageRef = useRef(null);
-  const report = useMemo(() => getReportById(reportId), [reportId]);
-  const selectedFrameMap = location.state?.processedFrames || location.state?.selectedFrames || {};
+  const [analysisResult, setAnalysisResult] = useState(location.state?.analysisResult || null);
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(!location.state?.analysisResult && Boolean(analysisId));
+  const [analysisLoadError, setAnalysisLoadError] = useState("");
+  const patientId = location.state?.patientId || analysisResult?.patientId;
+  const examinationId = location.state?.examinationId || analysisResult?.examinationId;
+  const sessionSelectedFrameMap = useMemo(
+    () => readSelectedFramesFromSession(patientId, examinationId),
+    [examinationId, patientId]
+  );
+  const sessionSelectedModuleIds = useMemo(
+    () => readSelectedModulesFromSession(patientId, examinationId),
+    [examinationId, patientId]
+  );
+  const selectedFrameMap =
+    location.state?.processedFrames || location.state?.selectedFrames || sessionSelectedFrameMap;
   const selectedRegions = useMemo(() => regions.filter((region) => selectedFrameMap[region]), [selectedFrameMap]);
-  const selectedModuleIds = useMemo(() => {
-    if (Array.isArray(location.state?.selectedModuleIds) && location.state.selectedModuleIds.length > 0) {
-      return location.state.selectedModuleIds;
-    }
-
-    if (location.state?.selectedModuleId) {
-      return [location.state.selectedModuleId];
-    }
-
-    return ["rds-score"];
-  }, [location.state]);
+  const selectedModuleIds = useMemo(
+    () => deriveSelectedModuleIds(location.state, sessionSelectedModuleIds, analysisResult),
+    [analysisResult, location.state, sessionSelectedModuleIds]
+  );
   const [showResultsMenu, setShowResultsMenu] = useState(true);
   const [showSelectedMenu, setShowSelectedMenu] = useState(true);
   const [enabledModuleIds, setEnabledModuleIds] = useState(selectedModuleIds);
@@ -120,6 +209,7 @@ export function AiResultsPage() {
     resetDependencies: [activeRegion]
   });
 
+  const aiRegionResults = useMemo(() => normalizeAnalysisRegionResults(analysisResult?.resultData), [analysisResult]);
   const activeSelectedFrame = activeRegion ? selectedFrameMap[activeRegion] || null : null;
   const activeRegionResult = aiRegionResults[activeRegion] || null;
   const bLineResult = activeRegionResult?.b_line_module || null;
@@ -149,11 +239,80 @@ export function AiResultsPage() {
     };
   }, []);
 
-  if (!report) {
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadAnalysisResult() {
+      if (!analysisId || location.state?.analysisResult) {
+        setIsLoadingAnalysis(false);
+        return;
+      }
+
+      setIsLoadingAnalysis(true);
+      setAnalysisLoadError("");
+
+      try {
+        const result = await getAiAnalysisResult(analysisId);
+
+        if (!ignore) {
+          setAnalysisResult(result);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setAnalysisLoadError(error.message || "Could not load AI analysis result.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingAnalysis(false);
+        }
+      }
+    }
+
+    loadAnalysisResult();
+
+    return () => {
+      ignore = true;
+    };
+  }, [analysisId, location.state?.analysisResult]);
+
+  useEffect(() => {
+    setEnabledModuleIds(selectedModuleIds);
+  }, [selectedModuleIds]);
+
+  if (isLoadingAnalysis) {
     return (
-      <section className="panel">
-        <h2>Results not found</h2>
-      </section>
+      <div className="page-stack">
+        <section className="panel">
+          <p>Loading AI analysis...</p>
+        </section>
+      </div>
+    );
+  }
+
+  if (analysisLoadError) {
+    return (
+      <div className="page-stack">
+        <section className="panel">
+          <h2>AI results could not be loaded</h2>
+          <p>{analysisLoadError}</p>
+          <Link className="secondary-button" to="/query">
+            Back to query
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
+  if (!analysisResult) {
+    return (
+      <div className="page-stack">
+        <section className="panel">
+          <h2>Results not found</h2>
+          <Link className="secondary-button" to="/query">
+            Back to query
+          </Link>
+        </section>
+      </div>
     );
   }
 
@@ -326,10 +485,14 @@ export function AiResultsPage() {
   }
 
   function handleGoToReporting() {
+    const reportId = location.state?.reportId || "REP-2001";
+
     navigate(`/report/${reportId}`, {
       state: {
         ...location.state,
-        reportId
+        reportId,
+        analysisId,
+        analysisResult
       }
     });
   }

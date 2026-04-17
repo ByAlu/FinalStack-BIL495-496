@@ -141,6 +141,22 @@ function highlightedProbability(totalScore, threshold, highValue, lowValue) {
   return totalScore >= threshold ? highValue : lowValue;
 }
 
+function normalizeAnalysisRegionResults(resultData) {
+  const regionEntries = Object.entries(resultData?.regions || {});
+
+  return regionEntries.reduce((accumulator, [regionKey, regionValue]) => {
+    const normalizedRegionKey = String(regionKey).toLowerCase();
+
+    accumulator[normalizedRegionKey] = {
+      region: regionValue?.region || String(regionKey).toUpperCase(),
+      b_line_module: regionValue?.b_line_module || null,
+      rds_score_module: regionValue?.rds_score_module || null
+    };
+
+    return accumulator;
+  }, {});
+}
+
 export function ReportingPage() {
   const { reportId } = useParams();
   const location = useLocation();
@@ -194,11 +210,15 @@ export function ReportingPage() {
 
     return examination?.videos?.map((video) => video.region) || [];
   }, [examination?.videos, selectedFrameMap]);
+  const analysisRegionResults = useMemo(() => {
+    const normalizedResults = normalizeAnalysisRegionResults(location.state?.analysisResult?.resultData);
+    return Object.keys(normalizedResults).length > 0 ? normalizedResults : aiRegionResults;
+  }, [location.state?.analysisResult]);
 
   const regionReportRows = useMemo(
     () =>
       selectedRegions.map((region) => {
-        const regionResult = aiRegionResults[region];
+        const regionResult = analysisRegionResults[region];
         const matchingVideo = examination?.videos?.find((video) => video.region === region);
 
         return {
@@ -211,7 +231,7 @@ export function ReportingPage() {
           regionScore: regionResult?.rds_score_module?.score ?? 0
         };
       }),
-    [examination?.videos, selectedFrameMap, selectedRegions]
+    [analysisRegionResults, examination?.videos, selectedFrameMap, selectedRegions]
   );
 
   const totalScore = regionReportRows.reduce((sum, row) => sum + row.regionScore, 0);
