@@ -1,11 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AiModuleSelectionPage } from "../src/pages/AiModuleSelectionPage";
 
 vi.mock("../src/services/examinationApi", () => ({
   getExaminationByIds: vi.fn()
+}));
+
+const mockGetAvailableAiModules = vi.fn();
+
+vi.mock("../src/services/anallysisApi", () => ({
+  getAvailableAiModules: (...args) => mockGetAvailableAiModules(...args)
 }));
 
 vi.mock("../src/services/actionLogger", () => ({
@@ -63,13 +69,31 @@ function renderAiModuleSelectionPage(routeState = buildRouteState()) {
 }
 
 describe("AiModuleSelectionPage", () => {
+  beforeEach(() => {
+    mockGetAvailableAiModules.mockReset();
+    mockGetAvailableAiModules.mockResolvedValue([
+      {
+        moduleCode: "B_LINE_DETECTION",
+        moduleId: "b-line",
+        displayName: "B-line Detection",
+        description: "Detects B-lines across ultrasound lung regions."
+      },
+      {
+        moduleCode: "RDS_SCORING",
+        moduleId: "rds-score",
+        displayName: "RDS Scoring",
+        description: "Scores respiratory distress syndrome findings for ultrasound examinations."
+      }
+    ]);
+  });
+
   it("allows continuing after selecting an available AI module", async () => {
     renderAiModuleSelectionPage();
 
-    const continueButton = screen.getByRole("button", { name: /continue/i });
-    expect(continueButton).toBeEnabled();
+    const continueButton = await screen.findByRole("button", { name: /continue/i });
+    expect(continueButton).toBeDisabled();
 
-    await userEvent.click(screen.getByRole("button", { name: /b-line/i }));
+    await userEvent.click(screen.getByRole("button", { name: /b-line detection/i }));
 
     expect(continueButton).toBeEnabled();
     await userEvent.click(continueButton);
@@ -80,11 +104,7 @@ describe("AiModuleSelectionPage", () => {
   it("blocks progression when no AI module is selected", async () => {
     renderAiModuleSelectionPage();
 
-    const continueButton = screen.getByRole("button", { name: /continue/i });
-    expect(continueButton).toBeEnabled();
-
-    await userEvent.click(screen.getByRole("button", { name: /rds-score/i }));
-
+    const continueButton = await screen.findByRole("button", { name: /continue/i });
     expect(continueButton).toBeDisabled();
   });
 });

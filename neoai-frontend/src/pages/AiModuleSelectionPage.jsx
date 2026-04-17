@@ -6,12 +6,12 @@ import { SelectedFramesSidebar } from "../components/SelectedFramesSidebar";
 import { ViewerStage } from "../components/ViewerStage";
 import { useViewerHold } from "../hooks/useViewerHold";
 import { useViewerZoom } from "../hooks/useViewerZoom";
+import { getAvailableAiModules } from "../services/anallysisApi";
 import { getExaminationByIds } from "../services/examinationApi";
 import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 import { resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
 
 const regions = ["r1", "r2", "r3", "r4", "r5", "r6"];
-const DEFAULT_MODULE_IDS = ["rds-score"];
 const DEFAULT_REPORT_ID = "REP-2001";
 const DEFAULT_MAGNIFIER_CONFIG = { size: 200, zoomFactor: 2 };
 const MAX_MAGNIFIER_CONFIG = { size: 500, zoomFactor: 8 };
@@ -73,6 +73,9 @@ export function AiModuleSelectionPage() {
   });
   const [isMagnifierActive, setIsMagnifierActive] = useState(false);
   const [viewRotation, setViewRotation] = useState(0);
+  const [availableModules, setAvailableModules] = useState([]);
+  const [isLoadingModules, setIsLoadingModules] = useState(true);
+  const [moduleLoadError, setModuleLoadError] = useState("");
   const [selectedModuleIds, setSelectedModuleIds] = useState(() => {
     if (Array.isArray(location.state?.selectedModuleIds) && location.state.selectedModuleIds.length > 0) {
       return location.state.selectedModuleIds;
@@ -82,7 +85,7 @@ export function AiModuleSelectionPage() {
       return [location.state.selectedModuleId];
     }
 
-    return DEFAULT_MODULE_IDS;
+    return [];
   });
   const [committedModuleSignature, setCommittedModuleSignature] = useState(() => {
     if (Array.isArray(location.state?.selectedModuleIds) && location.state.selectedModuleIds.length > 0) {
@@ -178,6 +181,56 @@ export function AiModuleSelectionPage() {
   }, [examinationId, patientId, routeExamination]);
 
   useEffect(() => {
+    let ignore = false;
+
+    async function loadAvailableModules() {
+      setIsLoadingModules(true);
+      setModuleLoadError("");
+
+      try {
+        const result = await getAvailableAiModules();
+        const normalizedModules = result.map((module) => ({
+          id: module.moduleId,
+          label: module.displayName,
+          description: module.description || "No description available."
+        }));
+
+        if (!ignore) {
+          setAvailableModules(normalizedModules);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setAvailableModules([]);
+          setModuleLoadError(error.message || "Could not load AI modules.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingModules(false);
+        }
+      }
+    }
+
+    loadAvailableModules();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (availableModules.length === 0) {
+      return;
+    }
+
+    const validModuleIds = new Set(availableModules.map((module) => module.id));
+
+    setSelectedModuleIds((current) => {
+      const filteredModuleIds = current.filter((moduleId) => validModuleIds.has(moduleId));
+      return filteredModuleIds;
+    });
+  }, [availableModules]);
+
+  useEffect(() => {
     function handlePointerDown(event) {
       if (!magnifierPopoverRef.current?.contains(event.target)) {
         setShowMagnifierPopover(false);
@@ -228,9 +281,13 @@ export function AiModuleSelectionPage() {
   }
 
   const activeSelectedFrame = activeRegion ? selectedFrameMap[activeRegion] || null : null;
+  const moduleLabelById = useMemo(
+    () => Object.fromEntries(availableModules.map((module) => [module.id, module.label])),
+    [availableModules]
+  );
   const selectedModuleLabel =
     selectedModuleIds.length > 0
-      ? selectedModuleIds.map((moduleId) => (moduleId === "b-line" ? "B-LINE" : "RDS-SCORE")).join(", ")
+      ? selectedModuleIds.map((moduleId) => moduleLabelById[moduleId] || moduleId).join(", ")
       : "No module selected";
   const isViewChanged = zoomScale !== 1 || panOffset.x !== 0 || panOffset.y !== 0 || viewRotation !== 0;
 
@@ -434,11 +491,14 @@ export function AiModuleSelectionPage() {
     <div className="page-stack selection-page">
       <section className={`selection-layout${showOptionsMenu ? "" : " hide-left"}${showSelectedMenu ? "" : " hide-right"}`}>
         <AiModuleOptionsSidebar
+          modules={availableModules}
           selectedModuleIds={selectedModuleIds}
           showMenu={showOptionsMenu}
           onClose={() => setShowOptionsMenu(false)}
           onOpen={() => setShowOptionsMenu(true)}
           onToggleModule={handleToggleModule}
+          isLoading={isLoadingModules}
+          errorMessage={moduleLoadError}
         />
 
         <section className="selection-main panel">
@@ -467,7 +527,12 @@ export function AiModuleSelectionPage() {
                 }}
                 onMouseLeave={clearDisabledActionMessage}
               >
-                <button className="primary-button" type="button" onClick={handleContinue} disabled={selectedModuleIds.length === 0}>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={handleContinue}
+                  disabled={selectedModuleIds.length === 0 || isLoadingModules}
+                >
                   Continue
                 </button>
               </span>

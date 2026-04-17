@@ -2,7 +2,9 @@ package com.backend.ai.analysis.controller;
 
 import com.backend.ai.analysis.model.dto.AiAnalysisDTO;
 import com.backend.ai.analysis.model.dto.AiAnalysisResultDTO;
+import com.backend.ai.analysis.model.dto.AiModuleOptionDTO;
 import com.backend.ai.analysis.service.AiAnalysisService;
+import com.backend.ai.analysis.service.AiModuleCatalogService;
 import com.backend.ai.analysis.service.AiModuleIntegrationService;
 import com.backend.model.dto.AnalysisInitiatedDTO;
 import com.backend.ai.analysis.model.dto.DoctorSuggestionRequest;
@@ -12,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -21,6 +24,13 @@ public class AiAnalysisController {
     private AiAnalysisService aiAnalysisService;
     @Autowired
     private AiModuleIntegrationService aiModuleIntegrationService;
+    @Autowired
+    private AiModuleCatalogService aiModuleCatalogService;
+
+    @GetMapping("/modules")
+    public ResponseEntity<List<AiModuleOptionDTO>> getAvailableModules() {
+        return ResponseEntity.ok(aiModuleCatalogService.getAvailableModules());
+    }
     
     @PostMapping
     public ResponseEntity<AnalysisInitiatedDTO> startAnalysis(@Valid @RequestBody DoctorSuggestionRequest doctorSuggestionRequest) {

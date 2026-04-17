@@ -1,5 +1,14 @@
 import { api } from "./httpClient";
 
+export async function getAvailableAiModules() {
+  try {
+    const response = await api.get("/api/v1/ai-analysis/modules");
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Could not load AI modules.");
+  }
+}
+
 function normalizePatientId(patientId) {
   if (patientId === null || patientId === undefined) {
     return "";
