@@ -93,6 +93,13 @@ export function AuthProvider({ children }) {
     setToken(jwt);
     setUser(tokenUser);
     window.localStorage.setItem(TOKEN_STORAGE_KEY, jwt);
+    
+    // Kullanıcı adını hem sessionStorage'a hem localStorage'a kaydet
+    if (tokenUser?.username) {
+      window.sessionStorage.setItem("username", tokenUser.username);
+      window.localStorage.setItem("username", tokenUser.username);
+    }
+    
     await hydrateUserProfile(tokenUser);
   }
 
@@ -107,6 +114,8 @@ export function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem("username");
+    window.sessionStorage.removeItem("username");
     navigate("/login", { replace: true });
   }
 

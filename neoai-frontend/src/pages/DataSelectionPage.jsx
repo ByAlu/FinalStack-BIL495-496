@@ -360,32 +360,45 @@ export function DataSelectionPage() {
   }
 
   function handleApprove() {
-    const nextSelectionSignature = JSON.stringify(selectedFrames);
+    const actionLog = logSimpleAction(
+      `Data Selection Completed`,
+      ActionTypes.DATA_SELECTION,
+      `Completed frame selection with ${Object.keys(selectedFrames).length} frames selected for patient ${patientId}, examination ${examinationId}`,
+      { patientId, examinationId, selectedCount: Object.keys(selectedFrames).length }
+    );
 
-    if (committedSelectionSignature !== nextSelectionSignature) {
-      resetWorkflowAfterStep(patientId, examinationId, 2);
-      setCommittedSelectionSignature(nextSelectionSignature);
+    try {
+      const nextSelectionSignature = JSON.stringify(selectedFrames);
 
-      try {
-        window.sessionStorage.setItem(
-          committedSelectionStateCacheKey,
-          JSON.stringify({
-            selectedFrames
-          })
-        );
-      } catch {
-        // Ignore session storage failures and keep the page functional.
+      if (committedSelectionSignature !== nextSelectionSignature) {
+        resetWorkflowAfterStep(patientId, examinationId, 2);
+        setCommittedSelectionSignature(nextSelectionSignature);
+
+        try {
+          window.sessionStorage.setItem(
+            committedSelectionStateCacheKey,
+            JSON.stringify({
+              selectedFrames
+            })
+          );
+        } catch {
+          // Ignore session storage failures and keep the page functional.
+        }
       }
+
+      setActiveWorkflowContext({ patientId, examinationId });
+      completeAction(actionLog.id, "SUCCEEDED");
+      
+      navigate(`/preprocessing/${patientId}/${examinationId}`, {
+        state: {
+          patientId,
+          examinationId,
+          selectedFrames
+        }
+      });
+    } catch (error) {
+      completeAction(actionLog.id, "FAILED");
     }
-
-    setActiveWorkflowContext({ patientId, examinationId });
-    navigate(`/preprocessing/${patientId}/${examinationId}`, {
-      state: {
-        patientId,
-        examinationId,
-        selectedFrames
-      }
-    });
   }
 
   function handleTogglePlay() {

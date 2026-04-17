@@ -556,6 +556,13 @@ export function DataPreprocessingPage() {
       return;
     }
 
+    const actionLog = logSimpleAction(
+      `Data Preprocessing Completed`,
+      ActionTypes.DATA_PREPROCESSING,
+      `Completed preprocessing for patient ${patientId}, examination ${examinationId} with ${operations.length} operations`,
+      { patientId, examinationId, operationCount: operations.length }
+    );
+
     setIsApplyPending(true);
 
     try {
@@ -582,6 +589,8 @@ export function DataPreprocessingPage() {
         }
       }
 
+      completeAction(actionLog.id, "SUCCEEDED");
+      
       navigate(`/ai-module/${patientId}/${examinationId}`, {
         state: {
           activePreprocessingRegion: activeRegion,
@@ -592,6 +601,8 @@ export function DataPreprocessingPage() {
           preprocessingOperations: operations
         }
       });
+    } catch (error) {
+      completeAction(actionLog.id, "FAILED");
     } finally {
       setIsApplyPending(false);
     }

@@ -273,36 +273,49 @@ export function AiModuleSelectionPage() {
   }
 
   function handleContinue() {
-    const nextModuleSignature = JSON.stringify(selectedModuleIds);
+    const actionLog = logSimpleAction(
+      `AI Analysis Started: ${selectedModuleIds.join(", ")}`,
+      ActionTypes.AI_ANALYSIS,
+      `Starting AI analysis with modules: ${selectedModuleIds.join(", ")} for patient ${patientId}, examination ${examinationId}`,
+      { patientId, examinationId, selectedModuleIds, moduleCount: selectedModuleIds.length }
+    );
 
-    setActiveWorkflowContext({ patientId, examinationId, reportId: DEFAULT_REPORT_ID });
+    try {
+      const nextModuleSignature = JSON.stringify(selectedModuleIds);
 
-    if (committedModuleSignature !== nextModuleSignature) {
-      resetWorkflowAfterStep(patientId, examinationId, 4);
-      setCommittedModuleSignature(nextModuleSignature);
+      setActiveWorkflowContext({ patientId, examinationId, reportId: DEFAULT_REPORT_ID });
 
-      try {
-        window.sessionStorage.setItem(
-          committedAiModuleStateCacheKey,
-          JSON.stringify({
-            selectedModuleIds
-          })
-        );
-      } catch {
-        // Ignore session storage failures and keep the page functional.
+      if (committedModuleSignature !== nextModuleSignature) {
+        resetWorkflowAfterStep(patientId, examinationId, 4);
+        setCommittedModuleSignature(nextModuleSignature);
+
+        try {
+          window.sessionStorage.setItem(
+            committedAiModuleStateCacheKey,
+            JSON.stringify({
+              selectedModuleIds
+            })
+          );
+        } catch {
+          // Ignore session storage failures and keep the page functional.
+        }
       }
+
+      completeAction(actionLog.id, "SUCCEEDED");
+      
+      navigate(`/results/${DEFAULT_REPORT_ID}`, {
+        state: {
+          ...location.state,
+          patientId,
+          examinationId,
+          reportId: DEFAULT_REPORT_ID,
+          selectedModuleId: selectedModuleIds[0] || null,
+          selectedModuleIds
+        }
+      });
+    } catch (error) {
+      completeAction(actionLog.id, "FAILED");
     }
-
-    navigate(`/results/${DEFAULT_REPORT_ID}`, {
-      state: {
-        ...location.state,
-        patientId,
-        examinationId,
-        reportId: DEFAULT_REPORT_ID,
-        selectedModuleId: selectedModuleIds[0] || null,
-        selectedModuleIds
-      }
-    });
   }
 
   function handleViewerPointerDown(event) {

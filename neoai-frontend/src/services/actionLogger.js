@@ -106,11 +106,13 @@ export const ActionTypes = {
 
 // Helper: Basit action logging
 export function logSimpleAction(name, type, description = "", metadata = {}) {
+  const username = sessionStorage.getItem("username") || localStorage.getItem("username") || "unknown";
+  
   return logAction({
     name,
     type,
     description,
     metadata,
-    user: localStorage.getItem("username") || "unknown"
+    user: username
   });
 }
