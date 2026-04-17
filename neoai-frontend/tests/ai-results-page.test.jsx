@@ -77,8 +77,8 @@ describe("AiResultsPage", () => {
   it("renders backend-provided AI findings for the selected region", () => {
     renderAiResultsPage();
 
-    expect(screen.getByText(/b-line: 2 detections/i)).toBeInTheDocument();
-    expect(screen.getByText(/rds-score: 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/b-line count: 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/rds score: 1/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /go to reporting/i })).toBeInTheDocument();
   });
 

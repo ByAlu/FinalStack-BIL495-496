@@ -1,5 +1,7 @@
 package com.backend.ai.analysis.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.backend.cloud.service.CloudService;
 import com.backend.ai.analysis.model.dto.AiAnalysisModuleRunDTO;
 import com.backend.ai.analysis.model.dto.AiAnalysisPreprocessingSettingDTO;
@@ -8,7 +10,6 @@ import com.backend.ai.analysis.model.entity.AnalysisStatus;
 import com.backend.ai.analysis.model.entity.AnalysisTarget;
 import com.backend.ai.analysis.model.entity.UsAiAnalysis;
 import com.backend.ai.analysis.model.entity.UsAnalysisModuleRun;
-import com.backend.ai.analysis.model.entity.UsAnalysisPreprocessingSetting;
 import com.backend.ai.analysis.repository.UsAiAnalysisRepository;
 import com.backend.ai.analysis.repository.UsAnalysisModuleRunRepository;
 import com.backend.model.entity.UsExaminationRegion;
@@ -40,6 +41,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_RESPONSE_TYPE =
             new ParameterizedTypeReference<>() {};
+    private static final TypeReference<Map<String, Object>> STRING_MAP_TYPE = new TypeReference<>() {};
 
     private final String callbackUrl;
     private final String apiUrl;
@@ -50,12 +52,14 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
     private final UsAiAnalysisRepository aiAnalysisRepository;
     private final WebClient webClient;
     private final CloudService cloudService;
+    private final ObjectMapper objectMapper;
 
     public AiModuleIntegrationServiceImpl(
             UsAnalysisModuleRunRepository analysisModuleRunRepository,
             UsAiAnalysisRepository aiAnalysisRepository,
             WebClient webClient,
             CloudService cloudService,
+            ObjectMapper objectMapper,
             @Value("${api.callback.url}") String callbackUrl,
             @Value("${api.url}") String apiUrl,
             @Value("${gcp.storage.bucket-name}") String bucketName,
@@ -66,6 +70,7 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         this.aiAnalysisRepository = aiAnalysisRepository;
         this.webClient = webClient;
         this.cloudService = cloudService;
+        this.objectMapper = objectMapper;
         this.callbackUrl = callbackUrl;
         this.apiUrl = apiUrl;
         this.bucketName = bucketName;
@@ -390,7 +395,6 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
                 entity.getStatus(),
                 entity.getSelectedFrameIndices(),
                 entity.getPreprocessingSettings().stream()
-                        .sorted(Comparator.comparing(UsAnalysisPreprocessingSetting::getDisplayOrder))
                         .map(this::toPreprocessingSettingDto)
                         .toList(),
                 entity.getModuleRuns().stream()
@@ -401,13 +405,13 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         );
     }
 
-    private AiAnalysisPreprocessingSettingDTO toPreprocessingSettingDto(UsAnalysisPreprocessingSetting setting) {
+    private AiAnalysisPreprocessingSettingDTO toPreprocessingSettingDto(Map<String, Object> setting) {
         return new AiAnalysisPreprocessingSettingDTO(
-                setting.getOperationName(),
-                setting.getOperationCode(),
-                setting.getDisplayOrder(),
-                setting.isActive(),
-                setting.getParameters()
+                asString(setting, "operationName"),
+                asString(setting, "operationCode"),
+                asInteger(setting.get("displayOrder")),
+                asBoolean(setting.get("active")),
+                asMap(setting.get("parameters"))
         );
     }
 
@@ -540,6 +544,42 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         return null;
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> asMap(Object value) {
+        if (value instanceof Map<?, ?> mapValue) {
+            return new LinkedHashMap<>((Map<String, Object>) mapValue);
+        }
+        return null;
+    }
+
+    private Integer asInteger(Object value) {
+        if (value instanceof Number numberValue) {
+            return numberValue.intValue();
+        }
+
+        if (value instanceof String stringValue && !stringValue.isBlank()) {
+            try {
+                return Integer.valueOf(stringValue.trim());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean asBoolean(Object value) {
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue;
+        }
+
+        if (value instanceof String stringValue) {
+            return Boolean.parseBoolean(stringValue);
+        }
+
+        return false;
+    }
+
     private UUID asUuid(Map<String, Object> payload, String... keys) {
         String value = asString(payload, keys);
         if (value == null) {
@@ -576,18 +616,49 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         if (directResult instanceof Map<?, ?> resultMap) {
             return new LinkedHashMap<>((Map<String, Object>) resultMap);
         }
+        if (directResult instanceof String resultJson) {
+            Map<String, Object> parsedResult = parseJsonResult(resultJson);
+            if (parsedResult != null && !parsedResult.isEmpty()) {
+                return parsedResult;
+            }
+        }
         Object snakeCaseResult = payload.get("result_data");
         if (snakeCaseResult instanceof Map<?, ?> resultMap) {
             return new LinkedHashMap<>((Map<String, Object>) resultMap);
+        }
+        if (snakeCaseResult instanceof String resultJson) {
+            Map<String, Object> parsedResult = parseJsonResult(resultJson);
+            if (parsedResult != null && !parsedResult.isEmpty()) {
+                return parsedResult;
+            }
         }
         Object result = payload.get("result");
         if (result instanceof Map<?, ?> resultMap) {
             return new LinkedHashMap<>((Map<String, Object>) resultMap);
         }
+        if (result instanceof String resultJson) {
+            Map<String, Object> parsedResult = parseJsonResult(resultJson);
+            if (parsedResult != null && !parsedResult.isEmpty()) {
+                return parsedResult;
+            }
+        }
         if (payload.containsKey("b_lines") || payload.containsKey("rds_score") || payload.containsKey("error")) {
             return new LinkedHashMap<>(payload);
         }
         return null;
+    }
+
+    private Map<String, Object> parseJsonResult(String resultJson) {
+        if (resultJson == null || resultJson.isBlank()) {
+            return null;
+        }
+
+        try {
+            return objectMapper.readValue(resultJson, STRING_MAP_TYPE);
+        } catch (Exception exception) {
+            log.warn("[AI] Could not parse string result payload: {}", exception.getMessage());
+            return null;
+        }
     }
 
     private UsExaminationRegion resolveRegion(UsAnalysisModuleRun run) {

@@ -114,6 +114,52 @@ function normalizeAnalysisRegionResults(resultData) {
   }, {});
 }
 
+function normalizeBoundingBoxes(boxes) {
+  if (!Array.isArray(boxes)) {
+    return [];
+  }
+
+  return boxes
+    .map((box) => {
+      const x = Number(box?.x ?? box?.left ?? box?.x1);
+      const y = Number(box?.y ?? box?.top ?? box?.y1);
+      const width = Number(box?.width ?? ((box?.x2 ?? box?.right) != null ? Number(box.x2 ?? box.right) - x : NaN));
+      const height = Number(box?.height ?? ((box?.y2 ?? box?.bottom) != null ? Number(box.y2 ?? box.bottom) - y : NaN));
+      const confidence = Number(box?.confidence ?? box?.score ?? 0);
+
+      if ([x, y, width, height].some((value) => Number.isNaN(value))) {
+        return null;
+      }
+
+      return { x, y, width, height, confidence };
+    })
+    .filter(Boolean);
+}
+
+function getBoundingBoxStyle(box) {
+  const usesNormalizedValues =
+    box.x <= 1 &&
+    box.y <= 1 &&
+    box.width <= 1 &&
+    box.height <= 1;
+
+  if (usesNormalizedValues) {
+    return {
+      left: `${box.x * 100}%`,
+      top: `${box.y * 100}%`,
+      width: `${box.width * 100}%`,
+      height: `${box.height * 100}%`
+    };
+  }
+
+  return {
+    left: `${(box.x / RESULT_IMAGE_WIDTH) * 100}%`,
+    top: `${(box.y / RESULT_IMAGE_HEIGHT) * 100}%`,
+    width: `${(box.width / RESULT_IMAGE_WIDTH) * 100}%`,
+    height: `${(box.height / RESULT_IMAGE_HEIGHT) * 100}%`
+  };
+}
+
 function deriveSelectedModuleIds(locationState, sessionModuleIds, analysisResult) {
   if (Array.isArray(locationState?.selectedModuleIds) && locationState.selectedModuleIds.length > 0) {
     return locationState.selectedModuleIds;
@@ -214,15 +260,19 @@ export function AiResultsPage() {
   const activeRegionResult = aiRegionResults[activeRegion] || null;
   const bLineResult = activeRegionResult?.b_line_module || null;
   const rdsScoreResult = activeRegionResult?.rds_score_module || null;
+  const normalizedBoundingBoxes = useMemo(
+    () => normalizeBoundingBoxes(bLineResult?.bounding_boxes),
+    [bLineResult?.bounding_boxes]
+  );
   const isBLineEnabled = enabledModuleIds.includes("b-line");
   const isRdsScoreEnabled = enabledModuleIds.includes("rds-score");
-  const bLineAverageConfidence = getAverageConfidence(bLineResult?.bounding_boxes);
+  const bLineAverageConfidence = getAverageConfidence(normalizedBoundingBoxes);
   const visibleSummaryLines = [
-    `Region ${activeRegionResult?.region || activeRegion.toUpperCase()}`,
-    isBLineEnabled && bLineResult
-      ? `B-LINE: ${bLineResult.count} detections, ${bLineResult.bounding_boxes.length} bounding boxes shown${bLineAverageConfidence !== null ? `, avg confidence ${formatPercentFromScore(bLineAverageConfidence)}` : ""}`
-      : null,
-    isRdsScoreEnabled && rdsScoreResult ? `RDS-SCORE: ${rdsScoreResult.score}` : null
+    isBLineEnabled ? `B-line Count: ${bLineResult?.count ?? 0}` : null,
+    isRdsScoreEnabled ? `RDS Score: ${rdsScoreResult?.score ?? "-"}` : null,
+    isBLineEnabled && bLineAverageConfidence !== null
+      ? `Avg Confidence: ${formatPercentFromScore(bLineAverageConfidence)}`
+      : null
   ].filter(Boolean);
   const isViewChanged = zoomScale !== 1 || panOffset.x !== 0 || panOffset.y !== 0 || viewRotation !== 0;
 
@@ -573,17 +623,12 @@ export function AiResultsPage() {
                     ref={resultImageRef}
                     src={activeSelectedFrame.thumbnail}
                   />
-                  {isBLineEnabled && bLineResult
-                    ? bLineResult.bounding_boxes.map((box, index) => (
+                  {isBLineEnabled && normalizedBoundingBoxes.length > 0
+                    ? normalizedBoundingBoxes.map((box, index) => (
                         <div
                           key={`${activeRegion}-bbox-${index}`}
                           className="ai-results-bounding-box"
-                          style={{
-                            left: `${(box.x / RESULT_IMAGE_WIDTH) * 100}%`,
-                            top: `${(box.y / RESULT_IMAGE_HEIGHT) * 100}%`,
-                            width: `${(box.width / RESULT_IMAGE_WIDTH) * 100}%`,
-                            height: `${(box.height / RESULT_IMAGE_HEIGHT) * 100}%`
-                          }}
+                          style={getBoundingBoxStyle(box)}
                         >
                           <span>%{Math.round(box.confidence * 100)}</span>
                         </div>
@@ -612,9 +657,15 @@ export function AiResultsPage() {
 
               <div className="ai-results-summary">
                 {enabledModuleIds.length > 0 ? (
-                  visibleSummaryLines.map((line) => (
-                    <p key={line}>{line}</p>
-                  ))
+                  visibleSummaryLines.length > 0 ? (
+                    visibleSummaryLines.map((line) => (
+                      <span key={line} className="ai-results-summary-chip">
+                        {line}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="ai-results-summary-chip">Region {activeRegionResult?.region || activeRegion.toUpperCase()}</span>
+                  )
                 ) : (
                   <p>Enable a module from the left panel to display its results on the image.</p>
                 )}

@@ -9,7 +9,6 @@ import com.backend.ai.analysis.model.entity.PreprocessingOperation;
 import com.backend.ai.analysis.model.entity.UsAiAnalysis;
 import com.backend.ai.analysis.model.entity.UsAiModule;
 import com.backend.ai.analysis.model.entity.UsAnalysisModuleRun;
-import com.backend.ai.analysis.model.entity.UsAnalysisPreprocessingSetting;
 import com.backend.ai.analysis.repository.PreprocessingOperationRepository;
 import com.backend.ai.analysis.repository.UsAiAnalysisRepository;
 import com.backend.ai.analysis.repository.UsAiModuleRepository;
@@ -22,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -130,19 +130,22 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
                     .findByDataTypeAndOperationCode(HealthDataType.ULTRASOUND, settingDto.getOperationCode())
                     .orElse(null);
 
-            UsAnalysisPreprocessingSetting setting = new UsAnalysisPreprocessingSetting();
-            setting.setAnalysis(analysis);
-            setting.setOperationCode(settingDto.getOperationCode());
-            setting.setOperationName(
+            Map<String, Object> setting = new LinkedHashMap<>();
+            setting.put("operationCode", settingDto.getOperationCode());
+            setting.put(
+                    "operationName",
                     settingDto.getOperationName() != null && !settingDto.getOperationName().isBlank()
                             ? settingDto.getOperationName()
                             : catalogOperation != null
                                     ? catalogOperation.getOperationName()
                                     : settingDto.getOperationCode()
             );
-            setting.setDisplayOrder(settingDto.getDisplayOrder() != null ? settingDto.getDisplayOrder() : analysis.getPreprocessingSettings().size() + 1);
-            setting.setActive(settingDto.isActive());
-            setting.setParameters(settingDto.getParameters());
+            setting.put(
+                    "displayOrder",
+                    settingDto.getDisplayOrder() != null ? settingDto.getDisplayOrder() : analysis.getPreprocessingSettings().size() + 1
+            );
+            setting.put("active", settingDto.isActive());
+            setting.put("parameters", settingDto.getParameters());
             analysis.getPreprocessingSettings().add(setting);
         }
     }

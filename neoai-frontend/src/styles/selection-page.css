@@ -870,6 +870,10 @@
   backdrop-filter: blur(10px);
   box-shadow: 0 18px 32px rgba(0, 0, 0, 0.24);
   z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
 }
 
 .ai-results-summary p {
@@ -882,6 +886,21 @@
 
 .ai-results-summary p + p {
   margin-top: 4px;
+}
+
+.ai-results-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  background: rgba(15, 30, 48, 0.86);
+  color: #f1fbff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .panel-arrow-toggle {

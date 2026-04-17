@@ -10,6 +10,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,9 +31,8 @@ public class UsAiAnalysis implements AiAnalysis {
     @JoinColumn(name = "examination_id")
     private UsExamination examination;
 
-    @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("displayOrder ASC")
-    private List<UsAnalysisPreprocessingSetting> preprocessingSettings = new java.util.ArrayList<>();
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<Map<String, Object>> preprocessingSettings = new ArrayList<>();
 
     @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UsAnalysisModuleRun> moduleRuns = new java.util.ArrayList<>();
