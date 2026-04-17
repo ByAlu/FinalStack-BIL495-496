@@ -16,42 +16,46 @@ from visualize_predictions import YOLOBackend
 
 from contextlib import asynccontextmanager
 
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:12345@postgres:5432/neoai_db"
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.db = await asyncpg.create_pool(DATABASE_URL)
-    async with app.state.db.acquire() as conn:
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS analysis_jobs (
-                job_id       TEXT PRIMARY KEY,
-                image_url    TEXT,
-                video_url    TEXT NOT NULL,
-                frame_index  INTEGER NOT NULL,
-                callback_url TEXT NOT NULL,
-                status       TEXT NOT NULL DEFAULT 'pending',
-                result       JSONB,
-                created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-        await conn.execute("""
-            ALTER TABLE analysis_jobs
-            ADD COLUMN IF NOT EXISTS video_url TEXT
-        """)
-        await conn.execute("""
-            ALTER TABLE analysis_jobs
-            ADD COLUMN IF NOT EXISTS frame_index INTEGER
-        """)
-        await conn.execute("""
-            UPDATE analysis_jobs
-            SET video_url = COALESCE(video_url, image_url)
-            WHERE video_url IS NULL
-        """)
-        await conn.execute("""
-            UPDATE analysis_jobs
-            SET frame_index = COALESCE(frame_index, 0)
-            WHERE frame_index IS NULL
-        """)
+    retries = 10
+    delay = 2
+
+    for attempt in range(retries):
+        try:
+            print(f"[DB] Connecting... attempt {attempt+1}")
+            app.state.db = await asyncpg.create_pool(DATABASE_URL)
+
+            async with app.state.db.acquire() as conn:
+                await conn.execute("""
+                    CREATE TABLE IF NOT EXISTS analysis_jobs (
+                        job_id       TEXT PRIMARY KEY,
+                        image_url    TEXT,
+                        video_url    TEXT NOT NULL,
+                        frame_index  INTEGER NOT NULL,
+                        callback_url TEXT NOT NULL,
+                        status       TEXT NOT NULL DEFAULT 'pending',
+                        result       JSONB,
+                        created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                """)
+            print("DB connection established")
+            break
+
+        except Exception as e:
+            print(f"[DB] Failed: {e}")
+            if attempt == retries - 1:
+                raise
+            await asyncio.sleep(delay)
+
     yield
+
     await app.state.db.close()
 
 app = FastAPI(title="B-Line Detection API", lifespan=lifespan)
@@ -67,8 +71,7 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "best.pt")
 CONF_THRESHOLD = 0.25
 predictor = YOLOBackend(MODEL_PATH)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/bline_db")
-CALLBACK_HOST_OVERRIDE = os.getenv("CALLBACK_HOST_OVERRIDE", "").strip()
+#CALLBACK_HOST_OVERRIDE = os.getenv("CALLBACK_HOST_OVERRIDE", "").strip()
 
 
 # ── SCHEMAS ──────────────────────────────────────────────────────────────────
