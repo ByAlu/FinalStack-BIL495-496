@@ -7,6 +7,7 @@ import tempfile
 import os
 import uuid
 import json
+import asyncio
 from urllib.parse import urlparse, urlunparse
 
 import asyncpg
@@ -71,7 +72,7 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "best.pt")
 CONF_THRESHOLD = 0.25
 predictor = YOLOBackend(MODEL_PATH)
 
-#CALLBACK_HOST_OVERRIDE = os.getenv("CALLBACK_HOST_OVERRIDE", "").strip()
+CALLBACK_HOST_OVERRIDE = os.getenv("CALLBACK_HOST_OVERRIDE", "").strip()
 
 
 # ── SCHEMAS ──────────────────────────────────────────────────────────────────

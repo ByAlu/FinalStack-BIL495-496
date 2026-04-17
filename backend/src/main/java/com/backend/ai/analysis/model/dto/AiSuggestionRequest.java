@@ -13,7 +13,7 @@ import java.util.Map;
 
 @Getter
 @Setter
-public class DoctorSuggestionRequest {
+public class AiSuggestionRequest {
     @NotBlank(message = "Examination id cannot be blank")
     private String examinationId;
 

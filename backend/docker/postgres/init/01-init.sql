@@ -31,23 +31,6 @@ CREATE TABLE IF NOT EXISTS user_allowed_data_types (
     PRIMARY KEY (user_id, data_type)
 );
 
-CREATE TABLE IF NOT EXISTS us_examinations (
-    id BIGSERIAL PRIMARY KEY,
-    external_examination_id VARCHAR(128) NOT NULL UNIQUE,
-    external_patient_id VARCHAR(64) NOT NULL,
-    examination_date TIMESTAMP NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS us_examination_videos (
-    id BIGSERIAL PRIMARY KEY,
-    examination_id BIGINT NOT NULL REFERENCES us_examinations(id) ON DELETE CASCADE,
-    region VARCHAR(8) NOT NULL,
-    description VARCHAR(2048),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS us_ai_modules (
     id BIGSERIAL PRIMARY KEY,
     module_code VARCHAR(64) NOT NULL UNIQUE,
@@ -85,7 +68,7 @@ CREATE TABLE IF NOT EXISTS user_preprocessing_settings (
 
 CREATE TABLE IF NOT EXISTS us_ai_analyses (
     analysis_uuid UUID PRIMARY KEY,
-    examination_id BIGINT REFERENCES us_examinations(id) ON DELETE SET NULL,
+    exam_id VARCHAR(128) NOT NULL,
     patient_id BIGINT,
     status VARCHAR(32),
     result_data JSONB,
@@ -771,78 +754,6 @@ VALUES
         TRUE
     )
 ON CONFLICT (module_code) DO NOTHING;
-
-INSERT INTO us_examinations (
-    external_examination_id,
-    external_patient_id,
-    examination_date,
-    created_at,
-    updated_at
-)
-SELECT
-    'EX_' || LPAD((1000 + seq)::text, 4, '0'),
-    'PT_1001',
-    TIMESTAMP '2025-01-01 08:00:00'
-        + ((seq - 1) * INTERVAL '2 days')
-        + ((seq % 5) * INTERVAL '3 hours')
-        + ((seq % 4) * INTERVAL '17 minutes'),
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-FROM generate_series(1, 55) AS seq
-ON CONFLICT (external_examination_id) DO NOTHING;
-
-INSERT INTO us_examinations (
-    external_examination_id,
-    external_patient_id,
-    examination_date,
-    created_at,
-    updated_at
-)
-SELECT
-    'EX_' || LPAD((1055 + seq)::text, 4, '0'),
-    'PT_1002',
-    TIMESTAMP '2025-04-10 09:30:00'
-        + ((seq - 1) * INTERVAL '3 days')
-        + ((seq % 4) * INTERVAL '2 hours')
-        + ((seq % 3) * INTERVAL '11 minutes'),
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-FROM generate_series(1, 15) AS seq
-ON CONFLICT (external_examination_id) DO NOTHING;
-
-INSERT INTO us_examination_videos (
-    examination_id,
-    region,
-    description,
-    created_at
-)
-SELECT
-    e.id,
-    regions.region,
-    'Mock ultrasound video for ' || e.external_examination_id || ' / ' || regions.region,
-    CURRENT_TIMESTAMP
-FROM us_examinations e
-JOIN LATERAL (
-    VALUES
-        ('R1', 1),
-        ('R2', 2),
-        ('R3', 3),
-        ('R4', 4),
-        ('R5', 5),
-        ('R6', 6)
-) AS regions(region, region_order) ON TRUE
-WHERE e.external_patient_id IN ('PT_1001', 'PT_1002')
-  AND regions.region_order <= CASE
-      WHEN CAST(RIGHT(e.external_examination_id, 4) AS INTEGER) % 5 = 0 THEN 4
-      WHEN CAST(RIGHT(e.external_examination_id, 4) AS INTEGER) % 3 = 0 THEN 5
-      ELSE 6
-  END
-  AND NOT EXISTS (
-      SELECT 1
-      FROM us_examination_videos ev
-      WHERE ev.examination_id = e.id
-        AND ev.region = regions.region
-  );
 
 INSERT INTO preprocessing_operations (
     data_type,

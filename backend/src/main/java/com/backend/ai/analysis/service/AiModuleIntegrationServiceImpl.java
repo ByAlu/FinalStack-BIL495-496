@@ -57,64 +57,76 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
 
     @Override
     public AiAnalysisDTO analyze(UUID analysisUuid, AnalysisTarget target) {
-        
         UsAiAnalysis analysis = aiAnalysisRepository.findById(analysisUuid)
             .orElseThrow();
 
         SelectedVideoRequest selectedVideo = resolveSelectedVideoRequest(analysis);
+        Map<String, Object> requestPayload = buildRequestPayload(selectedVideo, target);
+        Map<String, Object> fastApiRequestBody = buildFastApiRequestBody(
+                selectedVideo.videoUrl,
+                selectedVideo.frameIndex,
+                target
+        );
 
         for (UsAnalysisModuleRun run : analysis.getModuleRuns()) {
             if (!run.getAiModule().isActive()) {
                 continue;
             }
-
-            Map<String, Object> fastApiRequestBody = buildFastApiRequestBody(
-                    selectedVideo.videoUrl,
-                    selectedVideo.frameIndex,
-                    target
-            );
-
-            try {
-                //Python request response
-                log.info("[AI] Calling FastAPI endpoint: {}/analyze", apiUrl);
-                Map<String, Object> response = webClient.post()
-                                                .uri(apiUrl + "/analyze")
-                                                .bodyValue(fastApiRequestBody)
-                                                .retrieve()
-                                                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
-                                                .block();
-
-                String jobId = asString(response, "job_id", "jobId", "external_job_id");
-
-                run.setExternalJobId(jobId);
-                run.setStatus(AnalysisStatus.PROCESSING);
-                run.setRequestPayload(Map.of(
-                        "videoUrl", selectedVideo.videoUrl,
-                        "frameIndex", selectedVideo.frameIndex,
-                        "region", selectedVideo.region.name(),
-                        "selected_modules", Map.of(
-                                "b_lines", target.isB_lines(),
-                                "rds_score", target.isRds_score()
-                        )
-                ));
-
-            }catch (WebClientResponseException e) {
-                run.setStatus(AnalysisStatus.FAILED);
-                log.error("[AI] FastAPI 422/HTTP error. status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
-            } catch (Exception e) {
-                e.printStackTrace();
-                run.setStatus(AnalysisStatus.FAILED);
-            }
-            
+            triggerModuleRun(run, fastApiRequestBody, requestPayload);
         }
 
         analysis.setStatus(AnalysisStatus.PROCESSING);
         aiAnalysisRepository.save(analysis);
 
+        return buildProcessingDto(analysisUuid);
+    }
+
+    private void triggerModuleRun(
+            UsAnalysisModuleRun run,
+            Map<String, Object> fastApiRequestBody,
+            Map<String, Object> requestPayload
+    ) {
+        try {
+            String jobId = callAnalyzeApi(fastApiRequestBody);
+            run.setExternalJobId(jobId);
+            run.setStatus(AnalysisStatus.PROCESSING);
+            run.setRequestPayload(requestPayload);
+        } catch (WebClientResponseException e) {
+            run.setStatus(AnalysisStatus.FAILED);
+            log.error("[AI] FastAPI 422/HTTP error. status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+        } catch (Exception e) {
+            run.setStatus(AnalysisStatus.FAILED);
+            log.error("[AI] Failed to trigger module run", e);
+        }
+    }
+
+    private String callAnalyzeApi(Map<String, Object> fastApiRequestBody) {
+        log.info("[AI] Calling FastAPI endpoint: {}/analyze", apiUrl);
+        Map<String, Object> response = webClient.post()
+                .uri(apiUrl + "/analyze")
+                .bodyValue(fastApiRequestBody)
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .block();
+        return asString(response, "job_id", "jobId", "external_job_id");
+    }
+
+    private Map<String, Object> buildRequestPayload(SelectedVideoRequest selectedVideo, AnalysisTarget target) {
+        return Map.of(
+                "videoUrl", selectedVideo.videoUrl,
+                "frameIndex", selectedVideo.frameIndex,
+                "region", selectedVideo.region.name(),
+                "selected_modules", Map.of(
+                        "b_lines", target.isB_lines(),
+                        "rds_score", target.isRds_score()
+                )
+        );
+    }
+
+    private AiAnalysisDTO buildProcessingDto(UUID analysisUuid) {
         AiAnalysisDTO dto = new AiAnalysisDTO();
         dto.setAnalysisUuid(analysisUuid);
         dto.setAnalysisStatus(AnalysisStatus.PROCESSING);
-
         return dto;
     }
 
@@ -149,53 +161,72 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
     @Override
     @Transactional
     public void processCallBack(Map<String,Object> callbackPayLoad){
-
         String jobId = asString(callbackPayLoad, "job_id", "jobId", "external_job_id");
         UUID analysisUuid = asUuid(callbackPayLoad, "analysis_uuid", "analysisUuid");
         AnalysisStatus callbackStatus = parseStatus(asString(callbackPayLoad, "status"));
 
-        UsAnalysisModuleRun moduleRun = null;
-        if (jobId != null && !jobId.isBlank()) {
-            moduleRun = analysisModuleRunRepository.findByExternalJobId(jobId).orElse(null);
+        UsAnalysisModuleRun moduleRun = findModuleRun(jobId);
+        UsAiAnalysis analysis = resolveAnalysis(moduleRun, analysisUuid);
+
+        if (moduleRun != null) {
+            updateModuleRunFromCallback(moduleRun, callbackPayLoad, callbackStatus);
         }
 
-         UsAiAnalysis analysis = null;
+        mergeResultData(analysis, callbackPayLoad);
+        analysis.setStatus(calculateAnalysisStatus(analysis));
+        aiAnalysisRepository.save(analysis);
+    }
+
+    private UsAnalysisModuleRun findModuleRun(String jobId) {
+        if (jobId == null || jobId.isBlank()) {
+            return null;
+        }
+        return analysisModuleRunRepository.findByExternalJobId(jobId).orElse(null);
+    }
+
+    private UsAiAnalysis resolveAnalysis(UsAnalysisModuleRun moduleRun, UUID analysisUuid) {
         if (moduleRun != null) {
-            analysis = moduleRun.getAnalysis();
-            moduleRun.setResponsePayload(callbackPayLoad);
-            moduleRun.setStatus(callbackStatus);
-            if (callbackStatus == AnalysisStatus.COMPLETED || callbackStatus == AnalysisStatus.FAILED) {
-                moduleRun.setCompletedAt(LocalDateTime.now());
-            }
-        } else if (analysisUuid != null) {
-            analysis = aiAnalysisRepository.findById(analysisUuid)
+            return moduleRun.getAnalysis();
+        }
+        if (analysisUuid != null) {
+            return aiAnalysisRepository.findById(analysisUuid)
                     .orElseThrow(() -> new EntityNotFoundException("Analiz bulunamadı: " + analysisUuid));
         }
+        throw new IllegalArgumentException("Callback does not contain valid job id or analysis uuid");
+    }
 
-        if (analysis == null) {
-            throw new IllegalArgumentException("Callback does not contain valid job id or analysis uuid");
+    private void updateModuleRunFromCallback(
+            UsAnalysisModuleRun moduleRun,
+            Map<String, Object> callbackPayLoad,
+            AnalysisStatus callbackStatus
+    ) {
+        moduleRun.setResponsePayload(callbackPayLoad);
+        moduleRun.setStatus(callbackStatus);
+        if (callbackStatus == AnalysisStatus.COMPLETED || callbackStatus == AnalysisStatus.FAILED) {
+            moduleRun.setCompletedAt(LocalDateTime.now());
         }
+    }
 
+    private void mergeResultData(UsAiAnalysis analysis, Map<String, Object> callbackPayLoad) {
         Map<String, Object> resultData = extractResultData(callbackPayLoad);
         if (resultData != null && !resultData.isEmpty()) {
             analysis.setResultData(resultData);
         }
+    }
 
+    private AnalysisStatus calculateAnalysisStatus(UsAiAnalysis analysis) {
         boolean anyFailed = analysis.getModuleRuns().stream()
                 .anyMatch(run -> run.getStatus() == AnalysisStatus.FAILED);
-        boolean allCompleted = analysis.getModuleRuns().stream()
-                .allMatch(run -> run.getStatus() == AnalysisStatus.COMPLETED);
-
         if (anyFailed) {
-            analysis.setStatus(AnalysisStatus.FAILED);
-        } else if (allCompleted) {
-            analysis.setStatus(AnalysisStatus.COMPLETED);
-        } else {
-            analysis.setStatus(AnalysisStatus.PROCESSING);
+            return AnalysisStatus.FAILED;
         }
 
-        aiAnalysisRepository.save(analysis);
-
+        boolean allCompleted = analysis.getModuleRuns().stream()
+                .allMatch(run -> run.getStatus() == AnalysisStatus.COMPLETED);
+        if (allCompleted) {
+            return AnalysisStatus.COMPLETED;
+        }
+        return AnalysisStatus.PROCESSING;
     }
 
     private String asString(Map<String, Object> payload, String... keys) {
@@ -272,8 +303,8 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         UsExaminationRegion region = selected.getKey();
         int frameIndex = selected.getValue();
 
-        String patientId = analysis.getExamination().getExternalPatientId();
-        String examinationId = analysis.getExamination().getExternalExaminationId();
+        Long patientId = analysis.getPatientId();
+        String examinationId = analysis.getExamId();
         String videoPath = resolveExistingVideoPath(patientId, examinationId, region);
 
         Blob videoBlob = storage.get(BlobId.of(bucketName, videoPath));
@@ -292,12 +323,11 @@ public class AiModuleIntegrationServiceImpl implements AiModuleIntegrationServic
         return new SelectedVideoRequest(region, frameIndex, signedVideoUrl);
     }
 
-    private String resolveExistingVideoPath(String patientId, String examinationId, UsExaminationRegion region) {
-        String safePatient = sanitizePathPart(patientId);
+    private String resolveExistingVideoPath(Long patientId, String examinationId, UsExaminationRegion region) {
         String safeExam = sanitizePathPart(examinationId);
         List<String> candidates = new ArrayList<>();
-        candidates.add(String.format("ai/PT_%s/%s/%s.mp4", safePatient, safeExam, region.name()));
-        candidates.add(String.format("ai/%s/%s/%s.mp4", safePatient, safeExam, region.name()));
+        candidates.add(String.format("ai/PT_%s/%s/%s.mp4", patientId, safeExam, region.name()));
+        candidates.add(String.format("ai/%s/%s/%s.mp4", patientId, safeExam, region.name()));
 
         for (String path : candidates) {
             if (storage.get(BlobId.of(bucketName, path)) != null) {

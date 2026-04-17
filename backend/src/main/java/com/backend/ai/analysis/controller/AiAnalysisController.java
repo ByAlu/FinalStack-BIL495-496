@@ -5,7 +5,7 @@ import com.backend.ai.analysis.model.dto.AiAnalysisResultDTO;
 import com.backend.ai.analysis.service.AiAnalysisService;
 import com.backend.ai.analysis.service.AiModuleIntegrationService;
 import com.backend.model.dto.AnalysisInitiatedDTO;
-import com.backend.ai.analysis.model.dto.DoctorSuggestionRequest;
+import com.backend.ai.analysis.model.dto.AiSuggestionRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +22,13 @@ public class AiAnalysisController {
     @Autowired
     private AiModuleIntegrationService aiModuleIntegrationService;
     
+    //The ai module backend requires the following
+    //callback url
+    //video url
+    //frame index of the image in video
     @PostMapping
-    public ResponseEntity<AnalysisInitiatedDTO> startAnalysis(@Valid @RequestBody DoctorSuggestionRequest doctorSuggestionRequest) {
-        return ResponseEntity.accepted().body(aiAnalysisService.startAnalysis(doctorSuggestionRequest));
+    public ResponseEntity<AnalysisInitiatedDTO> startAnalysis(@Valid @RequestBody AiSuggestionRequest aiSuggestionRequest) {
+        return ResponseEntity.accepted().body(aiAnalysisService.startAnalysis(aiSuggestionRequest));
     }
 
     @GetMapping("/{uuid}")

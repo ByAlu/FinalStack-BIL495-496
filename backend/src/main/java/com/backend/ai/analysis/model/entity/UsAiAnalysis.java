@@ -1,7 +1,6 @@
 package com.backend.ai.analysis.model.entity;
 
 import com.backend.model.entity.HealthDataType;
-import com.backend.model.entity.UsExamination;
 import com.backend.model.entity.UsExaminationRegion;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -26,9 +25,12 @@ public class UsAiAnalysis implements AiAnalysis {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID analysisUuid;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "examination_id")
-    private UsExamination examination;
+    //The exams should be querried using the cloud service
+    @Column(name = "exam_id",nullable = false)
+    private String examId;
+
+    @Column(name = "patient_id",nullable = false)
+    private Long patientId;
 
     @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC")

@@ -1,7 +1,7 @@
 package com.backend.ai.analysis.service;
 
 import com.backend.ai.analysis.model.dto.AiAnalysisDTO;
-import com.backend.ai.analysis.model.dto.DoctorSuggestionRequest;
+import com.backend.ai.analysis.model.dto.AiSuggestionRequest;
 import com.backend.ai.analysis.model.entity.AnalysisStatus;
 import com.backend.ai.analysis.model.entity.AnalysisTarget;
 import com.backend.ai.analysis.model.entity.UsAiAnalysis;
@@ -11,9 +11,7 @@ import com.backend.ai.analysis.repository.UsAiAnalysisRepository;
 import com.backend.ai.analysis.repository.UsAiModuleRepository;
 import com.backend.ai.analysis.repository.UsAnalysisModuleRunRepository;
 import com.backend.model.dto.AnalysisInitiatedDTO;
-import com.backend.model.entity.UsExamination;
 import com.backend.model.entity.UsExaminationRegion;
-import com.backend.model.repository.UsExaminationRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -35,8 +32,6 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     private AiModuleIntegrationService aiModuleService;
     @Autowired
     private UsAiAnalysisRepository aiAnalysisRepository;
-    @Autowired
-    private UsExaminationRepository usExaminationRepository;
     @Autowired
     private UsAiModuleRepository usAiModuleRepository;
     @Autowired
@@ -50,14 +45,15 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
 
     @Override
     @Transactional
-    public AnalysisInitiatedDTO startAnalysis(DoctorSuggestionRequest request) {
-        //Find exam and set to object
-        UsExamination examination = usExaminationRepository.findByExternalExaminationId(request.getExaminationId())
-                .orElseThrow(() -> new IllegalArgumentException("Examination not found: " + request.getExaminationId()));
+    public AnalysisInitiatedDTO startAnalysis(AiSuggestionRequest request) {
+        //Get exam id
+        String examId = request.getExaminationId();
+        Long patientId = parsePatientId(request.getPatientId());
 
         //Create new analysis
         UsAiAnalysis aiAnalysis = new UsAiAnalysis();
-        aiAnalysis.setExamination(examination);
+        aiAnalysis.setExamId(examId);
+        aiAnalysis.setPatientId(patientId);
         aiAnalysis.setStatus(AnalysisStatus.PENDING);
         aiAnalysis.setSelectedFrameIndices(request.getSelectedFrameIndices());
 
@@ -119,6 +115,19 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         }
 
         return codes;
+    }
+    public static long parsePatientId(String rawId) {
+        if (rawId == null || rawId.isBlank()) {
+            throw new IllegalArgumentException("Invalid patient id");
+        }
+
+        String numericPart = rawId.replaceAll("[^0-9]", "");
+
+        if (numericPart.isEmpty()) {
+            throw new IllegalArgumentException("No numeric part found in id: " + rawId);
+        }
+
+        return Long.parseLong(numericPart);
     }
 
     /**
