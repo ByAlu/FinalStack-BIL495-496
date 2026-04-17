@@ -291,6 +291,13 @@ export function ReportingPage() {
   }
 
   async function handleExportPdf() {
+    const actionLog = logSimpleAction(
+      `Report Exported: ${reportId}`,
+      ActionTypes.REPORT_GENERATION,
+      `Exporting report ${reportId} as PDF for patient ${patientId}, examination ${examinationId}`,
+      { reportId, patientId, examinationId, format: "pdf" }
+    );
+
     setIsExportingPdf(true);
 
     try {
@@ -306,6 +313,10 @@ export function ReportingPage() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
+      
+      completeAction(actionLog.id, "SUCCEEDED");
+    } catch (error) {
+      completeAction(actionLog.id, "FAILED");
     } finally {
       setIsExportingPdf(false);
     }

@@ -19,12 +19,14 @@ import {
   TableRow,
   TextField,
   Typography,
+  
   Collapse
 } from "@mui/material";
 import { findPatientById } from "../services/mockApi";
 import { notifyUserError } from "../services/errorToastBus";
 import { resetExaminationWorkflowSession } from "../utils/resetExaminationWorkflowSession";
 import { getActiveWorkflowContext, resetWorkflowAfterStep, setActiveWorkflowContext } from "../utils/workflowState";
+import { logSimpleAction, ActionTypes, completeAction } from "../services/actionLogger";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
@@ -144,11 +146,28 @@ export function PatientQueryWorkflowPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
-    const found = findPatientById(query);
-    setPatient(found);
-    if (!found) {
-      notifyUserError("No patient was found for this ID.");
+    
+    const actionLog = logSimpleAction(
+      `Patient Query: ${query}`,
+      ActionTypes.PATIENT_QUERY,
+      `Searching for patient with ID ${query}`,
+      { patientId: query }
+    );
+    
+    try {
+      const found = findPatientById(query);
+      setPatient(found);
+      if (!found) {
+        notifyUserError("No patient was found for this ID.");
+        completeAction(actionLog.id, "FAILED");
+      } else {
+        completeAction(actionLog.id, "SUCCEEDED");
+      }
+    } catch (error) {
+      completeAction(actionLog.id, "FAILED");
+      notifyUserError("Error during patient query");
     }
+    
     setExpandedExaminationId("");
     setCurrentPage(1);
   }
@@ -223,18 +242,31 @@ export function PatientQueryWorkflowPage() {
   }
 
   function handleContinue(patientId, examinationId) {
-    const activeWorkflowContext = getActiveWorkflowContext();
-    const isSameExamination =
-      activeWorkflowContext?.patientId === patientId && activeWorkflowContext?.examinationId === examinationId;
+    const actionLog = logSimpleAction(
+      `Open Examination: ${examinationId}`,
+      "EXAMINATION_OPENED",
+      `Opening examination ${examinationId} for patient ${patientId}`,
+      { patientId, examinationId }
+    );
+    
+    try {
+      const activeWorkflowContext = getActiveWorkflowContext();
+      const isSameExamination =
+        activeWorkflowContext?.patientId === patientId && activeWorkflowContext?.examinationId === examinationId;
 
-    if (isSameExamination) {
-      setActiveWorkflowContext({ patientId, examinationId, reportId: activeWorkflowContext.reportId });
-      return;
+      if (isSameExamination) {
+        setActiveWorkflowContext({ patientId, examinationId, reportId: activeWorkflowContext.reportId });
+        completeAction(actionLog.id, "SUCCEEDED");
+        return;
+      }
+
+      resetExaminationWorkflowSession(patientId, examinationId);
+      setActiveWorkflowContext({ patientId, examinationId });
+      resetWorkflowAfterStep(patientId, examinationId, 1);
+      completeAction(actionLog.id, "SUCCEEDED");
+    } catch (error) {
+      completeAction(actionLog.id, "FAILED");
     }
-
-    resetExaminationWorkflowSession(patientId, examinationId);
-    setActiveWorkflowContext({ patientId, examinationId });
-    resetWorkflowAfterStep(patientId, examinationId, 1);
   }
 
   function getSortIndicator(columnKey) {
